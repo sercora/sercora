@@ -548,7 +548,7 @@ function MatrixView() {
 
                         {
                             field: "product_name",
-                            headerName: "Produit",
+                            headerName: "DESCRIPTION",
                             width: 280,
                             minWidth: 220,
                             pinned: "left",
@@ -557,7 +557,7 @@ function MatrixView() {
 
                         {
                             field: "unit_name",
-                            headerName: "Unité",
+                            headerName: "UNITÉ DE MESURE",
                             width: 70,
                             minWidth: 60,
                             cellClass: "calculated-cell"
@@ -565,7 +565,7 @@ function MatrixView() {
 
                         {
                             field: "grout_color",
-                            headerName: "Coulis",
+                            headerName: "COULIS",
                             width: 90,
                             minWidth: 80,
                             cellClass: "calculated-cell"
@@ -573,7 +573,7 @@ function MatrixView() {
 
                         {
                             field: "loss_percent",
-                            headerName: "Perte %",
+                            headerName: "PERTE EN %",
                             width: 78,
                             minWidth: 70,
                             editable: true,
@@ -584,7 +584,7 @@ function MatrixView() {
 
                         {
                             field: "purchase_price",
-                            headerName: "Achat $",
+                            headerName: "COST",
                             width: 95,
                             minWidth: 82,
                             editable: true,
@@ -597,7 +597,7 @@ function MatrixView() {
 
                         {
                             field: "profit_percent",
-                            headerName: "Profit %",
+                            headerName: "PROFIT %",
                             width: 78,
                             minWidth: 70,
                             editable: true,
@@ -608,7 +608,7 @@ function MatrixView() {
 
                         {
                             field: "installation_cost",
-                            headerName: "Pose $",
+                            headerName: "PRIX UNITAIRES",
                             width: 85,
                             minWidth: 78,
                             editable: true,
@@ -658,7 +658,7 @@ function MatrixView() {
 
                         {
 
-                            headerName: "Qté totale",
+                            headerName: "QTÉ",
 
                             width: 88,
 
@@ -679,7 +679,7 @@ function MatrixView() {
 
                         {
 
-                            headerName: "Qté + perte",
+                            headerName: "QTÉS TOTALES",
 
                             width: 88,
 
@@ -700,7 +700,7 @@ function MatrixView() {
 
                         {
 
-                            headerName: "Coût matériel",
+                            headerName: "TOTAL MATÉRIEL",
 
                             width: 108,
 
@@ -721,7 +721,7 @@ function MatrixView() {
 
                         {
 
-                            headerName: "Profit $",
+                            headerName: "PROFIT TOTAL",
 
                             width: 86,
 
@@ -742,7 +742,7 @@ function MatrixView() {
 
                         {
 
-                            headerName: "Total pose",
+                            headerName: "TOTAL INSTALLATION",
 
                             width: 104,
 
@@ -763,7 +763,7 @@ function MatrixView() {
 
                         {
 
-                            headerName: "Prix vente",
+                            headerName: "TOTAL VENDANT",
 
                             width: 96,
 
