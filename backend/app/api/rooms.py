@@ -1,0 +1,129 @@
+from fastapi import APIRouter, HTTPException
+from sqlalchemy import text
+
+from app.database.database import SessionLocal
+from app.schemas.room import RoomCreate
+
+router = APIRouter()
+
+
+@router.get("/rooms")
+def get_rooms():
+
+    db = SessionLocal()
+
+    rows = db.execute(
+        text(
+            """
+            SELECT
+                id,
+                estimate_id,
+                phase_name,
+                floor_name,
+                room_name
+            FROM room
+            ORDER BY
+                phase_name,
+                floor_name,
+                room_name
+            """
+        )
+    )
+
+    rooms = []
+
+    for row in rows:
+
+        rooms.append(
+            {
+                "id": row.id,
+                "estimate_id": row.estimate_id,
+                "phase_name": row.phase_name,
+                "floor_name": row.floor_name,
+                "room_name": row.room_name
+            }
+        )
+
+    db.close()
+
+    return rooms
+
+
+@router.get("/rooms/{room_id}")
+def get_room(room_id: int):
+
+    db = SessionLocal()
+
+    row = db.execute(
+        text(
+            """
+            SELECT
+                id,
+                estimate_id,
+                phase_name,
+                floor_name,
+                room_name
+            FROM room
+            WHERE id=:id
+            """
+        ),
+        {"id": room_id}
+    ).fetchone()
+
+    db.close()
+
+    if row is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Room not found"
+        )
+
+    return {
+        "id": row.id,
+        "estimate_id": row.estimate_id,
+        "phase_name": row.phase_name,
+        "floor_name": row.floor_name,
+        "room_name": row.room_name
+    }
+
+
+@router.post("/rooms")
+def create_room(room: RoomCreate):
+
+    db = SessionLocal()
+
+    row = db.execute(
+        text(
+            """
+            INSERT INTO room (
+                estimate_id,
+                phase_name,
+                floor_name,
+                room_name
+            )
+            VALUES (
+                :estimate_id,
+                :phase_name,
+                :floor_name,
+                :room_name
+            )
+            RETURNING id
+            """
+        ),
+        {
+            "estimate_id": room.estimate_id,
+            "phase_name": room.phase_name,
+            "floor_name": room.floor_name,
+            "room_name": room.room_name
+        }
+    ).fetchone()
+
+    db.commit()
+
+    db.close()
+
+    return {
+        "id": row.id,
+        "message": "Room created"
+    }
