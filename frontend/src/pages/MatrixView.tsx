@@ -25,6 +25,54 @@ const ZOOM_LEVELS: Record<string, number> = {
     "150": 1.5
 };
 
+const GRID_LOCALE_TEXT = {
+    noRowsToShow: "Aucune ligne à afficher",
+    loadingOoo: "Chargement...",
+    searchOoo: "Rechercher...",
+    selectAll: "Tout sélectionner",
+    blanks: "Vides",
+    filterOoo: "Filtrer...",
+    equals: "Égal à",
+    notEqual: "Différent de",
+    contains: "Contient",
+    notContains: "Ne contient pas",
+    startsWith: "Commence par",
+    endsWith: "Se termine par",
+    lessThan: "Plus petit que",
+    greaterThan: "Plus grand que",
+    lessThanOrEqual: "Plus petit ou égal à",
+    greaterThanOrEqual: "Plus grand ou égal à",
+    inRange: "Entre",
+    andCondition: "ET",
+    orCondition: "OU",
+    applyFilter: "Appliquer",
+    resetFilter: "Réinitialiser",
+    clearFilter: "Effacer",
+    cancelFilter: "Annuler",
+    copy: "Copier",
+    copyWithHeaders: "Copier avec en-têtes",
+    paste: "Coller",
+    export: "Exporter",
+    csvExport: "Export CSV",
+    excelExport: "Export Excel",
+    pinColumn: "Figer la colonne",
+    pinLeft: "Figer à gauche",
+    pinRight: "Figer à droite",
+    noPin: "Ne pas figer",
+    autosizeThiscolumn: "Ajuster cette colonne",
+    autosizeAllColumns: "Ajuster toutes les colonnes",
+    groupBy: "Grouper par",
+    ungroupBy: "Retirer le groupe",
+    columns: "Colonnes",
+    filters: "Filtres",
+    rowGroupColumnsEmptyMessage: "Glisser ici pour grouper",
+    valueColumnsEmptyMessage: "Glisser ici pour agréger",
+    pivotMode: "Mode pivot",
+    groups: "Groupes",
+    values: "Valeurs",
+    pivots: "Pivots"
+};
+
 
 function MatrixView() {
 
@@ -500,7 +548,7 @@ function MatrixView() {
 
                         {
                             field: "product_name",
-                            headerName: "Product",
+                            headerName: "Produit",
                             width: 280,
                             minWidth: 220,
                             pinned: "left",
@@ -509,7 +557,7 @@ function MatrixView() {
 
                         {
                             field: "unit_name",
-                            headerName: "Unit",
+                            headerName: "Unité",
                             width: 70,
                             minWidth: 60,
                             cellClass: "calculated-cell"
@@ -517,7 +565,7 @@ function MatrixView() {
 
                         {
                             field: "grout_color",
-                            headerName: "Grout",
+                            headerName: "Coulis",
                             width: 90,
                             minWidth: 80,
                             cellClass: "calculated-cell"
@@ -525,7 +573,7 @@ function MatrixView() {
 
                         {
                             field: "loss_percent",
-                            headerName: "Loss %",
+                            headerName: "Perte %",
                             width: 78,
                             minWidth: 70,
                             editable: true,
@@ -536,7 +584,7 @@ function MatrixView() {
 
                         {
                             field: "purchase_price",
-                            headerName: "Purchase $",
+                            headerName: "Achat $",
                             width: 95,
                             minWidth: 82,
                             editable: true,
@@ -560,7 +608,7 @@ function MatrixView() {
 
                         {
                             field: "installation_cost",
-                            headerName: "Install $",
+                            headerName: "Pose $",
                             width: 85,
                             minWidth: 78,
                             editable: true,
@@ -610,7 +658,7 @@ function MatrixView() {
 
                         {
 
-                            headerName: "Qty Total",
+                            headerName: "Qté totale",
 
                             width: 88,
 
@@ -631,7 +679,7 @@ function MatrixView() {
 
                         {
 
-                            headerName: "Qty+Loss",
+                            headerName: "Qté + perte",
 
                             width: 88,
 
@@ -652,7 +700,7 @@ function MatrixView() {
 
                         {
 
-                            headerName: "Material Cost",
+                            headerName: "Coût matériel",
 
                             width: 108,
 
@@ -694,7 +742,7 @@ function MatrixView() {
 
                         {
 
-                            headerName: "Install Total",
+                            headerName: "Total pose",
 
                             width: 104,
 
@@ -715,7 +763,7 @@ function MatrixView() {
 
                         {
 
-                            headerName: "Sell Price",
+                            headerName: "Prix vente",
 
                             width: 96,
 
@@ -834,7 +882,7 @@ function MatrixView() {
                     className={zoom === "fit" ? "active" : ""}
                     onClick={fitToScreen}
                 >
-                    Fit To Screen
+                    Ajuster à l'écran
                 </button>
 
                 <button
@@ -896,6 +944,13 @@ function MatrixView() {
                     enableRangeSelection={true}
 
                     animateRows={false}
+
+                    localeText={GRID_LOCALE_TEXT}
+
+                    autoGroupColumnDef={{
+                        headerName: "Surface",
+                        minWidth: 180
+                    }}
 
                 />
 
