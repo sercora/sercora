@@ -3,6 +3,7 @@ from sqlalchemy import text
 
 from app.database.database import SessionLocal
 from app.schemas.estimate_quantity import EstimateQuantityCreate
+from app.schemas.estimate_quantity_update import EstimateQuantityUpdate
 
 router = APIRouter()
 
@@ -21,12 +22,16 @@ def get_estimate_quantities():
                 r.room_name,
                 q.quantity
             FROM estimate_quantity q
+
             JOIN estimate_line l
                 ON l.id = q.estimate_line_id
+
             JOIN product p
                 ON p.id = l.product_id
+
             JOIN room r
                 ON r.id = q.room_id
+
             ORDER BY
                 p.name,
                 r.room_name
@@ -43,7 +48,7 @@ def get_estimate_quantities():
                 "id": row.id,
                 "product_name": row.product_name,
                 "room_name": row.room_name,
-                "quantity": row.quantity
+                "quantity": float(row.quantity)
             }
         )
 
@@ -87,7 +92,9 @@ def get_estimate_quantity(quantity_id: int):
 
 
 @router.post("/estimate-quantities")
-def create_estimate_quantity(quantity: EstimateQuantityCreate):
+def create_estimate_quantity(
+    quantity: EstimateQuantityCreate
+):
 
     db = SessionLocal()
 
@@ -123,4 +130,83 @@ def create_estimate_quantity(quantity: EstimateQuantityCreate):
     return {
         "id": row.id,
         "message": "Estimate quantity created"
+    }
+
+
+@router.put("/estimate-quantities/{quantity_id}")
+def update_estimate_quantity(
+    quantity_id: int,
+    quantity: EstimateQuantityUpdate
+):
+
+    db = SessionLocal()
+
+    row = db.execute(
+        text(
+            """
+            UPDATE estimate_quantity
+            SET
+                quantity = :quantity
+            WHERE
+                id = :id
+            RETURNING id
+            """
+        ),
+        {
+            "id": quantity_id,
+            "quantity": quantity.quantity
+        }
+    ).fetchone()
+
+    db.commit()
+
+    db.close()
+
+    if row is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Estimate quantity not found"
+        )
+
+    return {
+        "id": quantity_id,
+        "message": "Estimate quantity updated"
+    }
+
+
+@router.delete("/estimate-quantities/{quantity_id}")
+def delete_estimate_quantity(
+    quantity_id: int
+):
+
+    db = SessionLocal()
+
+    row = db.execute(
+        text(
+            """
+            DELETE FROM estimate_quantity
+            WHERE id = :id
+            RETURNING id
+            """
+        ),
+        {
+            "id": quantity_id
+        }
+    ).fetchone()
+
+    db.commit()
+
+    db.close()
+
+    if row is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Estimate quantity not found"
+        )
+
+    return {
+        "id": quantity_id,
+        "message": "Estimate quantity deleted"
     }

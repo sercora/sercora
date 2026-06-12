@@ -1,0 +1,211 @@
+.sercora-grid {
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 12px;
+
+}
+
+
+/*
+--------------------------------------------------
+Header
+--------------------------------------------------
+*/
+
+.sercora-grid .ag-header {
+
+    background-color: #e6e6e6;
+
+}
+
+
+.sercora-grid .ag-header-cell {
+
+    border-right: 1px solid #cfcfcf;
+
+    border-bottom: 1px solid #c0c0c0;
+
+    font-weight: bold;
+
+}
+
+
+/*
+--------------------------------------------------
+Toutes les cellules
+--------------------------------------------------
+*/
+
+.sercora-grid .ag-cell {
+
+    border-right: 1px solid #d9d9d9;
+
+    border-bottom: 1px solid #d9d9d9;
+
+}
+
+
+/*
+--------------------------------------------------
+Produit
+
+(couleur fournisseur plus tard)
+--------------------------------------------------
+*/
+
+.sercora-grid .product-cell {
+
+    background-color: white !important;
+
+}
+
+
+/*
+--------------------------------------------------
+Cellules éditables
+
+Blanc absolu
+--------------------------------------------------
+*/
+
+.sercora-grid .editable-cell {
+
+    background-color: white !important;
+
+}
+
+
+/*
+--------------------------------------------------
+Cellules calculées
+
+Gris absolu
+--------------------------------------------------
+*/
+
+.sercora-grid .calculated-cell {
+
+    background-color: #ececec !important;
+
+}
+
+
+/*
+--------------------------------------------------
+Totaux futurs
+--------------------------------------------------
+*/
+
+.sercora-grid .total-cell {
+
+    background-color: #d0d0d0 !important;
+
+    font-weight: bold;
+
+}
+
+
+/*
+--------------------------------------------------
+Alignement numérique
+--------------------------------------------------
+*/
+
+.sercora-grid .numeric-cell {
+
+    text-align: right;
+
+}
+
+
+/*
+--------------------------------------------------
+Lignes de groupe
+--------------------------------------------------
+*/
+
+.sercora-grid .ag-row-group {
+
+    background-color: #f5f5f5;
+
+    font-weight: bold;
+
+}
+
+
+.sercora-grid .ag-group-value {
+
+    font-weight: bold;
+
+}
+
+
+/*
+--------------------------------------------------
+Sélection
+--------------------------------------------------
+*/
+
+.sercora-grid .ag-row-selected {
+
+    background-color: #cfe8ff !important;
+
+}
+
+
+/*
+--------------------------------------------------
+Hover
+--------------------------------------------------
+*/
+
+.sercora-grid .ag-row-hover {
+
+    background-color: #fafafa !important;
+
+}
+
+
+/*
+--------------------------------------------------
+Colonnes gelées
+--------------------------------------------------
+*/
+
+.sercora-grid .ag-pinned-left-cols-container {
+
+    border-right: 2px solid #c0c0c0;
+
+}
+
+
+/*
+--------------------------------------------------
+Compacité style Excel
+--------------------------------------------------
+*/
+
+.sercora-grid .ag-row {
+
+    line-height: 22px;
+
+}
+
+
+.sercora-grid .ag-cell-value {
+
+    padding-left: 2px;
+
+    padding-right: 2px;
+
+}
+
+
+.sercora-grid .ag-header-cell-label {
+
+    padding-left: 2px;
+
+    padding-right: 2px;
+
+}

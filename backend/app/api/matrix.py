@@ -32,17 +32,31 @@ def get_matrix(estimate_id: int):
         text(
             """
             SELECT
+
                 l.id AS line_id,
+
                 p.name AS product_name,
+
                 s.name AS surface_name,
+
                 u.name AS unit_name,
+
                 l.grout_color,
+
                 l.loss_percent,
+
                 l.purchase_price,
+
                 l.profit_percent,
+
                 l.installation_cost,
+
                 r.room_name,
+
+                q.id AS quantity_id,
+
                 q.quantity
+
             FROM estimate_line l
 
             JOIN product p
@@ -81,23 +95,43 @@ def get_matrix(estimate_id: int):
         if line_id not in matrix:
 
             matrix[line_id] = {
+
                 "line_id": line_id,
+
                 "product_name": row.product_name,
+
                 "surface_name": row.surface_name,
+
                 "unit_name": row.unit_name,
+
                 "grout_color": row.grout_color,
+
                 "loss_percent": float(row.loss_percent),
+
                 "purchase_price": float(row.purchase_price),
+
                 "profit_percent": float(row.profit_percent),
+
                 "installation_cost": float(row.installation_cost),
+
                 "quantities": {}
+
             }
 
-        matrix[line_id]["quantities"][row.room_name] = float(row.quantity)
+        matrix[line_id]["quantities"][row.room_name] = {
+
+            "id": row.quantity_id,
+
+            "quantity": float(row.quantity)
+
+        }
 
     db.close()
 
     return {
+
         "rooms": rooms,
+
         "lines": list(matrix.values())
+
     }
