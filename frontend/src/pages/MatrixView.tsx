@@ -25,22 +25,72 @@ function MatrixView() {
             matrix => {
 
                 //
-                // Colonnes
+                // Colonnes fixes
                 //
                 const cols: any[] = [
+
                     {
                         field: "product_name",
-                        headerName: "Product"
+                        headerName: "Product",
+                        width: 300
+                    },
+
+                    {
+                        field: "surface_name",
+                        headerName: "Surface",
+                        width: 120
+                    },
+
+                    {
+                        field: "unit_name",
+                        headerName: "Unit",
+                        width: 120
+                    },
+
+                    {
+                        field: "grout_color",
+                        headerName: "Grout Color",
+                        width: 150
+                    },
+
+                    {
+                        field: "loss_percent",
+                        headerName: "Loss %",
+                        width: 100
+                    },
+
+                    {
+                        field: "purchase_price",
+                        headerName: "Purchase $",
+                        width: 120
+                    },
+
+                    {
+                        field: "profit_percent",
+                        headerName: "Profit %",
+                        width: 100
+                    },
+
+                    {
+                        field: "installation_cost",
+                        headerName: "Install $",
+                        width: 120
                     }
+
                 ];
 
+
+                //
+                // Colonnes locaux
+                //
                 matrix.rooms.forEach(
                     (room: string) => {
 
                         cols.push(
                             {
                                 field: room,
-                                headerName: room
+                                headerName: room,
+                                width: 100
                             }
                         );
 
@@ -57,8 +107,18 @@ function MatrixView() {
                     (line: any) => {
 
                         const row: any = {
-                            product_name: line.product_name
+
+                            product_name: line.product_name,
+                            surface_name: line.surface_name,
+                            unit_name: line.unit_name,
+                            grout_color: line.grout_color,
+                            loss_percent: line.loss_percent,
+                            purchase_price: line.purchase_price,
+                            profit_percent: line.profit_percent,
+                            installation_cost: line.installation_cost
+
                         };
+
 
                         matrix.rooms.forEach(
                             (room: string) => {
@@ -88,7 +148,7 @@ function MatrixView() {
             className="ag-theme-alpine"
             style={{
                 width: "100%",
-                height: "800px"
+                height: "900px"
             }}
         >
 
