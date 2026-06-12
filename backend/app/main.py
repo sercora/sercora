@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.products import router as products_router
 from app.api.projects import router as projects_router
@@ -14,6 +15,22 @@ app = FastAPI(
     version="0.1"
 )
 
+
+#
+# CORS
+#
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+#
+# Routers
+#
 app.include_router(products_router)
 app.include_router(projects_router)
 app.include_router(estimates_router)
