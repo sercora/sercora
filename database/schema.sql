@@ -1,0 +1,130 @@
+CREATE TABLE product_type (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    active BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE unit (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    symbol VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE surface_type (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    category VARCHAR(50),
+    sort_order INTEGER DEFAULT 0,
+    active BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE product (
+    id BIGSERIAL PRIMARY KEY,
+
+    product_type_id INTEGER REFERENCES product_type(id),
+
+    name VARCHAR(255) NOT NULL,
+
+    manufacturer_name VARCHAR(255),
+
+    collection_name VARCHAR(255),
+
+    color_name VARCHAR(255),
+
+    finish_name VARCHAR(255),
+
+    size_name VARCHAR(100),
+
+    default_unit_id INTEGER REFERENCES unit(id),
+
+    default_grout_color VARCHAR(100),
+
+    active BOOLEAN DEFAULT TRUE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE project (
+    id BIGSERIAL PRIMARY KEY,
+
+    project_number VARCHAR(50),
+
+    project_name VARCHAR(255) NOT NULL,
+
+    status VARCHAR(50) DEFAULT 'PENDING',
+
+    start_date DATE,
+    end_date DATE,
+
+    tile_holdback_percent NUMERIC(5,2),
+
+    warranty_years INTEGER,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE estimate (
+    id BIGSERIAL PRIMARY KEY,
+
+    project_id BIGINT REFERENCES project(id),
+
+    parent_estimate_id BIGINT REFERENCES estimate(id),
+
+    revision_number INTEGER,
+
+    estimate_type VARCHAR(50),
+
+    description TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE room (
+    id BIGSERIAL PRIMARY KEY,
+
+    estimate_id BIGINT REFERENCES estimate(id),
+
+    phase_name VARCHAR(50),
+
+    floor_name VARCHAR(50),
+
+    room_name VARCHAR(255),
+
+    sort_order INTEGER DEFAULT 0
+);
+
+CREATE TABLE estimate_line (
+    id BIGSERIAL PRIMARY KEY,
+
+    estimate_id BIGINT REFERENCES estimate(id),
+
+    product_id BIGINT REFERENCES product(id),
+
+    surface_type_id INTEGER REFERENCES surface_type(id),
+
+    unit_id INTEGER REFERENCES unit(id),
+
+    grout_color VARCHAR(100),
+
+    loss_percent NUMERIC(6,2),
+
+    purchase_price NUMERIC(12,2),
+
+    profit_percent NUMERIC(6,2),
+
+    installation_cost NUMERIC(12,2),
+
+    sort_order INTEGER DEFAULT 0,
+
+    notes TEXT
+);
+
+CREATE TABLE estimate_quantity (
+    id BIGSERIAL PRIMARY KEY,
+
+    estimate_line_id BIGINT REFERENCES estimate_line(id),
+
+    room_id BIGINT REFERENCES room(id),
+
+    quantity NUMERIC(12,2) DEFAULT 0
+);

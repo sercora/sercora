@@ -1,0 +1,331 @@
+.matrix-page {
+
+    width: 100%;
+
+    min-height: 100vh;
+
+    background-color: #f4f5f7;
+
+}
+
+
+.matrix-toolbar {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 4px;
+
+    height: 38px;
+
+    padding: 4px 8px;
+
+    box-sizing: border-box;
+
+    background-color: #f1f3f5;
+
+    border-bottom: 1px solid #c9ced6;
+
+}
+
+
+.matrix-toolbar button {
+
+    height: 26px;
+
+    padding: 0 10px;
+
+    border: 1px solid #b9c0ca;
+
+    border-radius: 3px;
+
+    background-color: #ffffff;
+
+    color: #20242a;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 12px;
+
+    line-height: 24px;
+
+    cursor: pointer;
+
+}
+
+
+.matrix-toolbar button:hover {
+
+    background-color: #eef4ff;
+
+    border-color: #8aa7d6;
+
+}
+
+
+.matrix-toolbar button.active {
+
+    background-color: #dbe9ff;
+
+    border-color: #5f86c7;
+
+}
+
+
+.sercora-grid {
+
+    --sercora-zoom: 1;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: calc(12px * var(--sercora-zoom));
+
+    text-align: left;
+
+}
+
+
+.sercora-grid .ag-root-wrapper {
+
+    border: 0;
+
+    border-radius: 0;
+
+}
+
+
+/*
+--------------------------------------------------
+Header
+--------------------------------------------------
+*/
+
+.sercora-grid .ag-header {
+
+    background-color: #e7e9ed;
+
+    border-bottom: 1px solid #aeb6c2;
+
+}
+
+
+.sercora-grid .ag-header-cell {
+
+    border-right: 1px solid #c6ccd4;
+
+    padding-left: 0;
+
+    padding-right: 0;
+
+    font-weight: 700;
+
+}
+
+
+.sercora-grid .ag-header-cell-text {
+
+    color: #1f252d;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+}
+
+
+/*
+--------------------------------------------------
+Toutes les cellules
+--------------------------------------------------
+*/
+
+.sercora-grid .ag-cell {
+
+    border-right: 1px solid #d8dce2;
+
+    border-bottom: 1px solid #d8dce2;
+
+    padding-left: 3px;
+
+    padding-right: 3px;
+
+    color: #171a1f;
+
+}
+
+
+.sercora-grid .ag-cell-focus {
+
+    border: 2px solid #217346 !important;
+
+}
+
+
+/*
+--------------------------------------------------
+Cellules editables
+--------------------------------------------------
+*/
+
+.sercora-grid .editable-cell {
+
+    background-color: #ffffff !important;
+
+}
+
+
+/*
+--------------------------------------------------
+Cellules calculees
+--------------------------------------------------
+*/
+
+.sercora-grid .calculated-cell {
+
+    background-color: #eceff3 !important;
+
+}
+
+
+.sercora-grid .total-cell {
+
+    background-color: #d9dee6 !important;
+
+    font-weight: 700;
+
+}
+
+
+/*
+--------------------------------------------------
+Couleurs fournisseurs
+--------------------------------------------------
+*/
+
+.sercora-grid .supplier-olympia {
+
+    background-color: rgba(255, 214, 64, 0.45) !important;
+
+}
+
+
+.sercora-grid .supplier-mapei {
+
+    background-color: rgba(76, 141, 235, 0.28) !important;
+
+}
+
+
+.sercora-grid .supplier-schluter {
+
+    background-color: rgba(73, 169, 95, 0.30) !important;
+
+}
+
+
+/*
+--------------------------------------------------
+Alignement numerique
+--------------------------------------------------
+*/
+
+.sercora-grid .numeric-cell {
+
+    text-align: right;
+
+    font-variant-numeric: tabular-nums;
+
+}
+
+
+/*
+--------------------------------------------------
+Lignes de groupe
+--------------------------------------------------
+*/
+
+.sercora-grid .ag-row-group {
+
+    background-color: #f0f2f5;
+
+    font-weight: 700;
+
+}
+
+
+.sercora-grid .ag-group-value {
+
+    font-weight: 700;
+
+}
+
+
+/*
+--------------------------------------------------
+Selection
+--------------------------------------------------
+*/
+
+.sercora-grid .ag-row-selected {
+
+    background-color: #d8ebff !important;
+
+}
+
+
+/*
+--------------------------------------------------
+Hover
+--------------------------------------------------
+*/
+
+.sercora-grid .ag-row-hover {
+
+    background-color: #f8fbff !important;
+
+}
+
+
+/*
+--------------------------------------------------
+Colonnes gelees
+--------------------------------------------------
+*/
+
+.sercora-grid .ag-pinned-left-cols-container {
+
+    border-right: 2px solid #aeb6c2;
+
+}
+
+
+/*
+--------------------------------------------------
+Compact style Excel
+--------------------------------------------------
+*/
+
+.sercora-grid .ag-row {
+
+    line-height: calc(22px * var(--sercora-zoom));
+
+}
+
+
+.sercora-grid .ag-cell-value {
+
+    padding-left: 1px;
+
+    padding-right: 1px;
+
+}
+
+
+.sercora-grid .ag-header-cell-label {
+
+    padding-left: 2px;
+
+    padding-right: 2px;
+
+}
