@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 import { AgGridReact, AgGridProvider } from "ag-grid-react";
-
 import { AllCommunityModule } from "ag-grid-community";
 
 import "ag-grid-community/styles/ag-grid.css";
@@ -17,7 +16,7 @@ function MatrixView() {
     useEffect(() => {
 
         fetch(
-            "http://10.0.25.14:8000/estimates/1/matrix"
+            "https://api.serco.pro/estimates/1/matrix"
         )
         .then(
             response => response.json()
@@ -93,9 +92,7 @@ function MatrixView() {
             }}
         >
 
-            <AgGridProvider
-                modules={[AllCommunityModule]}
-            >
+            <AgGridProvider modules={[AllCommunityModule]}>
 
                 <AgGridReact
                     rowData={rowData}
