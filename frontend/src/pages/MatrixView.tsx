@@ -7,6 +7,15 @@ import "ag-grid-enterprise";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-alpine.css";
 
+import {
+    getInstallTotal,
+    getMaterialCost,
+    getProfit,
+    getQtyTotal,
+    getQtyWithLoss,
+    getSellPrice
+} from "../utils/matrixCalculations";
+
 import "../styles/grid.css";
 
 
@@ -125,162 +134,6 @@ function MatrixView() {
 
         return LINE_EDITABLE_FIELDS.includes(
             field
-        );
-
-    }
-
-
-    function getQtyTotal(
-        params: any,
-        rooms: string[]
-    ) {
-
-        if (!params.data)
-            return 0;
-
-        let total = 0;
-
-        rooms.forEach(
-            room => {
-
-                total += Number(
-                    params.data[room] ?? 0
-                );
-
-            }
-        );
-
-        return total;
-
-    }
-
-
-    function getQtyWithLoss(
-        params: any,
-        rooms: string[]
-    ) {
-
-        if (!params.data)
-            return 0;
-
-        return (
-            getQtyTotal(
-                params,
-                rooms
-            )
-
-            *
-
-            (
-                1 +
-                Number(params.data.loss_percent || 0) / 100
-            )
-        );
-
-    }
-
-
-    function getMaterialCost(
-        params: any,
-        rooms: string[]
-    ) {
-
-        if (!params.data)
-            return 0;
-
-        return (
-            getQtyWithLoss(
-                params,
-                rooms
-            )
-
-            *
-
-            Number(params.data.purchase_price || 0)
-        );
-
-    }
-
-
-    function getProfit(
-        params: any,
-        rooms: string[]
-    ) {
-
-        if (!params.data)
-            return 0;
-
-        return (
-
-            getMaterialCost(
-                params,
-                rooms
-            )
-
-            *
-
-            Number(params.data.profit_percent || 0)
-
-            / 100
-
-        );
-
-    }
-
-
-    function getInstallTotal(
-        params: any,
-        rooms: string[]
-    ) {
-
-        if (!params.data)
-            return 0;
-
-        return (
-
-            getQtyWithLoss(
-                params,
-                rooms
-            )
-
-            *
-
-            Number(params.data.installation_cost || 0)
-
-        );
-
-    }
-
-
-    function getSellPrice(
-        params: any,
-        rooms: string[]
-    ) {
-
-        if (!params.data)
-            return 0;
-
-        return (
-
-            getMaterialCost(
-                params,
-                rooms
-            )
-
-            +
-
-            getProfit(
-                params,
-                rooms
-            )
-
-            +
-
-            getInstallTotal(
-                params,
-                rooms
-            )
-
         );
 
     }
