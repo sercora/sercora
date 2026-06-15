@@ -16,10 +16,14 @@ import {
     getSellPrice
 } from "../utils/matrixCalculations";
 
+import {
+    fetchEstimateMatrix,
+    updateEstimateLine as saveEstimateLine,
+    updateEstimateQuantity as saveEstimateQuantity
+} from "../utils/matrixApi";
+
 import "../styles/grid.css";
 
-
-const API_URL = "https://api.serco.pro";
 
 const LINE_EDITABLE_FIELDS = [
     "loss_percent",
@@ -172,44 +176,18 @@ function MatrixView() {
                 room + "_id"
             ];
 
-        if (!quantityId)
+        const request =
+            saveEstimateQuantity(
+                quantityId,
+                parseNumber(
+                    params.newValue
+                )
+            );
+
+        if (!request)
             return;
 
-        fetch(
-
-            API_URL +
-            "/estimate-quantities/" +
-            quantityId,
-
-            {
-
-                method: "PUT",
-
-                headers: {
-
-                    "Content-Type":
-                        "application/json"
-
-                },
-
-                body: JSON.stringify(
-
-                    {
-
-                        quantity:
-                            parseNumber(
-                                params.newValue
-                            )
-
-                    }
-
-                )
-
-            }
-
-        )
-
-        .then(
+        request.then(
             () => {
 
                 refreshGrid();
@@ -224,53 +202,31 @@ function MatrixView() {
         params: any
     ) {
 
-        fetch(
-
-            API_URL +
-            "/estimate-lines/" +
+        saveEstimateLine(
             params.data.line_id,
-
             {
 
-                method: "PUT",
+                loss_percent:
+                    parseNumber(
+                        params.data.loss_percent
+                    ),
 
-                headers: {
+                purchase_price:
+                    parseNumber(
+                        params.data.purchase_price
+                    ),
 
-                    "Content-Type":
-                        "application/json"
+                profit_percent:
+                    parseNumber(
+                        params.data.profit_percent
+                    ),
 
-                },
-
-                body: JSON.stringify(
-
-                    {
-
-                        loss_percent:
-                            parseNumber(
-                                params.data.loss_percent
-                            ),
-
-                        purchase_price:
-                            parseNumber(
-                                params.data.purchase_price
-                            ),
-
-                        profit_percent:
-                            parseNumber(
-                                params.data.profit_percent
-                            ),
-
-                        installation_cost:
-                            parseNumber(
-                                params.data.installation_cost
-                            )
-
-                    }
-
-                )
+                installation_cost:
+                    parseNumber(
+                        params.data.installation_cost
+                    )
 
             }
-
         )
 
         .then(
@@ -368,14 +324,7 @@ function MatrixView() {
 
         () => {
 
-            fetch(
-                API_URL +
-                "/estimates/1/matrix"
-            )
-
-            .then(
-                response => response.json()
-            )
+            fetchEstimateMatrix()
 
             .then(
 
