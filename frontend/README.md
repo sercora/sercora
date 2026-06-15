@@ -1,73 +1,48 @@
-# React + TypeScript + Vite
+# Frontend Sercora
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Le frontend Sercora est une application React + TypeScript construite avec Vite. Il fournit l'interface de travail pour les soumissions, les produits et les outils.
 
-Currently, two official plugins are available:
+## Commandes
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
+npm run build
+npm run lint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Configuration API
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Le client API utilise `VITE_API_URL` quand la variable est definie. Sinon il utilise `https://api.serco.pro`.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Exemple local:
+
+```text
+VITE_API_URL=http://localhost:8000
+```
+
+Cette valeur locale doit rester dans `.env.local`, ignore par Git.
+
+## Surfaces
+
+- `Soumissions`: matrice AG Grid pour quantites et calculs.
+- `Produits`: catalogue produit interne.
+- `Outils`: inventaire live via l'API backend `/tools`.
+
+## Fichiers Importants
+
+- `src/App.tsx`: shell, navigation et selection de page.
+- `src/pages/MatrixView.tsx`: experience Soumissions.
+- `src/pages/ProductsPage.tsx`: experience Produits.
+- `src/pages/ToolsPage.tsx`: experience Outils.
+- `src/utils/matrixApi.ts`: base URL API et appels matrice.
+- `src/utils/productsApi.ts`: appels produits.
+- `src/utils/toolsApi.ts`: appels outils.
+- `src/utils/matrixCalculations.ts`: calculs metier de la matrice.
+
+## Note Lint
+
+`npm run lint` peut encore signaler des `any` historiques dans la matrice. Les nouveaux fichiers lies aux outils peuvent etre verifies separement avec:
+
+```bash
+npx eslint src/pages/ToolsPage.tsx src/utils/toolsApi.ts
 ```
