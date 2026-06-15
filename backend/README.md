@@ -72,3 +72,25 @@ python3 -m compileall backend/app
 ```
 
 En production, le backend est gere par systemd avec le service `sercora-api`.
+
+## Import Excel Prosol
+
+Le script `scripts/import_prosol_price_list.py` importe une liste de prix Excel Prosol dans la table `product`.
+
+Il utilise la feuille `Worksheet`, dedoublonne par `CODE`, ignore les lignes discontinues, conserve la ligne avec la plus petite quantite minimum, puis alimente les champs fournisseur, code, manufacturier, categorie, collection, couleur, prix liste et prix d'achat.
+
+Simulation:
+
+```bash
+cd backend
+.venv/bin/python scripts/import_prosol_price_list.py /tmp/sercora-prosol.xlsx --dry-run
+```
+
+Import reel:
+
+```bash
+cd backend
+.venv/bin/python scripts/import_prosol_price_list.py /tmp/sercora-prosol.xlsx
+```
+
+Avant d'importer une liste complete de plusieurs dizaines de milliers de produits, la page `Produits` doit utiliser une pagination ou une recherche serveur pour eviter de charger tout le catalogue dans le navigateur.

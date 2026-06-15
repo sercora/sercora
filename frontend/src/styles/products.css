@@ -207,6 +207,13 @@
 }
 
 
+.prosol-search button:last-child {
+
+    flex-basis: 136px;
+
+}
+
+
 .prosol-search button:disabled {
 
     cursor: default;

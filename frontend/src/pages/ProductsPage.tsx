@@ -247,6 +247,7 @@ function ProductsPage() {
     const [prosolQuery, setProsolQuery] = useState("");
     const [prosolProducts, setProsolProducts] = useState<ProsolProduct[]>([]);
     const [isSearchingProsol, setIsSearchingProsol] = useState(false);
+    const [isImportingProsol, setIsImportingProsol] = useState(false);
     const [isUpdatingProsolPrices, setIsUpdatingProsolPrices] = useState(false);
     const [statusMessage, setStatusMessage] = useState("");
 
@@ -786,6 +787,98 @@ function ProductsPage() {
     }
 
 
+    function importProsolResults() {
+
+        const importableProducts =
+            prosolProducts.filter(
+                product =>
+                    product.id
+            );
+
+        if (!importableProducts.length) {
+            setStatusMessage(
+                "Aucun résultat Prosol à importer."
+            );
+            return;
+        }
+
+        setIsImportingProsol(true);
+        setStatusMessage("");
+
+        Promise.allSettled(
+            importableProducts.map(
+                product =>
+                    importProsolProductToDb(product)
+            )
+        )
+
+        .then(
+            results => {
+
+                const importedCount =
+                    results.filter(
+                        result =>
+                            result.status === "fulfilled"
+                    ).length;
+                const failedCount =
+                    results.length - importedCount;
+
+                setStatusMessage(
+                    "Produits Prosol importés: " +
+                    importedCount +
+                    (
+                        failedCount ?
+                            " / erreurs: " + failedCount :
+                            ""
+                    )
+                );
+
+                const lastImportedProduct =
+                    [...results]
+                    .reverse()
+                    .find(
+                        result =>
+                            result.status === "fulfilled"
+                    );
+
+                if (
+                    lastImportedProduct &&
+                    lastImportedProduct.status === "fulfilled"
+                ) {
+                    setSelectedProductId(
+                        lastImportedProduct.value.id
+                    );
+                    setForm(
+                        toForm(lastImportedProduct.value)
+                    );
+                }
+
+                return loadProducts();
+
+            }
+        )
+
+        .catch(
+            () => {
+
+                setStatusMessage(
+                    "Import des résultats Prosol impossible."
+                );
+
+            }
+        )
+
+        .finally(
+            () => {
+
+                setIsImportingProsol(false);
+
+            }
+        );
+
+    }
+
+
     function refreshProsolPrices() {
 
         setIsUpdatingProsolPrices(true);
@@ -940,9 +1033,23 @@ function ProductsPage() {
                             <button
                                 type="button"
                                 onClick={searchProsol}
-                                disabled={isSearchingProsol}
+                                disabled={
+                                    isSearchingProsol ||
+                                    isImportingProsol
+                                }
                             >
                                 Rechercher
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={importProsolResults}
+                                disabled={
+                                    isImportingProsol ||
+                                    !prosolProducts.length
+                                }
+                            >
+                                Importer résultats
                             </button>
                         </div>
 

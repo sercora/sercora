@@ -1,4 +1,5 @@
 import { API_URL } from "./matrixApi";
+import type { Product } from "./productsApi";
 
 
 export type ProsolProduct = {
@@ -56,7 +57,7 @@ export function searchProsolProducts(
     const params = new URLSearchParams(
         {
             query,
-            limit: "20"
+            limit: "50"
         }
     );
 
@@ -73,7 +74,7 @@ export function searchProsolProducts(
 
 export function importProsolProduct(
     product: ProsolProduct
-) {
+): Promise<Product> {
 
     return fetch(
         API_URL +
