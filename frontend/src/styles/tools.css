@@ -39,6 +39,7 @@
 
 
 .tools-toolbar input,
+.tools-toolbar select,
 .tools-toolbar button {
 
     border: 1px solid #b9c0ca;
@@ -91,6 +92,52 @@
 }
 
 
+.tools-control,
+.tools-page-size {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    flex: 0 0 auto;
+
+    color: #47505a;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    white-space: nowrap;
+
+}
+
+
+.tools-control select,
+.tools-page-size select {
+
+    height: 30px;
+
+    padding: 0 7px;
+
+}
+
+
+.tools-control select {
+
+    width: 104px;
+
+}
+
+
+.tools-page-size select {
+
+    width: 72px;
+
+}
+
+
 .tools-summary {
 
     display: flex;
@@ -119,6 +166,97 @@
     color: #1f252d;
 
     font-size: 14px;
+
+}
+
+
+.tools-pagination {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 10px;
+
+    flex: 0 0 40px;
+
+    min-width: 0;
+
+    height: 40px;
+
+    padding: 5px 10px;
+
+    border-bottom: 1px solid #cdd3d8;
+
+    background-color: #f8fafb;
+
+}
+
+
+.tools-range {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    min-width: 0;
+
+    color: #47505a;
+
+    font-size: 12px;
+
+    white-space: nowrap;
+
+}
+
+
+.tools-page-controls {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    flex: 0 0 auto;
+
+}
+
+
+.tools-page-controls button {
+
+    min-width: 78px;
+
+    height: 28px;
+
+    border: 1px solid #b9c0ca;
+
+    border-radius: 4px;
+
+    background-color: #ffffff;
+
+    color: #171a1f;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 12px;
+
+    letter-spacing: 0;
+
+    cursor: pointer;
+
+}
+
+
+.tools-page-controls button:disabled {
+
+    cursor: default;
+
+    opacity: 0.55;
 
 }
 
@@ -311,6 +449,26 @@
         flex-basis: 100%;
 
         margin-left: 0;
+
+    }
+
+
+    .tools-pagination {
+
+        align-items: flex-start;
+
+        flex-direction: column;
+
+        flex-basis: auto;
+
+        height: auto;
+
+    }
+
+
+    .tools-page-controls {
+
+        flex-wrap: wrap;
 
     }
 

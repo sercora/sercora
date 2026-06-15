@@ -26,7 +26,7 @@ Cette valeur locale doit rester dans `.env.local`, ignore par Git.
 
 - `Soumissions`: matrice AG Grid pour quantites et calculs.
 - `Produits`: catalogue produit interne.
-- `Outils`: inventaire live via l'API backend `/tools`.
+- `Outils`: inventaire live via l'API backend `/tools`, avec recherche, tri et pagination.
 
 ## Structure
 

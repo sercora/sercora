@@ -135,7 +135,7 @@ def snipeit_get(
 
 @router.get("/tools")
 def get_tools(
-    limit: int = Query(100, ge=1, le=500),
+    limit: int = Query(100, ge=1, le=10000),
     offset: int = Query(0, ge=0),
     search: str = "",
     sort: str = "asset_tag",

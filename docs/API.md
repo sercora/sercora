@@ -85,10 +85,10 @@ GET /tools
 Parametres:
 
 ```text
-limit   Nombre maximal d'outils, defaut 100, max 500
+limit   Nombre maximal d'outils, defaut 100, max 10000
 offset  Decalage de pagination
 search  Recherche Snipe-IT
-sort    Colonne de tri, defaut asset_tag
+sort    Colonne de tri, defaut asset_tag. L'interface utilise asset_tag, location ou name
 order   asc ou desc
 ```
 

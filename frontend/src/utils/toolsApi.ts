@@ -25,6 +25,14 @@ export type ToolsResponse = {
 };
 
 
+export type ToolsRequest = {
+    search?: string;
+    limit?: number;
+    offset?: number;
+    sort?: string;
+};
+
+
 function parseResponse(response: Response) {
 
     if (!response.ok)
@@ -36,13 +44,23 @@ function parseResponse(response: Response) {
 
 
 export function fetchTools(
-    search = ""
+    request: ToolsRequest = {}
 ): Promise<ToolsResponse> {
+
+    const limit =
+        request.limit || 20;
+    const offset =
+        request.offset || 0;
+    const search =
+        request.search || "";
+    const sort =
+        request.sort || "asset_tag";
 
     const params = new URLSearchParams(
         {
-            limit: "250",
-            sort: "asset_tag",
+            limit: String(limit),
+            offset: String(offset),
+            sort,
             order: "asc"
         }
     );
