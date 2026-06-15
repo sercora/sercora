@@ -1,4 +1,6 @@
-const API_URL = "https://api.serco.pro";
+export const API_URL =
+    import.meta.env.VITE_API_URL ||
+    "https://api.serco.pro";
 
 
 export function fetchEstimateMatrix() {

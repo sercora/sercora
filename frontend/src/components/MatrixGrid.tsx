@@ -36,7 +36,6 @@ const MatrixGrid = forwardRef<any, MatrixGridProps>(
                 className="ag-theme-alpine sercora-grid"
                 style={{
                     width: "100%",
-                    height: "calc(100vh - 46px)",
                     ["--sercora-zoom" as any]:
                         zoomScale
                 }}

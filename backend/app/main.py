@@ -8,6 +8,7 @@ from app.api.rooms import router as rooms_router
 from app.api.estimate_lines import router as estimate_lines_router
 from app.api.estimate_quantities import router as estimate_quantities_router
 from app.api.matrix import router as matrix_router
+from app.api.tools import router as tools_router
 
 
 app = FastAPI(
@@ -38,6 +39,7 @@ app.include_router(rooms_router)
 app.include_router(estimate_lines_router)
 app.include_router(estimate_quantities_router)
 app.include_router(matrix_router)
+app.include_router(tools_router)
 
 
 @app.get("/")

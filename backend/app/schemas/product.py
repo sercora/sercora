@@ -9,3 +9,11 @@ class ProductResponse(BaseModel):
 class ProductCreate(BaseModel):
     product_type_id: int
     name: str
+    manufacturer_name: str | None = None
+    collection_name: str | None = None
+    color_name: str | None = None
+    finish_name: str | None = None
+    size_name: str | None = None
+    default_unit_id: int | None = None
+    default_grout_color: str | None = None
+    active: bool = True
