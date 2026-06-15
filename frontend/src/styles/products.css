@@ -147,6 +147,101 @@
 }
 
 
+.products-pagination {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: flex-end;
+
+    gap: 8px;
+
+    flex: 0 0 38px;
+
+    min-width: 0;
+
+    height: 38px;
+
+    padding: 5px 10px;
+
+    border-top: 1px solid #cdd3d8;
+
+    background-color: #eef1f2;
+
+    color: #47505a;
+
+    font-size: 13px;
+
+}
+
+
+.products-pagination select,
+.products-pagination button {
+
+    height: 28px;
+
+    border: 1px solid #b9c0ca;
+
+    border-radius: 4px;
+
+    background-color: #ffffff;
+
+    color: #171a1f;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 13px;
+
+}
+
+
+.products-pagination select {
+
+    width: 70px;
+
+}
+
+
+.products-pagination button {
+
+    min-width: 78px;
+
+    padding: 0 8px;
+
+    cursor: pointer;
+
+}
+
+
+.products-pagination button:disabled {
+
+    cursor: default;
+
+    opacity: 0.55;
+
+}
+
+
+.products-status {
+
+    flex: 0 0 auto;
+
+    min-height: 18px;
+
+    margin: 0;
+
+    padding: 6px 10px;
+
+    border-top: 1px solid #d8dce2;
+
+    color: #47505a;
+
+    font-size: 13px;
+
+}
+
+
 .prosol-import-panel {
 
     display: flex;

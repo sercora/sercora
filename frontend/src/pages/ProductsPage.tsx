@@ -20,12 +20,7 @@ import type {
     Unit
 } from "../utils/productsApi";
 import {
-    importProsolProduct as importProsolProductToDb,
-    searchProsolProducts,
     updateProsolPrices
-} from "../utils/prosolApi";
-import type {
-    ProsolProduct
 } from "../utils/prosolApi";
 
 import "../styles/products.css";
@@ -33,6 +28,7 @@ import "../styles/products.css";
 
 type FilterState = "active" | "inactive" | "all";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Tuile";
+type PageSize = 10 | 20 | 50 | "all";
 
 
 type ProductsPageProps = {
@@ -287,13 +283,10 @@ function ProductsPage({
     const [query, setQuery] = useState("");
     const [supplierFilter, setSupplierFilter] = useState("");
     const [filter, setFilter] = useState<FilterState>("active");
+    const [pageSize, setPageSize] = useState<PageSize>(20);
+    const [currentPage, setCurrentPage] = useState(1);
     const [isEditorVisible, setIsEditorVisible] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [showProsolImport, setShowProsolImport] = useState(false);
-    const [prosolQuery, setProsolQuery] = useState("");
-    const [prosolProducts, setProsolProducts] = useState<ProsolProduct[]>([]);
-    const [isSearchingProsol, setIsSearchingProsol] = useState(false);
-    const [isImportingProsol, setIsImportingProsol] = useState(false);
     const [isUpdatingProsolPrices, setIsUpdatingProsolPrices] = useState(false);
     const [statusMessage, setStatusMessage] = useState("");
 
@@ -443,6 +436,62 @@ function ProductsPage({
 
     );
 
+
+    const totalPages = useMemo(
+
+        () => {
+
+            if (pageSize === "all")
+                return 1;
+
+            return Math.max(
+                1,
+                Math.ceil(filteredProducts.length / pageSize)
+            );
+
+        },
+
+        [
+            filteredProducts.length,
+            pageSize
+        ]
+
+    );
+
+
+    const visiblePage =
+        Math.min(
+            currentPage,
+            totalPages
+        );
+
+
+    const paginatedProducts = useMemo(
+
+        () => {
+
+            if (pageSize === "all")
+                return filteredProducts;
+
+            const startIndex =
+                (visiblePage - 1) * pageSize;
+
+            return filteredProducts.slice(
+                startIndex,
+                startIndex + pageSize
+            );
+
+        },
+
+        [
+            filteredProducts,
+            pageSize,
+            visiblePage
+        ]
+
+    );
+
+
     const supplierOptions = useMemo(
 
         () => {
@@ -501,22 +550,6 @@ function ProductsPage({
         ]
 
     );
-
-
-    function startNewProduct() {
-
-        setSelectedProductId(null);
-        setIsEditorVisible(true);
-        setStatusMessage("");
-        setForm(
-            {
-                ...EMPTY_FORM,
-                product_type_id:
-                    productTypes[0]?.id || 0
-            }
-        );
-
-    }
 
 
     function selectProduct(
@@ -740,202 +773,6 @@ function ProductsPage({
     }
 
 
-    function searchProsol() {
-
-        const trimmedQuery =
-            prosolQuery.trim();
-
-        if (trimmedQuery.length < 3) {
-            setStatusMessage(
-                "Recherche Prosol: minimum 3 caractères."
-            );
-            return;
-        }
-
-        setIsSearchingProsol(true);
-        setStatusMessage("");
-
-        searchProsolProducts(trimmedQuery)
-
-        .then(
-            response => {
-
-                setProsolProducts(response.rows);
-                setStatusMessage(
-                    response.rows.length ?
-                        "Produits Prosol chargés." :
-                        "Aucun produit Prosol trouvé."
-                );
-
-            }
-        )
-
-        .catch(
-            () => {
-
-                setStatusMessage(
-                    "Recherche Prosol impossible."
-                );
-
-            }
-        )
-
-        .finally(
-            () => {
-
-                setIsSearchingProsol(false);
-
-            }
-        );
-
-    }
-
-
-    function importProsolProduct(
-        product: ProsolProduct
-    ) {
-
-        if (!product.id) {
-            setStatusMessage(
-                "Produit Prosol sans identifiant."
-            );
-            return;
-        }
-
-        setIsSaving(true);
-        setStatusMessage("");
-
-        importProsolProductToDb(product)
-
-        .then(
-            importedProduct => {
-
-                setStatusMessage(
-                    "Produit Prosol intégré."
-                );
-                setSelectedProductId(importedProduct.id);
-                setForm(
-                    toForm(importedProduct)
-                );
-
-                return loadProducts();
-
-            }
-        )
-
-        .catch(
-            () => {
-
-                setStatusMessage(
-                    "Import Prosol impossible."
-                );
-
-            }
-        )
-
-        .finally(
-            () => {
-
-                setIsSaving(false);
-
-            }
-        );
-
-    }
-
-
-    function importProsolResults() {
-
-        const importableProducts =
-            prosolProducts.filter(
-                product =>
-                    product.id
-            );
-
-        if (!importableProducts.length) {
-            setStatusMessage(
-                "Aucun résultat Prosol à importer."
-            );
-            return;
-        }
-
-        setIsImportingProsol(true);
-        setStatusMessage("");
-
-        Promise.allSettled(
-            importableProducts.map(
-                product =>
-                    importProsolProductToDb(product)
-            )
-        )
-
-        .then(
-            results => {
-
-                const importedCount =
-                    results.filter(
-                        result =>
-                            result.status === "fulfilled"
-                    ).length;
-                const failedCount =
-                    results.length - importedCount;
-
-                setStatusMessage(
-                    "Produits Prosol importés: " +
-                    importedCount +
-                    (
-                        failedCount ?
-                            " / erreurs: " + failedCount :
-                            ""
-                    )
-                );
-
-                const lastImportedProduct =
-                    [...results]
-                    .reverse()
-                    .find(
-                        result =>
-                            result.status === "fulfilled"
-                    );
-
-                if (
-                    lastImportedProduct &&
-                    lastImportedProduct.status === "fulfilled"
-                ) {
-                    setSelectedProductId(
-                        lastImportedProduct.value.id
-                    );
-                    setForm(
-                        toForm(lastImportedProduct.value)
-                    );
-                }
-
-                return loadProducts();
-
-            }
-        )
-
-        .catch(
-            () => {
-
-                setStatusMessage(
-                    "Import des résultats Prosol impossible."
-                );
-
-            }
-        )
-
-        .finally(
-            () => {
-
-                setIsImportingProsol(false);
-
-            }
-        );
-
-    }
-
-
     function refreshProsolPrices() {
 
         setIsUpdatingProsolPrices(true);
@@ -1041,13 +878,6 @@ function ProductsPage({
 
                     <button
                         type="button"
-                        onClick={startNewProduct}
-                    >
-                        Nouveau
-                    </button>
-
-                    <button
-                        type="button"
                         className="editor-toggle"
                         onClick={
                             () =>
@@ -1062,20 +892,6 @@ function ProductsPage({
 
                     <button
                         type="button"
-                        className="prosol-toggle"
-                        onClick={
-                            () =>
-                                setShowProsolImport(
-                                    previousValue =>
-                                        !previousValue
-                                )
-                        }
-                    >
-                        Prosol
-                    </button>
-
-                    <button
-                        type="button"
                         className="prosol-price-action"
                         onClick={refreshProsolPrices}
                         disabled={isUpdatingProsolPrices}
@@ -1084,96 +900,6 @@ function ProductsPage({
                     </button>
 
                 </div>
-
-                {showProsolImport && (
-                    <div className="prosol-import-panel">
-
-                        <div className="prosol-search">
-                            <input
-                                type="search"
-                                value={prosolQuery}
-                                onChange={
-                                    event =>
-                                        setProsolQuery(event.target.value)
-                                }
-                                onKeyDown={
-                                    event => {
-
-                                        if (event.key === "Enter")
-                                            searchProsol();
-
-                                    }
-                                }
-                                placeholder="Rechercher Prosol"
-                            />
-
-                            <button
-                                type="button"
-                                onClick={searchProsol}
-                                disabled={
-                                    isSearchingProsol ||
-                                    isImportingProsol
-                                }
-                            >
-                                Rechercher
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={importProsolResults}
-                                disabled={
-                                    isImportingProsol ||
-                                    !prosolProducts.length
-                                }
-                            >
-                                Importer résultats
-                            </button>
-                        </div>
-
-                        <div className="prosol-results">
-                            {prosolProducts.map(
-                                product => (
-                                    <button
-                                        key={
-                                            product.uuid ||
-                                            product.supplier_product_code ||
-                                            product.name
-                                        }
-                                        type="button"
-                                        className="prosol-result"
-                                        onClick={
-                                            () =>
-                                                importProsolProduct(product)
-                                        }
-                                    >
-                                        {product.image_url && (
-                                            <img
-                                                src={product.image_url}
-                                                alt=""
-                                            />
-                                        )}
-                                        <span>
-                                            <strong>{product.name}</strong>
-                                            <small>
-                                                {product.supplier_product_code || "Sans SKU"}
-                                                {product.manufacturer_name && (
-                                                    " - " + product.manufacturer_name
-                                                )}
-                                            </small>
-                                            <small>
-                                                {product.size_name || product.category_name || "Format inconnu"}
-                                                {product.default_purchase_price !== null && (
-                                                    " - " + moneyValue(product.default_purchase_price)
-                                                )}
-                                            </small>
-                                        </span>
-                                    </button>
-                                )
-                            )}
-                        </div>
-
-                    </div>
-                )}
 
                 <div className="products-table-wrap">
 
@@ -1196,7 +922,7 @@ function ProductsPage({
                         </thead>
 
                         <tbody>
-                            {filteredProducts.map(
+                            {paginatedProducts.map(
                                 product => (
                                     <tr
                                         key={product.id}
@@ -1239,6 +965,98 @@ function ProductsPage({
                     </table>
 
                 </div>
+
+                <div className="products-pagination">
+                    <span>
+                        {filteredProducts.length ?
+                            (
+                                (visiblePage - 1) *
+                                (
+                                    pageSize === "all" ?
+                                        filteredProducts.length :
+                                        pageSize
+                                ) +
+                                1
+                            ) :
+                            0}
+                        -
+                        {pageSize === "all" ?
+                            filteredProducts.length :
+                            Math.min(
+                                visiblePage * pageSize,
+                                filteredProducts.length
+                            )}
+                        {" / "}
+                        {filteredProducts.length}
+                    </span>
+
+                    <select
+                        value={String(pageSize)}
+                        onChange={
+                            event =>
+                                setPageSize(
+                                    event.target.value === "all" ?
+                                        "all" :
+                                        Number(event.target.value) as PageSize
+                                )
+                        }
+                    >
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="all">Tous</option>
+                    </select>
+
+                    <button
+                        type="button"
+                        onClick={
+                            () =>
+                                setCurrentPage(
+                                    previousPage =>
+                                        Math.max(
+                                            1,
+                                            previousPage - 1
+                                        )
+                                )
+                        }
+                        disabled={
+                            pageSize === "all" ||
+                            visiblePage <= 1
+                        }
+                    >
+                        Précédent
+                    </button>
+
+                    <span>
+                        Page {visiblePage} / {totalPages}
+                    </span>
+
+                    <button
+                        type="button"
+                        onClick={
+                            () =>
+                                setCurrentPage(
+                                    previousPage =>
+                                        Math.min(
+                                            totalPages,
+                                            previousPage + 1
+                                        )
+                                )
+                        }
+                        disabled={
+                            pageSize === "all" ||
+                            visiblePage >= totalPages
+                        }
+                    >
+                        Suivant
+                    </button>
+                </div>
+
+                {statusMessage && (
+                    <p className="products-status">
+                        {statusMessage}
+                    </p>
+                )}
 
             </div>
 
