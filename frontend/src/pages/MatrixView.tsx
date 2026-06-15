@@ -7,6 +7,8 @@ import "ag-grid-enterprise";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-alpine.css";
 
+import ZoomToolbar from "../components/ZoomToolbar";
+
 import {
     getInstallTotal,
     getMaterialCost,
@@ -677,41 +679,11 @@ function MatrixView() {
 
         <div className="matrix-page">
 
-            <div className="matrix-toolbar">
-
-                <button
-                    type="button"
-                    className={zoom === "fit" ? "active" : ""}
-                    onClick={fitToScreen}
-                >
-                    Ajuster à l'écran
-                </button>
-
-                <button
-                    type="button"
-                    className={zoom === "100" ? "active" : ""}
-                    onClick={() => applyZoom("100")}
-                >
-                    100%
-                </button>
-
-                <button
-                    type="button"
-                    className={zoom === "125" ? "active" : ""}
-                    onClick={() => applyZoom("125")}
-                >
-                    125%
-                </button>
-
-                <button
-                    type="button"
-                    className={zoom === "150" ? "active" : ""}
-                    onClick={() => applyZoom("150")}
-                >
-                    150%
-                </button>
-
-            </div>
+            <ZoomToolbar
+                zoom={zoom}
+                onFitToScreen={fitToScreen}
+                onZoomChange={applyZoom}
+            />
 
             <div
                 className="ag-theme-alpine sercora-grid"
