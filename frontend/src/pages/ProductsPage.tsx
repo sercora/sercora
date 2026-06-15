@@ -32,6 +32,12 @@ import "../styles/products.css";
 
 
 type FilterState = "active" | "inactive" | "all";
+type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Tuile";
+
+
+type ProductsPageProps = {
+    productMenu: ProductMenuKey;
+};
 
 
 const EMPTY_FORM: ProductInput = {
@@ -232,7 +238,46 @@ function normalizeForm(
 }
 
 
-function ProductsPage() {
+function matchesProductMenu(
+    product: Product,
+    productMenu: ProductMenuKey
+) {
+
+    if (productMenu === "Tous")
+        return true;
+
+    const searchableText = [
+        product.name,
+        product.product_type_name,
+        product.manufacturer_name,
+        product.supplier_names,
+        product.supplier_product_code,
+        product.manufacturer_sku,
+        product.prosol_sku,
+        product.category_name
+    ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+    if (productMenu === "Prosol")
+        return Boolean(product.prosol_product_id) ||
+            searchableText.includes("prosol");
+
+    if (productMenu === "Mapei")
+        return searchableText.includes("mapei");
+
+    if (productMenu === "Tuile")
+        return (product.product_type_name || "").toLowerCase() === "tuile";
+
+    return true;
+
+}
+
+
+function ProductsPage({
+    productMenu
+}: ProductsPageProps) {
 
     const [products, setProducts] = useState<Product[]>([]);
     const [productTypes, setProductTypes] = useState<ProductType[]>([]);
@@ -242,6 +287,7 @@ function ProductsPage() {
     const [query, setQuery] = useState("");
     const [supplierFilter, setSupplierFilter] = useState("");
     const [filter, setFilter] = useState<FilterState>("active");
+    const [isEditorVisible, setIsEditorVisible] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [showProsolImport, setShowProsolImport] = useState(false);
     const [prosolQuery, setProsolQuery] = useState("");
@@ -329,6 +375,14 @@ function ProductsPage() {
                 product => {
 
                     if (
+                        !matchesProductMenu(
+                            product,
+                            productMenu
+                        )
+                    )
+                        return false;
+
+                    if (
                         filter === "active" &&
                         !product.active
                     )
@@ -381,6 +435,7 @@ function ProductsPage() {
 
         [
             filter,
+            productMenu,
             products,
             query,
             supplierFilter
@@ -451,6 +506,7 @@ function ProductsPage() {
     function startNewProduct() {
 
         setSelectedProductId(null);
+        setIsEditorVisible(true);
         setStatusMessage("");
         setForm(
             {
@@ -468,6 +524,7 @@ function ProductsPage() {
     ) {
 
         setSelectedProductId(product.id);
+        setIsEditorVisible(true);
         setStatusMessage("");
         setForm(
             toForm(product)
@@ -927,7 +984,13 @@ function ProductsPage() {
 
     return (
 
-        <section className="products-page">
+        <section
+            className={
+                isEditorVisible ?
+                    "products-page" :
+                    "products-page editor-hidden"
+            }
+        >
 
             <div className="products-list-panel">
 
@@ -981,6 +1044,20 @@ function ProductsPage() {
                         onClick={startNewProduct}
                     >
                         Nouveau
+                    </button>
+
+                    <button
+                        type="button"
+                        className="editor-toggle"
+                        onClick={
+                            () =>
+                                setIsEditorVisible(
+                                    previousValue =>
+                                        !previousValue
+                                )
+                        }
+                    >
+                        {isEditorVisible ? "Cacher" : "Afficher"}
                     </button>
 
                     <button
@@ -1165,7 +1242,8 @@ function ProductsPage() {
 
             </div>
 
-            <aside className="product-editor">
+            {isEditorVisible && (
+                <aside className="product-editor">
 
                 <div className="editor-header">
                     <h2>
@@ -1385,7 +1463,8 @@ function ProductsPage() {
                     </p>
                 )}
 
-            </aside>
+                </aside>
+            )}
 
         </section>
 

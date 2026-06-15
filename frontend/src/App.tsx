@@ -9,6 +9,7 @@ import "./App.css";
 
 
 type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions";
+type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Tuile";
 
 
 const NAV_ITEMS: PageKey[] = [
@@ -20,9 +21,17 @@ const NAV_ITEMS: PageKey[] = [
 ];
 
 
+const PRODUCT_MENU_ITEMS: ProductMenuKey[] = [
+    "Mapei",
+    "Prosol",
+    "Tuile"
+];
+
+
 function App() {
 
     const [activePage, setActivePage] = useState<PageKey>("Soumissions");
+    const [activeProductMenu, setActiveProductMenu] = useState<ProductMenuKey>("Tous");
 
 
     return (
@@ -41,7 +50,12 @@ function App() {
 
                 <div className="header-context">
                     <span className="workspace-label">Sercora</span>
-                    <h1>{activePage}</h1>
+                    <h1>
+                        {activePage}
+                        {activePage === "Produits" && activeProductMenu !== "Tous" && (
+                            " - " + activeProductMenu
+                        )}
+                    </h1>
                 </div>
 
             </header>
@@ -55,30 +69,67 @@ function App() {
 
                     {NAV_ITEMS.map(
                         item => (
-                            <button
+                            <div
                                 key={item}
-                                type="button"
-                                className={
-                                    item === activePage ?
-                                        "nav-item active" :
-                                        "nav-item"
-                                }
-                                aria-current={
-                                    item === activePage ?
-                                        "page" :
-                                        undefined
-                                }
-                                disabled={
-                                    item === "Clients" ||
-                                    item === "Projets"
-                                }
-                                onClick={
-                                    () =>
-                                        setActivePage(item)
-                                }
+                                className="nav-group"
                             >
-                                {item}
-                            </button>
+                                <button
+                                    type="button"
+                                    className={
+                                        item === activePage ?
+                                            "nav-item active" :
+                                            "nav-item"
+                                    }
+                                    aria-current={
+                                        item === activePage ?
+                                            "page" :
+                                            undefined
+                                    }
+                                    disabled={
+                                        item === "Clients" ||
+                                        item === "Projets"
+                                    }
+                                    onClick={
+                                        () => {
+                                            setActivePage(item);
+
+                                            if (item === "Produits")
+                                                setActiveProductMenu("Tous");
+                                        }
+                                    }
+                                >
+                                    {item}
+                                </button>
+
+                                {item === "Produits" && (
+                                    <div className="nav-submenu">
+                                        {PRODUCT_MENU_ITEMS.map(
+                                            productMenuItem => (
+                                                <button
+                                                    key={productMenuItem}
+                                                    type="button"
+                                                    className={
+                                                        (
+                                                            activePage === "Produits" &&
+                                                            activeProductMenu === productMenuItem
+                                                        ) ?
+                                                            "nav-subitem active" :
+                                                            "nav-subitem"
+                                                    }
+                                                    onClick={
+                                                        () => {
+                                                            setActiveProductMenu(productMenuItem);
+                                                            setActivePage("Produits");
+                                                        }
+                                                    }
+                                                >
+                                                    {productMenuItem}
+                                                </button>
+                                            )
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         )
                     )}
 
@@ -86,7 +137,7 @@ function App() {
 
                 <main className="app-content">
                     {activePage === "Produits" && (
-                        <ProductsPage />
+                        <ProductsPage productMenu={activeProductMenu} />
                     )}
 
                     {activePage === "Outils" && (

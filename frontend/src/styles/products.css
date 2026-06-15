@@ -17,6 +17,13 @@
 }
 
 
+.products-page.editor-hidden {
+
+    grid-template-columns: minmax(0, 1fr);
+
+}
+
+
 .products-list-panel {
 
     display: flex;
@@ -129,6 +136,13 @@
 .products-toolbar .prosol-price-action {
 
     flex-basis: 104px;
+
+}
+
+
+.products-toolbar .editor-toggle {
+
+    flex-basis: 78px;
 
 }
 
