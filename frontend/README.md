@@ -28,6 +28,19 @@ Cette valeur locale doit rester dans `.env.local`, ignore par Git.
 - `Produits`: catalogue produit interne.
 - `Outils`: inventaire live via l'API backend `/tools`.
 
+## Structure
+
+```text
+src/
+  App.tsx         Shell applicatif, navigation et selection de page
+  main.tsx        Montage React
+  pages/          Surfaces metier principales
+  components/     Composants reutilisables
+  utils/          Clients API et calculs
+  styles/         Styles CSS par module
+  assets/         Images et logos
+```
+
 ## Fichiers Importants
 
 - `src/App.tsx`: shell, navigation et selection de page.
@@ -46,3 +59,13 @@ Cette valeur locale doit rester dans `.env.local`, ignore par Git.
 ```bash
 npx eslint src/pages/ToolsPage.tsx src/utils/toolsApi.ts
 ```
+
+## Build Production
+
+Le build public doit pointer vers l'API publique:
+
+```bash
+VITE_API_URL=https://api.serco.pro npm run build
+```
+
+Le script `../deploy/deploy.sh` applique deja cette variable.
