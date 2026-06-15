@@ -29,17 +29,41 @@ Les produits peuvent inclure un fournisseur et un code fournisseur via les champ
 ```text
 supplier_name
 supplier_product_code
+prosol_product_id
+prosol_uuid
+prosol_sku
+manufacturer_sku
+category_name
+default_purchase_price
+msrp_price
+price_updated_at
 ```
 
-Ces champs alimentent la table de liaison `product_supplier`.
+Les champs fournisseur alimentent la table de liaison `product_supplier`.
+Les champs Prosol restent dans `product` pour lier le produit local a l'article API et rafraichir les prix sans recreer le produit.
 
 ## Prosol
 
 ```text
-GET /prosol/products/search?query={texte}&limit=20
+GET  /prosol/products/search?query={texte}&limit=20
+POST /prosol/products/import
+POST /prosol/products/update-prices
 ```
 
-Recherche les produits Prosol via l'API:
+`GET /prosol/products/search` recherche les produits Prosol et enrichit les resultats avec le code, le format, la categorie, le prix d'achat et le MSRP quand l'API Prosol retourne une offre.
+
+`POST /prosol/products/import` cree ou met a jour un produit local a partir de Prosol:
+
+```json
+{
+  "prosol_product_id": 10041,
+  "prosol_uuid": "89c5263f-9938-11eb-a3fb-f6968cef729a"
+}
+```
+
+`POST /prosol/products/update-prices` ne modifie que les prix des produits locaux deja lies a Prosol.
+
+Le backend utilise l'API:
 
 ```text
 https://shop.api.prosol.ca/api/storefront/products/search

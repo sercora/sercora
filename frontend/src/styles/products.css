@@ -126,6 +126,13 @@
 }
 
 
+.products-toolbar .prosol-price-action {
+
+    flex-basis: 104px;
+
+}
+
+
 .prosol-import-panel {
 
     display: flex;
@@ -335,7 +342,7 @@
 
     width: 100%;
 
-    min-width: 1060px;
+    min-width: 1320px;
 
     border-collapse: collapse;
 

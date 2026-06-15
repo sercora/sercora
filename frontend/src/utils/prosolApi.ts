@@ -8,18 +8,34 @@ export type ProsolProduct = {
     sku: string;
     prosol_sku: string;
     supplier_product_code: string;
+    manufacturer_sku: string;
     manufacturer_name: string;
     collection_name: string;
     category_name: string;
     size_name: string;
     image_url: string;
     source_url: string;
+    default_purchase_price: number | null;
+    msrp_price: number | null;
+    price_by_measure: string;
+    price_unit: string;
 };
 
 
 export type ProsolProductsResponse = {
     total: number;
     rows: ProsolProduct[];
+};
+
+
+export type ProsolPriceUpdateResponse = {
+    updated: number;
+    failed: number;
+    errors: Array<{
+        product_id: number;
+        prosol_product_id: number;
+        error: string;
+    }>;
 };
 
 
@@ -48,6 +64,47 @@ export function searchProsolProducts(
         API_URL +
         "/prosol/products/search?" +
         params.toString()
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function importProsolProduct(
+    product: ProsolProduct
+) {
+
+    return fetch(
+        API_URL +
+        "/prosol/products/import",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(
+                {
+                    prosol_product_id: product.id,
+                    prosol_uuid: product.uuid || null
+                }
+            )
+        }
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function updateProsolPrices(): Promise<ProsolPriceUpdateResponse> {
+
+    return fetch(
+        API_URL +
+        "/prosol/products/update-prices",
+        {
+            method: "POST"
+        }
     )
 
     .then(parseResponse);

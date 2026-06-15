@@ -39,10 +39,38 @@ CREATE TABLE product (
 
     default_grout_color VARCHAR(100),
 
+    prosol_product_id BIGINT,
+
+    prosol_uuid VARCHAR(100),
+
+    prosol_sku VARCHAR(100),
+
+    manufacturer_sku VARCHAR(100),
+
+    category_name VARCHAR(255),
+
+    image_url TEXT,
+
+    source_url TEXT,
+
+    default_purchase_price NUMERIC(12,2),
+
+    msrp_price NUMERIC(12,2),
+
+    price_updated_at TIMESTAMP,
+
     active BOOLEAN DEFAULT TRUE,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE UNIQUE INDEX idx_product_prosol_product_id
+    ON product(prosol_product_id)
+    WHERE prosol_product_id IS NOT NULL;
+
+CREATE UNIQUE INDEX idx_product_prosol_uuid
+    ON product(prosol_uuid)
+    WHERE prosol_uuid IS NOT NULL;
 
 CREATE TABLE project (
     id BIGSERIAL PRIMARY KEY,

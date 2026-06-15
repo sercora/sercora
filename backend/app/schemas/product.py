@@ -18,4 +18,13 @@ class ProductCreate(BaseModel):
     default_grout_color: str | None = None
     supplier_name: str | None = None
     supplier_product_code: str | None = None
+    prosol_product_id: int | None = None
+    prosol_uuid: str | None = None
+    prosol_sku: str | None = None
+    manufacturer_sku: str | None = None
+    category_name: str | None = None
+    image_url: str | None = None
+    source_url: str | None = None
+    default_purchase_price: float | None = None
+    msrp_price: float | None = None
     active: bool = True

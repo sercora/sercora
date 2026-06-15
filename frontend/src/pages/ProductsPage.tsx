@@ -20,7 +20,9 @@ import type {
     Unit
 } from "../utils/productsApi";
 import {
-    searchProsolProducts
+    importProsolProduct as importProsolProductToDb,
+    searchProsolProducts,
+    updateProsolPrices
 } from "../utils/prosolApi";
 import type {
     ProsolProduct
@@ -42,6 +44,15 @@ const EMPTY_FORM: ProductInput = {
     size_name: "",
     default_unit_id: null,
     default_grout_color: "",
+    prosol_product_id: null,
+    prosol_uuid: null,
+    prosol_sku: null,
+    manufacturer_sku: null,
+    category_name: null,
+    image_url: null,
+    source_url: null,
+    default_purchase_price: null,
+    msrp_price: null,
     supplier_name: "",
     supplier_product_code: "",
     active: true
@@ -59,6 +70,60 @@ function textValue(
         return null;
 
     return trimmedValue;
+
+}
+
+
+function numberValue(
+    value: string | number | null
+) {
+
+    if (value === null)
+        return null;
+
+    const normalizedValue =
+        String(value).replace(",", ".").trim();
+
+    if (!normalizedValue)
+        return null;
+
+    const parsedValue =
+        Number(normalizedValue);
+
+    if (Number.isNaN(parsedValue))
+        return null;
+
+    return parsedValue;
+
+}
+
+
+function moneyValue(
+    value: number | null
+) {
+
+    if (value === null)
+        return "";
+
+    return value.toLocaleString(
+        "fr-CA",
+        {
+            style: "currency",
+            currency: "CAD"
+        }
+    );
+
+}
+
+
+function dateValue(
+    value: string | null
+) {
+
+    if (!value)
+        return "";
+
+    return new Date(value).toLocaleDateString("fr-CA");
 
 }
 
@@ -86,6 +151,24 @@ function toForm(
             product.default_unit_id,
         default_grout_color:
             product.default_grout_color || "",
+        prosol_product_id:
+            product.prosol_product_id,
+        prosol_uuid:
+            product.prosol_uuid,
+        prosol_sku:
+            product.prosol_sku,
+        manufacturer_sku:
+            product.manufacturer_sku,
+        category_name:
+            product.category_name,
+        image_url:
+            product.image_url,
+        source_url:
+            product.source_url,
+        default_purchase_price:
+            product.default_purchase_price,
+        msrp_price:
+            product.msrp_price,
         supplier_name:
             product.supplier_names || "",
         supplier_product_code:
@@ -120,6 +203,24 @@ function normalizeForm(
             form.default_unit_id,
         default_grout_color:
             textValue(form.default_grout_color),
+        prosol_product_id:
+            form.prosol_product_id,
+        prosol_uuid:
+            textValue(form.prosol_uuid),
+        prosol_sku:
+            textValue(form.prosol_sku),
+        manufacturer_sku:
+            textValue(form.manufacturer_sku),
+        category_name:
+            textValue(form.category_name),
+        image_url:
+            textValue(form.image_url),
+        source_url:
+            textValue(form.source_url),
+        default_purchase_price:
+            numberValue(form.default_purchase_price),
+        msrp_price:
+            numberValue(form.msrp_price),
         supplier_name:
             textValue(form.supplier_name),
         supplier_product_code:
@@ -146,6 +247,7 @@ function ProductsPage() {
     const [prosolQuery, setProsolQuery] = useState("");
     const [prosolProducts, setProsolProducts] = useState<ProsolProduct[]>([]);
     const [isSearchingProsol, setIsSearchingProsol] = useState(false);
+    const [isUpdatingProsolPrices, setIsUpdatingProsolPrices] = useState(false);
     const [statusMessage, setStatusMessage] = useState("");
 
 
@@ -259,9 +361,12 @@ function ProductsPage() {
                         product.manufacturer_name,
                         product.supplier_names,
                         product.supplier_product_code,
+                        product.manufacturer_sku,
+                        product.prosol_sku,
                         product.collection_name,
                         product.color_name,
-                        product.size_name
+                        product.size_name,
+                        product.category_name
                     ]
                     .filter(Boolean)
                     .join(" ")
@@ -372,6 +477,27 @@ function ProductsPage() {
 
     function handleTextChange(
         field: keyof ProductInput
+    ) {
+
+        return (
+            event: ChangeEvent<HTMLInputElement>
+        ) => {
+
+            setForm(
+                previousForm => ({
+                    ...previousForm,
+                    [field]:
+                        event.target.value
+                })
+            );
+
+        };
+
+    }
+
+
+    function handleNumberChange(
+        field: "default_purchase_price" | "msrp_price"
     ) {
 
         return (
@@ -611,30 +737,96 @@ function ProductsPage() {
         product: ProsolProduct
     ) {
 
-        setSelectedProductId(null);
-        setForm(
-            {
-                ...EMPTY_FORM,
-                product_type_id:
-                    productTypes[0]?.id || 0,
-                name:
-                    product.name,
-                manufacturer_name:
-                    product.manufacturer_name || "",
-                collection_name:
-                    product.collection_name || "",
-                size_name:
-                    product.size_name || "",
-                supplier_name:
-                    "Prosol",
-                supplier_product_code:
-                    product.supplier_product_code || "",
-                active:
-                    true
+        if (!product.id) {
+            setStatusMessage(
+                "Produit Prosol sans identifiant."
+            );
+            return;
+        }
+
+        setIsSaving(true);
+        setStatusMessage("");
+
+        importProsolProductToDb(product)
+
+        .then(
+            importedProduct => {
+
+                setStatusMessage(
+                    "Produit Prosol intégré."
+                );
+                setSelectedProductId(importedProduct.id);
+                setForm(
+                    toForm(importedProduct)
+                );
+
+                return loadProducts();
+
+            }
+        )
+
+        .catch(
+            () => {
+
+                setStatusMessage(
+                    "Import Prosol impossible."
+                );
+
+            }
+        )
+
+        .finally(
+            () => {
+
+                setIsSaving(false);
+
             }
         );
-        setStatusMessage(
-            "Produit Prosol prêt à enregistrer."
+
+    }
+
+
+    function refreshProsolPrices() {
+
+        setIsUpdatingProsolPrices(true);
+        setStatusMessage("");
+
+        updateProsolPrices()
+
+        .then(
+            response => {
+
+                setStatusMessage(
+                    "Prix Prosol mis à jour: " +
+                    response.updated +
+                    (
+                        response.failed ?
+                            " / erreurs: " + response.failed :
+                            ""
+                    )
+                );
+
+                return loadProducts();
+
+            }
+        )
+
+        .catch(
+            () => {
+
+                setStatusMessage(
+                    "Mise à jour des prix Prosol impossible."
+                );
+
+            }
+        )
+
+        .finally(
+            () => {
+
+                setIsUpdatingProsolPrices(false);
+
+            }
         );
 
     }
@@ -712,6 +904,15 @@ function ProductsPage() {
                         Prosol
                     </button>
 
+                    <button
+                        type="button"
+                        className="prosol-price-action"
+                        onClick={refreshProsolPrices}
+                        disabled={isUpdatingProsolPrices}
+                    >
+                        Prix Prosol
+                    </button>
+
                 </div>
 
                 {showProsolImport && (
@@ -775,6 +976,12 @@ function ProductsPage() {
                                                     " - " + product.manufacturer_name
                                                 )}
                                             </small>
+                                            <small>
+                                                {product.size_name || product.category_name || "Format inconnu"}
+                                                {product.default_purchase_price !== null && (
+                                                    " - " + moneyValue(product.default_purchase_price)
+                                                )}
+                                            </small>
                                         </span>
                                     </button>
                                 )
@@ -794,7 +1001,11 @@ function ProductsPage() {
                                 <th>Manufacturier</th>
                                 <th>Fournisseur</th>
                                 <th>Code fournisseur</th>
+                                <th>Code fabricant</th>
                                 <th>Format</th>
+                                <th>Prix</th>
+                                <th>MSRP</th>
+                                <th>Maj prix</th>
                                 <th>Unité</th>
                                 <th>État</th>
                             </tr>
@@ -820,7 +1031,11 @@ function ProductsPage() {
                                         <td>{product.manufacturer_name || ""}</td>
                                         <td>{product.supplier_names || ""}</td>
                                         <td>{product.supplier_product_code || ""}</td>
+                                        <td>{product.manufacturer_sku || product.prosol_sku || ""}</td>
                                         <td>{product.size_name || ""}</td>
+                                        <td>{moneyValue(product.default_purchase_price)}</td>
+                                        <td>{moneyValue(product.msrp_price)}</td>
+                                        <td>{dateValue(product.price_updated_at)}</td>
                                         <td>{product.default_unit_symbol || ""}</td>
                                         <td>
                                             <span
@@ -901,6 +1116,24 @@ function ProductsPage() {
                     </label>
 
                     <label>
+                        Code fabricant
+                        <input
+                            type="text"
+                            value={form.manufacturer_sku || ""}
+                            onChange={handleTextChange("manufacturer_sku")}
+                        />
+                    </label>
+
+                    <label>
+                        SKU Prosol
+                        <input
+                            type="text"
+                            value={form.prosol_sku || ""}
+                            onChange={handleTextChange("prosol_sku")}
+                        />
+                    </label>
+
+                    <label>
                         Manufacturier
                         <input
                             type="text"
@@ -942,6 +1175,35 @@ function ProductsPage() {
                             type="text"
                             value={form.size_name || ""}
                             onChange={handleTextChange("size_name")}
+                        />
+                    </label>
+
+                    <label>
+                        Catégorie
+                        <input
+                            type="text"
+                            value={form.category_name || ""}
+                            onChange={handleTextChange("category_name")}
+                        />
+                    </label>
+
+                    <label>
+                        Prix achat
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={form.default_purchase_price ?? ""}
+                            onChange={handleNumberChange("default_purchase_price")}
+                        />
+                    </label>
+
+                    <label>
+                        MSRP
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={form.msrp_price ?? ""}
+                            onChange={handleNumberChange("msrp_price")}
                         />
                     </label>
 

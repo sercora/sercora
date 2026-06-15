@@ -7,6 +7,44 @@ from app.schemas.product import ProductCreate
 router = APIRouter()
 
 
+PRODUCT_SELECT_FIELDS = """
+    p.id,
+    p.product_type_id,
+    pt.name AS product_type_name,
+    p.name,
+    p.manufacturer_name,
+    p.collection_name,
+    p.color_name,
+    p.finish_name,
+    p.size_name,
+    p.default_unit_id,
+    u.name AS default_unit_name,
+    u.symbol AS default_unit_symbol,
+    p.default_grout_color,
+    p.prosol_product_id,
+    p.prosol_uuid,
+    p.prosol_sku,
+    p.manufacturer_sku,
+    p.category_name,
+    p.image_url,
+    p.source_url,
+    p.default_purchase_price,
+    p.msrp_price,
+    p.price_updated_at,
+    supplier_info.supplier_names,
+    supplier_info.supplier_product_code,
+    p.active
+"""
+
+
+def decimal_value(value):
+
+    if value is None:
+        return None
+
+    return float(value)
+
+
 def product_payload(row):
 
     return {
@@ -23,6 +61,20 @@ def product_payload(row):
         "default_unit_name": row.default_unit_name,
         "default_unit_symbol": row.default_unit_symbol,
         "default_grout_color": row.default_grout_color,
+        "prosol_product_id": row.prosol_product_id,
+        "prosol_uuid": row.prosol_uuid,
+        "prosol_sku": row.prosol_sku,
+        "manufacturer_sku": row.manufacturer_sku,
+        "category_name": row.category_name,
+        "image_url": row.image_url,
+        "source_url": row.source_url,
+        "default_purchase_price": decimal_value(row.default_purchase_price),
+        "msrp_price": decimal_value(row.msrp_price),
+        "price_updated_at": (
+            row.price_updated_at.isoformat()
+            if row.price_updated_at
+            else None
+        ),
         "supplier_names": row.supplier_names,
         "supplier_product_code": row.supplier_product_code,
         "active": row.active
@@ -41,6 +93,15 @@ def product_values(product: ProductCreate):
         "size_name": product.size_name,
         "default_unit_id": product.default_unit_id,
         "default_grout_color": product.default_grout_color,
+        "prosol_product_id": product.prosol_product_id,
+        "prosol_uuid": product.prosol_uuid,
+        "prosol_sku": product.prosol_sku,
+        "manufacturer_sku": product.manufacturer_sku,
+        "category_name": product.category_name,
+        "image_url": product.image_url,
+        "source_url": product.source_url,
+        "default_purchase_price": product.default_purchase_price,
+        "msrp_price": product.msrp_price,
         "active": product.active
     }
 
@@ -195,22 +256,7 @@ def get_products():
             text(
                 """
                 SELECT
-                    p.id,
-                    p.product_type_id,
-                    pt.name AS product_type_name,
-                    p.name,
-                    p.manufacturer_name,
-                    p.collection_name,
-                    p.color_name,
-                    p.finish_name,
-                    p.size_name,
-                    p.default_unit_id,
-                    u.name AS default_unit_name,
-                    u.symbol AS default_unit_symbol,
-                    p.default_grout_color,
-                    supplier_info.supplier_names,
-                    supplier_info.supplier_product_code,
-                    p.active
+                    """ + PRODUCT_SELECT_FIELDS + """
                 FROM product p
                 LEFT JOIN product_type pt
                     ON pt.id = p.product_type_id
@@ -254,22 +300,7 @@ def get_product(product_id: int):
             text(
                 """
                 SELECT
-                    p.id,
-                    p.product_type_id,
-                    pt.name AS product_type_name,
-                    p.name,
-                    p.manufacturer_name,
-                    p.collection_name,
-                    p.color_name,
-                    p.finish_name,
-                    p.size_name,
-                    p.default_unit_id,
-                    u.name AS default_unit_name,
-                    u.symbol AS default_unit_symbol,
-                    p.default_grout_color,
-                    supplier_info.supplier_names,
-                    supplier_info.supplier_product_code,
-                    p.active
+                    """ + PRODUCT_SELECT_FIELDS + """
                 FROM product p
                 LEFT JOIN product_type pt
                     ON pt.id = p.product_type_id
@@ -324,6 +355,16 @@ def create_product(product: ProductCreate):
                     size_name,
                     default_unit_id,
                     default_grout_color,
+                    prosol_product_id,
+                    prosol_uuid,
+                    prosol_sku,
+                    manufacturer_sku,
+                    category_name,
+                    image_url,
+                    source_url,
+                    default_purchase_price,
+                    msrp_price,
+                    price_updated_at,
                     active
                 )
                 VALUES (
@@ -336,6 +377,21 @@ def create_product(product: ProductCreate):
                     :size_name,
                     :default_unit_id,
                     :default_grout_color,
+                    :prosol_product_id,
+                    :prosol_uuid,
+                    :prosol_sku,
+                    :manufacturer_sku,
+                    :category_name,
+                    :image_url,
+                    :source_url,
+                    :default_purchase_price,
+                    :msrp_price,
+                    CASE
+                        WHEN :default_purchase_price IS NOT NULL
+                            OR :msrp_price IS NOT NULL
+                        THEN CURRENT_TIMESTAMP
+                        ELSE NULL
+                    END,
                     :active
                 )
                 RETURNING id
@@ -386,6 +442,21 @@ def update_product(
                     size_name = :size_name,
                     default_unit_id = :default_unit_id,
                     default_grout_color = :default_grout_color,
+                    prosol_product_id = :prosol_product_id,
+                    prosol_uuid = :prosol_uuid,
+                    prosol_sku = :prosol_sku,
+                    manufacturer_sku = :manufacturer_sku,
+                    category_name = :category_name,
+                    image_url = :image_url,
+                    source_url = :source_url,
+                    default_purchase_price = :default_purchase_price,
+                    msrp_price = :msrp_price,
+                    price_updated_at = CASE
+                        WHEN :default_purchase_price IS DISTINCT FROM default_purchase_price
+                            OR :msrp_price IS DISTINCT FROM msrp_price
+                        THEN CURRENT_TIMESTAMP
+                        ELSE price_updated_at
+                    END,
                     active = :active
                 WHERE id = :id
                 """
