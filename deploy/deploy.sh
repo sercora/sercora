@@ -6,7 +6,7 @@ echo "Building React..."
 
 cd ~/sercora/frontend
 
-npm run build
+VITE_API_URL=https://api.serco.pro npm run build
 
 echo "Deploying files..."
 
