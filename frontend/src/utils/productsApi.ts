@@ -15,6 +15,8 @@ export type Product = {
     default_unit_name: string | null;
     default_unit_symbol: string | null;
     default_grout_color: string | null;
+    supplier_names: string | null;
+    supplier_product_code: string | null;
     active: boolean;
 };
 
@@ -29,6 +31,8 @@ export type ProductInput = {
     size_name: string | null;
     default_unit_id: number | null;
     default_grout_color: string | null;
+    supplier_name: string | null;
+    supplier_product_code: string | null;
     active: boolean;
 };
 

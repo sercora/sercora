@@ -25,7 +25,7 @@ Cette valeur locale doit rester dans `.env.local`, ignore par Git.
 ## Surfaces
 
 - `Soumissions`: matrice AG Grid pour quantites et calculs.
-- `Produits`: catalogue produit interne.
+- `Produits`: catalogue produit interne, filtre fournisseur et import Prosol.
 - `Outils`: inventaire live via l'API backend `/tools`, avec recherche, tri et pagination.
 
 ## Structure

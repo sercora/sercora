@@ -23,6 +23,8 @@ def product_payload(row):
         "default_unit_name": row.default_unit_name,
         "default_unit_symbol": row.default_unit_symbol,
         "default_grout_color": row.default_grout_color,
+        "supplier_names": row.supplier_names,
+        "supplier_product_code": row.supplier_product_code,
         "active": row.active
     }
 
@@ -41,6 +43,82 @@ def product_values(product: ProductCreate):
         "default_grout_color": product.default_grout_color,
         "active": product.active
     }
+
+
+def sync_product_supplier(
+        db,
+        product_id: int,
+        product: ProductCreate):
+
+    supplier_name = (
+        product.supplier_name or ""
+    ).strip()
+    supplier_product_code = (
+        product.supplier_product_code or ""
+    ).strip() or None
+
+    db.execute(
+        text(
+            """
+            DELETE FROM product_supplier
+            WHERE product_id = :product_id
+            """
+        ),
+        {
+            "product_id": product_id
+        }
+    )
+
+    if not supplier_name:
+        return
+
+    supplier_row = db.execute(
+        text(
+            """
+            INSERT INTO supplier (
+                supplier_type_id,
+                name
+            )
+            VALUES (
+                (
+                    SELECT id
+                    FROM supplier_type
+                    WHERE name = 'Produits de pose'
+                    LIMIT 1
+                ),
+                :name
+            )
+            ON CONFLICT (name)
+            DO UPDATE SET name = EXCLUDED.name
+            RETURNING id
+            """
+        ),
+        {
+            "name": supplier_name
+        }
+    ).fetchone()
+
+    db.execute(
+        text(
+            """
+            INSERT INTO product_supplier (
+                product_id,
+                supplier_id,
+                supplier_product_code
+            )
+            VALUES (
+                :product_id,
+                :supplier_id,
+                :supplier_product_code
+            )
+            """
+        ),
+        {
+            "product_id": product_id,
+            "supplier_id": supplier_row.id,
+            "supplier_product_code": supplier_product_code
+        }
+    )
 
 
 @router.get("/product-types")
@@ -130,12 +208,26 @@ def get_products():
                     u.name AS default_unit_name,
                     u.symbol AS default_unit_symbol,
                     p.default_grout_color,
+                    supplier_info.supplier_names,
+                    supplier_info.supplier_product_code,
                     p.active
                 FROM product p
                 LEFT JOIN product_type pt
                     ON pt.id = p.product_type_id
                 LEFT JOIN unit u
                     ON u.id = p.default_unit_id
+                LEFT JOIN LATERAL (
+                    SELECT
+                        string_agg(s.name, ', ' ORDER BY s.name)
+                            AS supplier_names,
+                        min(ps.supplier_product_code)
+                            AS supplier_product_code
+                    FROM product_supplier ps
+                    JOIN supplier s
+                        ON s.id = ps.supplier_id
+                    WHERE ps.product_id = p.id
+                ) supplier_info
+                    ON TRUE
                 ORDER BY
                     p.active DESC,
                     p.name
@@ -175,12 +267,26 @@ def get_product(product_id: int):
                     u.name AS default_unit_name,
                     u.symbol AS default_unit_symbol,
                     p.default_grout_color,
+                    supplier_info.supplier_names,
+                    supplier_info.supplier_product_code,
                     p.active
                 FROM product p
                 LEFT JOIN product_type pt
                     ON pt.id = p.product_type_id
                 LEFT JOIN unit u
                     ON u.id = p.default_unit_id
+                LEFT JOIN LATERAL (
+                    SELECT
+                        string_agg(s.name, ', ' ORDER BY s.name)
+                            AS supplier_names,
+                        min(ps.supplier_product_code)
+                            AS supplier_product_code
+                    FROM product_supplier ps
+                    JOIN supplier s
+                        ON s.id = ps.supplier_id
+                    WHERE ps.product_id = p.id
+                ) supplier_info
+                    ON TRUE
                 WHERE p.id = :id
                 """
             ),
@@ -238,6 +344,12 @@ def create_product(product: ProductCreate):
             product_values(product)
         ).fetchone()
 
+        sync_product_supplier(
+            db,
+            row.id,
+            product
+        )
+
         db.commit()
 
         return {
@@ -279,6 +391,12 @@ def update_product(
                 """
             ),
             values
+        )
+
+        sync_product_supplier(
+            db,
+            product_id,
+            product
         )
 
         db.commit()

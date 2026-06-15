@@ -16,4 +16,6 @@ class ProductCreate(BaseModel):
     size_name: str | None = None
     default_unit_id: int | None = None
     default_grout_color: str | None = None
+    supplier_name: str | None = None
+    supplier_product_code: str | None = None
     active: bool = True

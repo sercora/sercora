@@ -44,6 +44,8 @@ Variables importantes:
 ```text
 SNIPEIT_URL=https://snipe.serco.pro
 SNIPEIT_API_TOKEN=...
+PROSOL_API_URL=https://shop.api.prosol.ca
+PROSOL_API_TOKEN=...
 ```
 
 La connexion PostgreSQL est actuellement definie dans `app/database/database.py`.

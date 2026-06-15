@@ -19,6 +19,12 @@ import type {
     ProductType,
     Unit
 } from "../utils/productsApi";
+import {
+    searchProsolProducts
+} from "../utils/prosolApi";
+import type {
+    ProsolProduct
+} from "../utils/prosolApi";
 
 import "../styles/products.css";
 
@@ -36,6 +42,8 @@ const EMPTY_FORM: ProductInput = {
     size_name: "",
     default_unit_id: null,
     default_grout_color: "",
+    supplier_name: "",
+    supplier_product_code: "",
     active: true
 };
 
@@ -78,6 +86,10 @@ function toForm(
             product.default_unit_id,
         default_grout_color:
             product.default_grout_color || "",
+        supplier_name:
+            product.supplier_names || "",
+        supplier_product_code:
+            product.supplier_product_code || "",
         active:
             product.active
     };
@@ -108,6 +120,10 @@ function normalizeForm(
             form.default_unit_id,
         default_grout_color:
             textValue(form.default_grout_color),
+        supplier_name:
+            textValue(form.supplier_name),
+        supplier_product_code:
+            textValue(form.supplier_product_code),
         active:
             form.active
     };
@@ -123,8 +139,13 @@ function ProductsPage() {
     const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
     const [form, setForm] = useState<ProductInput>(EMPTY_FORM);
     const [query, setQuery] = useState("");
+    const [supplierFilter, setSupplierFilter] = useState("");
     const [filter, setFilter] = useState<FilterState>("active");
     const [isSaving, setIsSaving] = useState(false);
+    const [showProsolImport, setShowProsolImport] = useState(false);
+    const [prosolQuery, setProsolQuery] = useState("");
+    const [prosolProducts, setProsolProducts] = useState<ProsolProduct[]>([]);
+    const [isSearchingProsol, setIsSearchingProsol] = useState(false);
     const [statusMessage, setStatusMessage] = useState("");
 
 
@@ -198,6 +219,8 @@ function ProductsPage() {
 
             const normalizedQuery =
                 query.trim().toLowerCase();
+            const normalizedSupplier =
+                supplierFilter.trim().toLowerCase();
 
             return products.filter(
                 product => {
@@ -214,6 +237,19 @@ function ProductsPage() {
                     )
                         return false;
 
+                    if (
+                        normalizedSupplier &&
+                        ![
+                            product.supplier_names,
+                            product.manufacturer_name
+                        ]
+                        .filter(Boolean)
+                        .join(" ")
+                        .toLowerCase()
+                        .includes(normalizedSupplier)
+                    )
+                        return false;
+
                     if (!normalizedQuery)
                         return true;
 
@@ -221,6 +257,8 @@ function ProductsPage() {
                         product.name,
                         product.product_type_name,
                         product.manufacturer_name,
+                        product.supplier_names,
+                        product.supplier_product_code,
                         product.collection_name,
                         product.color_name,
                         product.size_name
@@ -238,7 +276,51 @@ function ProductsPage() {
         [
             filter,
             products,
-            query
+            query,
+            supplierFilter
+        ]
+
+    );
+
+    const supplierOptions = useMemo(
+
+        () => {
+
+            const supplierNames = new Set<string>();
+
+            products.forEach(
+                product => {
+
+                    [
+                        product.supplier_names,
+                        product.manufacturer_name
+                    ]
+                    .filter(Boolean)
+                    .join(",")
+                    .split(",")
+                    .map(
+                        supplier =>
+                            supplier.trim()
+                    )
+                    .filter(Boolean)
+                    .forEach(
+                        supplier =>
+                            supplierNames.add(supplier)
+                    );
+
+                }
+            );
+
+            return Array.from(supplierNames)
+            .sort(
+                (left, right) =>
+                    left.localeCompare(right)
+            );
+
+        },
+
+        [
+            products
         ]
 
     );
@@ -474,6 +556,90 @@ function ProductsPage() {
     }
 
 
+    function searchProsol() {
+
+        const trimmedQuery =
+            prosolQuery.trim();
+
+        if (trimmedQuery.length < 3) {
+            setStatusMessage(
+                "Recherche Prosol: minimum 3 caractères."
+            );
+            return;
+        }
+
+        setIsSearchingProsol(true);
+        setStatusMessage("");
+
+        searchProsolProducts(trimmedQuery)
+
+        .then(
+            response => {
+
+                setProsolProducts(response.rows);
+                setStatusMessage(
+                    response.rows.length ?
+                        "Produits Prosol chargés." :
+                        "Aucun produit Prosol trouvé."
+                );
+
+            }
+        )
+
+        .catch(
+            () => {
+
+                setStatusMessage(
+                    "Recherche Prosol impossible."
+                );
+
+            }
+        )
+
+        .finally(
+            () => {
+
+                setIsSearchingProsol(false);
+
+            }
+        );
+
+    }
+
+
+    function importProsolProduct(
+        product: ProsolProduct
+    ) {
+
+        setSelectedProductId(null);
+        setForm(
+            {
+                ...EMPTY_FORM,
+                product_type_id:
+                    productTypes[0]?.id || 0,
+                name:
+                    product.name,
+                manufacturer_name:
+                    product.manufacturer_name || "",
+                collection_name:
+                    product.collection_name || "",
+                size_name:
+                    product.size_name || "",
+                supplier_name:
+                    "Prosol",
+                supplier_product_code:
+                    product.supplier_product_code || "",
+                active:
+                    true
+            }
+        );
+        setStatusMessage(
+            "Produit Prosol prêt à enregistrer."
+        );
+
+    }
+
+
     return (
 
         <section className="products-page">
@@ -491,6 +657,27 @@ function ProductsPage() {
                         }
                         placeholder="Rechercher"
                     />
+
+                    <select
+                        className="supplier-filter"
+                        value={supplierFilter}
+                        onChange={
+                            event =>
+                                setSupplierFilter(event.target.value)
+                        }
+                    >
+                        <option value="">Fournisseurs</option>
+                        {supplierOptions.map(
+                            supplier => (
+                                <option
+                                    key={supplier}
+                                    value={supplier}
+                                >
+                                    {supplier}
+                                </option>
+                            )
+                        )}
+                    </select>
 
                     <select
                         value={filter}
@@ -511,7 +698,91 @@ function ProductsPage() {
                         Nouveau
                     </button>
 
+                    <button
+                        type="button"
+                        className="prosol-toggle"
+                        onClick={
+                            () =>
+                                setShowProsolImport(
+                                    previousValue =>
+                                        !previousValue
+                                )
+                        }
+                    >
+                        Prosol
+                    </button>
+
                 </div>
+
+                {showProsolImport && (
+                    <div className="prosol-import-panel">
+
+                        <div className="prosol-search">
+                            <input
+                                type="search"
+                                value={prosolQuery}
+                                onChange={
+                                    event =>
+                                        setProsolQuery(event.target.value)
+                                }
+                                onKeyDown={
+                                    event => {
+
+                                        if (event.key === "Enter")
+                                            searchProsol();
+
+                                    }
+                                }
+                                placeholder="Rechercher Prosol"
+                            />
+
+                            <button
+                                type="button"
+                                onClick={searchProsol}
+                                disabled={isSearchingProsol}
+                            >
+                                Rechercher
+                            </button>
+                        </div>
+
+                        <div className="prosol-results">
+                            {prosolProducts.map(
+                                product => (
+                                    <button
+                                        key={
+                                            product.uuid ||
+                                            product.supplier_product_code ||
+                                            product.name
+                                        }
+                                        type="button"
+                                        className="prosol-result"
+                                        onClick={
+                                            () =>
+                                                importProsolProduct(product)
+                                        }
+                                    >
+                                        {product.image_url && (
+                                            <img
+                                                src={product.image_url}
+                                                alt=""
+                                            />
+                                        )}
+                                        <span>
+                                            <strong>{product.name}</strong>
+                                            <small>
+                                                {product.supplier_product_code || "Sans SKU"}
+                                                {product.manufacturer_name && (
+                                                    " - " + product.manufacturer_name
+                                                )}
+                                            </small>
+                                        </span>
+                                    </button>
+                                )
+                            )}
+                        </div>
+
+                    </div>
+                )}
 
                 <div className="products-table-wrap">
 
@@ -521,6 +792,8 @@ function ProductsPage() {
                                 <th>Produit</th>
                                 <th>Type</th>
                                 <th>Manufacturier</th>
+                                <th>Fournisseur</th>
+                                <th>Code fournisseur</th>
                                 <th>Format</th>
                                 <th>Unité</th>
                                 <th>État</th>
@@ -545,6 +818,8 @@ function ProductsPage() {
                                         <td>{product.name}</td>
                                         <td>{product.product_type_name || ""}</td>
                                         <td>{product.manufacturer_name || ""}</td>
+                                        <td>{product.supplier_names || ""}</td>
+                                        <td>{product.supplier_product_code || ""}</td>
                                         <td>{product.size_name || ""}</td>
                                         <td>{product.default_unit_symbol || ""}</td>
                                         <td>
@@ -605,6 +880,24 @@ function ProductsPage() {
                                 )
                             )}
                         </select>
+                    </label>
+
+                    <label>
+                        Fournisseur
+                        <input
+                            type="text"
+                            value={form.supplier_name || ""}
+                            onChange={handleTextChange("supplier_name")}
+                        />
+                    </label>
+
+                    <label>
+                        Code fournisseur
+                        <input
+                            type="text"
+                            value={form.supplier_product_code || ""}
+                            onChange={handleTextChange("supplier_product_code")}
+                        />
                     </label>
 
                     <label>

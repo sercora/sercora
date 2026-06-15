@@ -24,6 +24,36 @@ GET    /units
 
 Le `DELETE /products/{product_id}` desactive le produit au lieu de le supprimer physiquement.
 
+Les produits peuvent inclure un fournisseur et un code fournisseur via les champs:
+
+```text
+supplier_name
+supplier_product_code
+```
+
+Ces champs alimentent la table de liaison `product_supplier`.
+
+## Prosol
+
+```text
+GET /prosol/products/search?query={texte}&limit=20
+```
+
+Recherche les produits Prosol via l'API:
+
+```text
+https://shop.api.prosol.ca/api/storefront/products/search
+```
+
+Le backend utilise:
+
+```text
+PROSOL_API_URL=https://shop.api.prosol.ca
+PROSOL_API_TOKEN=...
+```
+
+Le token Prosol doit rester dans `backend/.env`.
+
 ## Soumissions
 
 ```text

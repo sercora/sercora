@@ -101,6 +101,13 @@
 }
 
 
+.products-toolbar .supplier-filter {
+
+    flex-basis: 132px;
+
+}
+
+
 .products-toolbar button {
 
     flex: 0 0 86px;
@@ -108,6 +115,205 @@
     height: 30px;
 
     cursor: pointer;
+
+}
+
+
+.products-toolbar .prosol-toggle {
+
+    flex-basis: 74px;
+
+}
+
+
+.prosol-import-panel {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+
+    flex: 0 0 auto;
+
+    min-width: 0;
+
+    padding: 8px 10px;
+
+    border-bottom: 1px solid #cdd3d8;
+
+    background-color: #f8fafb;
+
+}
+
+
+.prosol-search {
+
+    display: flex;
+
+    gap: 8px;
+
+    min-width: 0;
+
+}
+
+
+.prosol-search input,
+.prosol-search button {
+
+    border: 1px solid #b9c0ca;
+
+    border-radius: 4px;
+
+    background-color: #ffffff;
+
+    color: #171a1f;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 13px;
+
+}
+
+
+.prosol-search input {
+
+    flex: 1 1 auto;
+
+    min-width: 120px;
+
+    height: 30px;
+
+    padding: 0 9px;
+
+}
+
+
+.prosol-search button {
+
+    flex: 0 0 92px;
+
+    height: 30px;
+
+    cursor: pointer;
+
+}
+
+
+.prosol-search button:disabled {
+
+    cursor: default;
+
+    opacity: 0.55;
+
+}
+
+
+.prosol-results {
+
+    display: grid;
+
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+
+    gap: 6px;
+
+    max-height: 164px;
+
+    overflow: auto;
+
+}
+
+
+.prosol-result {
+
+    display: grid;
+
+    grid-template-columns: 42px minmax(0, 1fr);
+
+    gap: 8px;
+
+    align-items: center;
+
+    min-width: 0;
+
+    min-height: 54px;
+
+    padding: 6px;
+
+    border: 1px solid #cbd2da;
+
+    border-radius: 4px;
+
+    background-color: #ffffff;
+
+    color: #171a1f;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    text-align: left;
+
+    cursor: pointer;
+
+}
+
+
+.prosol-result:hover {
+
+    border-color: #31a826;
+
+    background-color: #f8fbff;
+
+}
+
+
+.prosol-result img {
+
+    width: 42px;
+
+    height: 42px;
+
+    object-fit: contain;
+
+}
+
+
+.prosol-result span {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 3px;
+
+    min-width: 0;
+
+}
+
+
+.prosol-result strong,
+.prosol-result small {
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+}
+
+
+.prosol-result strong {
+
+    font-size: 13px;
+
+}
+
+
+.prosol-result small {
+
+    color: #68717a;
+
+    font-size: 12px;
 
 }
 
@@ -129,7 +335,7 @@
 
     width: 100%;
 
-    min-width: 820px;
+    min-width: 1060px;
 
     border-collapse: collapse;
 
