@@ -1,12 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { AgGridReact } from "ag-grid-react";
-
-import "ag-grid-enterprise";
-
-import "ag-grid-community/styles/ag-grid.css";
-import "ag-grid-community/styles/ag-theme-alpine.css";
-
+import MatrixGrid from "../components/MatrixGrid";
 import ZoomToolbar from "../components/ZoomToolbar";
 
 import {
@@ -685,50 +679,14 @@ function MatrixView() {
                 onZoomChange={applyZoom}
             />
 
-            <div
-                className="ag-theme-alpine sercora-grid"
-                style={{
-                    width: "100%",
-                    height: "calc(100vh - 46px)",
-                    ["--sercora-zoom" as any]:
-                        ZOOM_LEVELS[zoom] || 1
-                }}
-            >
-
-                <AgGridReact
-
-                    ref={gridRef}
-
-                    rowData={rowData}
-
-                    columnDefs={columnDefs}
-
-                    onCellValueChanged={
-                        onCellValueChanged
-                    }
-
-                    groupDefaultExpanded={-1}
-
-                    rowHeight={22}
-
-                    headerHeight={25}
-
-                    suppressRowClickSelection={true}
-
-                    enableRangeSelection={true}
-
-                    animateRows={false}
-
-                    localeText={GRID_LOCALE_TEXT}
-
-                    autoGroupColumnDef={{
-                        headerName: "Surface",
-                        minWidth: 180
-                    }}
-
-                />
-
-            </div>
+            <MatrixGrid
+                ref={gridRef}
+                rowData={rowData}
+                columnDefs={columnDefs}
+                onCellValueChanged={onCellValueChanged}
+                zoomScale={ZOOM_LEVELS[zoom] || 1}
+                localeText={GRID_LOCALE_TEXT}
+            />
 
         </div>
 
