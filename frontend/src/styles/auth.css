@@ -113,9 +113,9 @@
 }
 
 .field-stack input,
-.field-stack select {
+.field-stack select,
+.field-stack textarea {
     width: 100%;
-    height: 36px;
     padding: 0 10px;
     border: 1px solid #b9c4bc;
     border-radius: 5px;
@@ -125,8 +125,21 @@
     font-weight: 500;
 }
 
+.field-stack input,
+.field-stack select {
+    height: 36px;
+}
+
+.field-stack textarea {
+    min-height: 74px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    resize: vertical;
+}
+
 .field-stack input:focus,
-.field-stack select:focus {
+.field-stack select:focus,
+.field-stack textarea:focus {
     outline: 2px solid rgba(79, 182, 65, 0.28);
     border-color: #4fb641;
 }
@@ -148,6 +161,25 @@
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: end;
     gap: 10px;
+}
+
+.sms-test-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid #d8e1da;
+    border-radius: 7px;
+    background: #f8fbf8;
+}
+
+.auth-section-heading.compact {
+    margin-bottom: 0;
+}
+
+.auth-section-heading.compact h2 {
+    font-size: 17px;
+    line-height: 22px;
 }
 
 .checkbox-line {

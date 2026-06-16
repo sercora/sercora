@@ -14,7 +14,8 @@ import {
     fetchSmsSettings,
     saveEmailSettings,
     saveSmsSettings,
-    testEmailSettings
+    testEmailSettings,
+    testSmsSettings
 } from "../utils/authApi";
 import ImportationPage from "./ImportationPage";
 
@@ -62,9 +63,12 @@ function ConfigurationPage({
     const [settings, setSettings] = useState<EmailSettings>(EMPTY_SETTINGS);
     const [smsSettings, setSmsSettings] = useState<SmsSettings>(EMPTY_SMS_SETTINGS);
     const [testRecipient, setTestRecipient] = useState("");
+    const [smsTestDestination, setSmsTestDestination] = useState("");
+    const [smsTestMessage, setSmsTestMessage] = useState("Test SMS Sercora");
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
+    const [isSmsTesting, setIsSmsTesting] = useState(false);
     const [status, setStatus] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -279,6 +283,34 @@ function ConfigurationPage({
     }
 
 
+    async function sendSmsTest() {
+
+        setStatus(null);
+        setError(null);
+        setIsSmsTesting(true);
+
+        try {
+            await testSmsSettings(
+                token,
+                smsTestDestination,
+                smsTestMessage
+            );
+            setStatus("SMS de test envoye");
+
+        } catch (testError) {
+            setError(
+                testError instanceof Error ?
+                    testError.message :
+                    "Impossible d'envoyer le SMS de test"
+            );
+
+        } finally {
+            setIsSmsTesting(false);
+        }
+
+    }
+
+
     if (currentUser.role !== "admin") {
         return (
             <section className="auth-page">
@@ -457,6 +489,57 @@ function ConfigurationPage({
                             />
                             <span>Activer les alertes SMS BSDQ</span>
                         </label>
+                    </div>
+
+                    <div className="sms-test-panel">
+                        <div className="auth-section-heading compact">
+                            <div>
+                                <span className="eyebrow">Test</span>
+                                <h2>Envoi SMS manuel</h2>
+                            </div>
+                        </div>
+
+                        <div className="auth-form-grid">
+                            <label className="field-stack">
+                                <span>Destination test</span>
+                                <input
+                                    value={smsTestDestination}
+                                    type="tel"
+                                    placeholder="+15145551212"
+                                    onChange={
+                                        event => setSmsTestDestination(event.target.value)
+                                    }
+                                />
+                            </label>
+
+                            <label className="field-stack">
+                                <span>Message test</span>
+                                <textarea
+                                    value={smsTestMessage}
+                                    rows={3}
+                                    maxLength={480}
+                                    onChange={
+                                        event => setSmsTestMessage(event.target.value)
+                                    }
+                                />
+                            </label>
+                        </div>
+
+                        <div className="auth-actions">
+                            <button
+                                type="button"
+                                className="secondary-auth-button"
+                                disabled={
+                                    isSmsTesting ||
+                                    !smsSettings.active ||
+                                    !smsTestDestination.trim() ||
+                                    !smsTestMessage.trim()
+                                }
+                                onClick={sendSmsTest}
+                            >
+                                {isSmsTesting ? "Envoi..." : "Tester SMS"}
+                            </button>
+                        </div>
                     </div>
 
                     {error && (

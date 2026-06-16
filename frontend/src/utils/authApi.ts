@@ -361,3 +361,26 @@ export function saveSmsSettings(
     ).then(parseResponse);
 
 }
+
+
+export function testSmsSettings(
+    token: string,
+    destination: string,
+    message: string
+) {
+
+    return fetch(
+        API_URL + "/admin/sms-settings/test",
+        {
+            method: "POST",
+            headers: authHeaders(token),
+            body: JSON.stringify(
+                {
+                    destination,
+                    message
+                }
+            )
+        }
+    ).then(parseResponse);
+
+}

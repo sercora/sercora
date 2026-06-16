@@ -1,10 +1,15 @@
+import base64
 import hashlib
+import json
 import os
 import secrets
 import smtplib
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 from typing import Literal
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException
@@ -48,6 +53,11 @@ class SmsSettingsInput(BaseModel):
     from_number: str | None = None
     alert_minutes_before: int = 30
     active: bool = False
+
+
+class SmsTestRequest(BaseModel):
+    destination: str
+    message: str
 
 
 class InviteUserRequest(BaseModel):
@@ -221,6 +231,24 @@ def require_email_settings(db):
     return row
 
 
+def require_sms_settings(db):
+
+    row = get_sms_settings_row(db)
+
+    if (
+        row is None or
+        not row.active or
+        not row.provider_name or
+        not row.from_number
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="VoIP/SMS is not configured"
+        )
+
+    return row
+
+
 def send_email(
     settings,
     recipient: str,
@@ -266,6 +294,171 @@ def send_email(
 
     finally:
         smtp.quit()
+
+
+def provider_key(
+    provider_name: str
+):
+
+    return (
+        provider_name
+        .strip()
+        .lower()
+        .replace(".", "")
+        .replace("-", "")
+        .replace("_", "")
+        .replace(" ", "")
+    )
+
+
+def sms_http_request(
+    request: Request
+):
+
+    try:
+        with urlopen(
+            request,
+            timeout=20
+        ) as response:
+            payload = response.read().decode("utf-8", errors="replace")
+
+        return {
+            "status_code": response.status,
+            "body": payload[:1000]
+        }
+
+    except HTTPError as error:
+        payload = error.read().decode("utf-8", errors="replace")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Erreur fournisseur SMS ({error.code}): {payload[:300]}"
+        ) from error
+
+    except (URLError, TimeoutError, OSError) as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Fournisseur SMS indisponible: {error}"
+        ) from error
+
+
+def send_sms(
+    settings,
+    destination: str,
+    message: str
+):
+
+    clean_destination = destination.strip()
+    clean_message = message.strip()
+
+    if not clean_destination:
+        raise HTTPException(
+            status_code=422,
+            detail="Numero de destination requis"
+        )
+
+    if not clean_message:
+        raise HTTPException(
+            status_code=422,
+            detail="Message SMS requis"
+        )
+
+    provider = provider_key(settings.provider_name or "")
+
+    if provider == "twilio":
+        if not settings.account_id or not settings.api_secret:
+            raise HTTPException(
+                status_code=400,
+                detail="Twilio requiert l'ID compte et le secret/token API"
+            )
+
+        data = urlencode(
+            {
+                "From": settings.from_number,
+                "To": clean_destination,
+                "Body": clean_message
+            }
+        ).encode("utf-8")
+        auth_token = base64.b64encode(
+            f"{settings.account_id}:{settings.api_secret}".encode("utf-8")
+        ).decode("ascii")
+
+        return sms_http_request(
+            Request(
+                f"https://api.twilio.com/2010-04-01/Accounts/{settings.account_id}/Messages.json",
+                data=data,
+                headers={
+                    "Authorization": "Basic " + auth_token,
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                method="POST"
+            )
+        )
+
+    if provider == "telnyx":
+        api_token = settings.api_secret or settings.api_key
+
+        if not api_token:
+            raise HTTPException(
+                status_code=400,
+                detail="Telnyx requiert une cle ou un token API"
+            )
+
+        data = json.dumps(
+            {
+                "from": settings.from_number,
+                "to": clean_destination,
+                "text": clean_message
+            }
+        ).encode("utf-8")
+
+        return sms_http_request(
+            Request(
+                "https://api.telnyx.com/v2/messages",
+                data=data,
+                headers={
+                    "Authorization": "Bearer " + api_token,
+                    "Content-Type": "application/json"
+                },
+                method="POST"
+            )
+        )
+
+    if provider in ("voipms", "voip"):
+        if not settings.account_id or not settings.api_secret:
+            raise HTTPException(
+                status_code=400,
+                detail="VoIP.ms requiert l'ID compte et le secret/token API"
+            )
+
+        data = urlencode(
+            {
+                "api_username": settings.account_id,
+                "api_password": settings.api_secret,
+                "method": "sendSMS",
+                "did": settings.from_number,
+                "dst": clean_destination,
+                "message": clean_message
+            }
+        ).encode("utf-8")
+
+        return sms_http_request(
+            Request(
+                "https://voip.ms/api/v1/rest.php",
+                data=data,
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                method="POST"
+            )
+        )
+
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            "Fournisseur SMS non supporte pour le test. "
+            "Utilise Twilio, Telnyx ou VoIP.ms."
+        )
+    )
 
 
 def create_user_token(
@@ -558,6 +751,32 @@ def save_sms_settings(
         return sms_settings_payload(
             get_sms_settings_row(db)
         )
+
+    finally:
+        db.close()
+
+
+@router.post("/admin/sms-settings/test")
+def test_sms_settings(
+    request: SmsTestRequest,
+    _admin=Depends(require_admin)
+):
+
+    db = SessionLocal()
+
+    try:
+        settings = require_sms_settings(db)
+        provider_response = send_sms(
+            settings,
+            request.destination,
+            request.message
+        )
+
+        return {
+            "message": "Test SMS sent",
+            "provider": settings.provider_name,
+            "provider_status": provider_response["status_code"]
+        }
 
     finally:
         db.close()
