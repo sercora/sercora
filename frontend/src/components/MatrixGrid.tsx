@@ -57,7 +57,9 @@ const MatrixGrid = forwardRef<any, MatrixGridProps>(
 
                     rowHeight={22}
 
-                    headerHeight={25}
+                    headerHeight={34}
+
+                    groupHeaderHeight={24}
 
                     suppressRowClickSelection={true}
 

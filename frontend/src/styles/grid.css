@@ -802,6 +802,30 @@ Header
 }
 
 
+.sercora-grid .ag-header-group-cell {
+
+    border-right: 1px solid #1f1f1f;
+
+    border-bottom: 1px solid #1f1f1f;
+
+    background-color: #ffffff;
+
+    font-weight: 700;
+
+}
+
+
+.sercora-grid .ag-header-group-text {
+
+    width: 100%;
+
+    color: #111111;
+
+    text-align: center;
+
+}
+
+
 .sercora-grid .ag-header-cell {
 
     border-right: 1px solid #c6ccd4;
@@ -815,6 +839,15 @@ Header
 }
 
 
+.sercora-grid .ag-header-cell-label {
+
+    justify-content: center;
+
+    text-align: center;
+
+}
+
+
 .sercora-grid .ag-header-cell-text {
 
     color: #1f252d;
@@ -822,6 +855,10 @@ Header
     overflow: hidden;
 
     text-overflow: ellipsis;
+
+    white-space: normal;
+
+    line-height: 12px;
 
 }
 

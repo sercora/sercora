@@ -9,12 +9,14 @@ import MatrixGrid from "../components/MatrixGrid";
 import ZoomToolbar from "../components/ZoomToolbar";
 
 import {
-    getInstallTotal,
-    getMaterialCost,
+    getInstallationSellTotal,
+    getLossQuantity,
     getProfit,
     getQtyTotal,
     getQtyWithLoss,
-    getSellPrice
+    getSellPrice,
+    getUnitProfit,
+    getUnitSellPrice
 } from "../utils/matrixCalculations";
 
 import {
@@ -400,7 +402,12 @@ function MatrixView({
 
         gridRef.current?.api?.setGridOption(
             "headerHeight",
-            Math.round(25 * scale)
+            Math.round(34 * scale)
+        );
+
+        gridRef.current?.api?.setGridOption(
+            "groupHeaderHeight",
+            Math.round(24 * scale)
         );
 
         gridRef.current?.api?.resetRowHeights();
@@ -979,255 +986,232 @@ function MatrixView({
                         "numeric-cell"
                     ];
 
+                    const roomColumns = matrix.rooms.map(
+
+                        (room: string) => ({
+
+                            field: room,
+
+                            headerName: room,
+
+                            width: 82,
+
+                            minWidth: 72,
+
+                            editable: true,
+
+                            valueParser: (params: any) =>
+                                parseNumber(params.newValue),
+
+                            cellClass: numericEditableClass
+
+                        })
+
+                    );
+
+
                     const cols: any[] = [
 
                         {
-                            field: "surface_name",
-                            rowGroup: true,
-                            hide: true
+                            headerName: "FINI",
+                            marryChildren: true,
+                            children: [
+                                {
+                                    field: "surface_name",
+                                    headerName: "SURFACE",
+                                    width: 120,
+                                    minWidth: 96,
+                                    pinned: "left",
+                                    cellClass: "calculated-cell"
+                                },
+                                {
+                                    field: "product_name",
+                                    headerName: "DESCRIPTION",
+                                    width: 300,
+                                    minWidth: 220,
+                                    pinned: "left",
+                                    cellClass: getSupplierClass
+                                },
+                                {
+                                    field: "unit_name",
+                                    headerName: "UNITÉ DE MESURE",
+                                    width: 92,
+                                    minWidth: 72,
+                                    cellClass: "calculated-cell"
+                                },
+                                {
+                                    field: "grout_color",
+                                    headerName: "COULIS",
+                                    width: 88,
+                                    minWidth: 72,
+                                    cellClass: "calculated-cell"
+                                }
+                            ]
                         },
 
                         {
-                            field: "product_name",
-                            headerName: "DESCRIPTION",
-                            width: 280,
-                            minWidth: 220,
-                            pinned: "left",
-                            cellClass: getSupplierClass
+                            headerName: "TAKE OFF",
+                            marryChildren: true,
+                            children: roomColumns
                         },
 
                         {
-                            field: "unit_name",
-                            headerName: "UNITÉ DE MESURE",
-                            width: 70,
-                            minWidth: 60,
-                            cellClass: "calculated-cell"
+                            headerName: "MATÉRIEL",
+                            marryChildren: true,
+                            children: [
+                                {
+                                    headerName: "TOTAL",
+                                    width: 82,
+                                    minWidth: 72,
+                                    cellClass: calculatedClass,
+                                    valueGetter:
+                                        (params: any) =>
+                                            getQtyTotal(
+                                                params,
+                                                matrix.rooms
+                                            )
+                                },
+                                {
+                                    field: "loss_percent",
+                                    headerName: "PERTE EN %",
+                                    width: 86,
+                                    minWidth: 74,
+                                    editable: true,
+                                    valueParser: (params: any) =>
+                                        parseNumber(params.newValue),
+                                    cellClass: numericEditableClass
+                                },
+                                {
+                                    headerName: "PERTE EN UNITÉ",
+                                    width: 96,
+                                    minWidth: 84,
+                                    cellClass: calculatedClass,
+                                    valueGetter:
+                                        (params: any) =>
+                                            getLossQuantity(
+                                                params,
+                                                matrix.rooms
+                                            ).toFixed(2)
+                                },
+                                {
+                                    headerName: "QUANTITÉ AVEC PERTE",
+                                    width: 112,
+                                    minWidth: 96,
+                                    cellClass: calculatedClass,
+                                    valueGetter:
+                                        (params: any) =>
+                                            getQtyWithLoss(
+                                                params,
+                                                matrix.rooms
+                                            ).toFixed(2)
+                                },
+                                {
+                                    field: "purchase_price",
+                                    headerName: "COUTANT",
+                                    width: 86,
+                                    minWidth: 76,
+                                    editable: true,
+                                    valueParser: (params: any) =>
+                                        parseNumber(params.newValue),
+                                    valueFormatter: (params: any) =>
+                                        formatMoney(params.value),
+                                    cellClass: numericEditableClass
+                                },
+                                {
+                                    field: "profit_percent",
+                                    headerName: "PROFIT %",
+                                    width: 78,
+                                    minWidth: 70,
+                                    editable: true,
+                                    valueParser: (params: any) =>
+                                        parseNumber(params.newValue),
+                                    cellClass: numericEditableClass
+                                },
+                                {
+                                    headerName: "PROFIT UNITAIRE",
+                                    width: 94,
+                                    minWidth: 82,
+                                    cellClass: calculatedClass,
+                                    valueGetter:
+                                        (params: any) =>
+                                            getUnitProfit(params).toFixed(2)
+                                },
+                                {
+                                    headerName: "PROFIT TOTAL",
+                                    width: 94,
+                                    minWidth: 82,
+                                    cellClass: calculatedClass,
+                                    valueGetter:
+                                        (params: any) =>
+                                            getProfit(
+                                                params,
+                                                matrix.rooms
+                                            ).toFixed(2)
+                                },
+                                {
+                                    headerName: "VENDANT UNITAIRE",
+                                    width: 102,
+                                    minWidth: 90,
+                                    cellClass: calculatedClass,
+                                    valueGetter:
+                                        (params: any) =>
+                                            getUnitSellPrice(params).toFixed(2)
+                                },
+                                {
+                                    headerName: "VENDANT TOTAL",
+                                    width: 100,
+                                    minWidth: 88,
+                                    cellClass: [
+                                        "calculated-cell",
+                                        "numeric-cell",
+                                        "total-cell"
+                                    ],
+                                    valueGetter:
+                                        (params: any) =>
+                                            getSellPrice(
+                                                params,
+                                                matrix.rooms
+                                            ).toFixed(2)
+                                }
+                            ]
                         },
 
                         {
-                            field: "grout_color",
-                            headerName: "COULIS",
-                            width: 90,
-                            minWidth: 80,
-                            cellClass: "calculated-cell"
-                        },
-
-                        {
-                            field: "loss_percent",
-                            headerName: "PERTE EN %",
-                            width: 78,
-                            minWidth: 70,
-                            editable: true,
-                            valueParser: (params: any) =>
-                                parseNumber(params.newValue),
-                            cellClass: numericEditableClass
-                        },
-
-                        {
-                            field: "purchase_price",
-                            headerName: "COST",
-                            width: 95,
-                            minWidth: 82,
-                            editable: true,
-                            valueParser: (params: any) =>
-                                parseNumber(params.newValue),
-                            valueFormatter: (params: any) =>
-                                formatMoney(params.value),
-                            cellClass: numericEditableClass
-                        },
-
-                        {
-                            field: "profit_percent",
-                            headerName: "PROFIT %",
-                            width: 78,
-                            minWidth: 70,
-                            editable: true,
-                            valueParser: (params: any) =>
-                                parseNumber(params.newValue),
-                            cellClass: numericEditableClass
-                        },
-
-                        {
-                            field: "installation_cost",
-                            headerName: "PRIX UNITAIRES",
-                            width: 85,
-                            minWidth: 78,
-                            editable: true,
-                            valueParser: (params: any) =>
-                                parseNumber(params.newValue),
-                            valueFormatter: (params: any) =>
-                                formatMoney(params.value),
-                            cellClass: numericEditableClass
+                            headerName: "INSTALLATION",
+                            marryChildren: true,
+                            children: [
+                                {
+                                    field: "installation_cost",
+                                    headerName: "UNITAIRE",
+                                    width: 86,
+                                    minWidth: 78,
+                                    editable: true,
+                                    valueParser: (params: any) =>
+                                        parseNumber(params.newValue),
+                                    valueFormatter: (params: any) =>
+                                        formatMoney(params.value),
+                                    cellClass: numericEditableClass
+                                },
+                                {
+                                    headerName: "TOTAL VENDANT",
+                                    width: 104,
+                                    minWidth: 92,
+                                    cellClass: [
+                                        "calculated-cell",
+                                        "numeric-cell",
+                                        "total-cell"
+                                    ],
+                                    valueGetter:
+                                        (params: any) =>
+                                            getInstallationSellTotal(
+                                                params,
+                                                matrix.rooms
+                                            ).toFixed(2)
+                                }
+                            ]
                         }
 
                     ];
-
-
-                    matrix.rooms.forEach(
-
-                        (room: string) => {
-
-                            cols.push(
-
-                                {
-
-                                    field: room,
-
-                                    headerName: room,
-
-                                    width: 82,
-
-                                    minWidth: 72,
-
-                                    editable: true,
-
-                                    valueParser: (params: any) =>
-                                        parseNumber(params.newValue),
-
-                                    cellClass: numericEditableClass
-
-                                }
-
-                            );
-
-                        }
-
-                    );
-
-
-                    cols.push(
-
-                        {
-
-                            headerName: "QTÉ",
-
-                            width: 88,
-
-                            minWidth: 78,
-
-                            cellClass: calculatedClass,
-
-                            valueGetter:
-
-                                (params: any) =>
-
-                                    getQtyTotal(
-                                        params,
-                                        matrix.rooms
-                                    )
-
-                        },
-
-                        {
-
-                            headerName: "QTÉS TOTALES",
-
-                            width: 88,
-
-                            minWidth: 78,
-
-                            cellClass: calculatedClass,
-
-                            valueGetter:
-
-                                (params: any) =>
-
-                                    getQtyWithLoss(
-                                        params,
-                                        matrix.rooms
-                                    ).toFixed(2)
-
-                        },
-
-                        {
-
-                            headerName: "TOTAL MATÉRIEL",
-
-                            width: 108,
-
-                            minWidth: 96,
-
-                            cellClass: calculatedClass,
-
-                            valueGetter:
-
-                                (params: any) =>
-
-                                    getMaterialCost(
-                                        params,
-                                        matrix.rooms
-                                    ).toFixed(2)
-
-                        },
-
-                        {
-
-                            headerName: "PROFIT TOTAL",
-
-                            width: 86,
-
-                            minWidth: 78,
-
-                            cellClass: calculatedClass,
-
-                            valueGetter:
-
-                                (params: any) =>
-
-                                    getProfit(
-                                        params,
-                                        matrix.rooms
-                                    ).toFixed(2)
-
-                        },
-
-                        {
-
-                            headerName: "TOTAL INSTALLATION",
-
-                            width: 104,
-
-                            minWidth: 94,
-
-                            cellClass: calculatedClass,
-
-                            valueGetter:
-
-                                (params: any) =>
-
-                                    getInstallTotal(
-                                        params,
-                                        matrix.rooms
-                                    ).toFixed(2)
-
-                        },
-
-                        {
-
-                            headerName: "TOTAL VENDANT",
-
-                            width: 96,
-
-                            minWidth: 86,
-
-                            cellClass: [
-                                "calculated-cell",
-                                "numeric-cell",
-                                "total-cell"
-                            ],
-
-                            valueGetter:
-
-                                (params: any) =>
-
-                                    getSellPrice(
-                                        params,
-                                        matrix.rooms
-                                    ).toFixed(2)
-
-                        }
-
-                    );
 
 
                     setColumnDefs(

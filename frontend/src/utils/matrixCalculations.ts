@@ -48,6 +48,30 @@ export function getQtyWithLoss(
 }
 
 
+export function getLossQuantity(
+    params: any,
+    rooms: string[]
+) {
+
+    if (!params.data)
+        return 0;
+
+    return (
+        getQtyTotal(
+            params,
+            rooms
+        )
+
+        *
+
+        Number(params.data.loss_percent || 0)
+
+        / 100
+    );
+
+}
+
+
 export function getMaterialCost(
     params: any,
     rooms: string[]
@@ -65,6 +89,44 @@ export function getMaterialCost(
         *
 
         Number(params.data.purchase_price || 0)
+    );
+
+}
+
+
+export function getUnitProfit(
+    params: any
+) {
+
+    if (!params.data)
+        return 0;
+
+    return (
+        Number(params.data.purchase_price || 0)
+
+        *
+
+        Number(params.data.profit_percent || 0)
+
+        / 100
+    );
+
+}
+
+
+export function getUnitSellPrice(
+    params: any
+) {
+
+    if (!params.data)
+        return 0;
+
+    return (
+        Number(params.data.purchase_price || 0)
+
+        +
+
+        getUnitProfit(params)
     );
 
 }
@@ -115,6 +177,28 @@ export function getInstallTotal(
 
         Number(params.data.installation_cost || 0)
 
+    );
+
+}
+
+
+export function getInstallationSellTotal(
+    params: any,
+    rooms: string[]
+) {
+
+    return (
+        getInstallTotal(
+            params,
+            rooms
+        )
+
+        +
+
+        getProfit(
+            params,
+            rooms
+        )
     );
 
 }
