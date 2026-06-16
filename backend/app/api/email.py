@@ -271,20 +271,21 @@ def send_email(
 
     message.set_content(body)
 
-    if settings.use_ssl:
-        smtp = smtplib.SMTP_SSL(
-            settings.smtp_host,
-            settings.smtp_port,
-            timeout=15
-        )
-    else:
-        smtp = smtplib.SMTP(
-            settings.smtp_host,
-            settings.smtp_port,
-            timeout=15
-        )
-
+    smtp = None
     try:
+        if settings.use_ssl:
+            smtp = smtplib.SMTP_SSL(
+                settings.smtp_host,
+                settings.smtp_port,
+                timeout=15
+            )
+        else:
+            smtp = smtplib.SMTP(
+                settings.smtp_host,
+                settings.smtp_port,
+                timeout=15
+            )
+
         if settings.use_tls and not settings.use_ssl:
             smtp.starttls()
 
@@ -296,8 +297,18 @@ def send_email(
 
         smtp.send_message(message)
 
+    except (smtplib.SMTPException, OSError, TimeoutError) as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Erreur SMTP: {error}"
+        ) from error
+
     finally:
-        smtp.quit()
+        if smtp is not None:
+            try:
+                smtp.quit()
+            except (smtplib.SMTPException, OSError):
+                pass
 
 
 def provider_key(
@@ -763,14 +774,19 @@ def forgot_password(
         ).fetchone()
 
         if row is not None:
-            send_setup_email(
-                db,
-                row.id,
-                row.email,
-                row.full_name,
-                "password_reset"
-            )
-            db.commit()
+            try:
+                send_setup_email(
+                    db,
+                    row.id,
+                    row.email,
+                    row.full_name,
+                    "password_reset"
+                )
+                db.commit()
+
+            except HTTPException:
+                db.rollback()
+                raise
 
         return {
             "message": (
