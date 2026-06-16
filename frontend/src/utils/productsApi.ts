@@ -82,7 +82,7 @@ export type ProductListParams = {
     search: string;
     supplier: string;
     status: "active" | "inactive" | "all";
-    productMenu: "Tous" | "Mapei" | "Prosol" | "Tuile";
+    productMenu: "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile";
 };
 
 

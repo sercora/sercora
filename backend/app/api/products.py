@@ -255,7 +255,7 @@ def get_products(
     status: str = Query("active", pattern="^(active|inactive|all)$"),
     product_menu: str = Query(
         "Tous",
-        pattern="^(Tous|Mapei|Prosol|Tuile)$"
+        pattern="^(Tous|Mapei|Prosol|Schluter|Tuile)$"
     ),
     paged: bool = False
 ):
@@ -326,6 +326,17 @@ def get_products(
                     p.manufacturer_name,
                     supplier_info.supplier_names
                 )) LIKE '%mapei%'
+                """
+            )
+        elif product_menu == "Schluter":
+            filters.append(
+                """
+                lower(concat_ws(
+                    ' ',
+                    p.name,
+                    p.manufacturer_name,
+                    supplier_info.supplier_names
+                )) LIKE '%schluter%'
                 """
             )
         elif product_menu == "Tuile":

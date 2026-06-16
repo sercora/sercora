@@ -484,7 +484,6 @@ function ToolsPage() {
                             <th>Modèle</th>
                             <th>Série</th>
                             <th>Catégorie</th>
-                            <th>Assigné à</th>
                             <th>Chantier</th>
                             <th>État</th>
                             <th>Mis à jour</th>
@@ -505,7 +504,6 @@ function ToolsPage() {
                                     </td>
                                     <td>{tool.serial}</td>
                                     <td>{tool.category}</td>
-                                    <td>{tool.assigned_to || "-"}</td>
                                     <td>{tool.location || "-"}</td>
                                     <td>
                                         <span

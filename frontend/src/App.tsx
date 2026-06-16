@@ -9,7 +9,7 @@ import "./App.css";
 
 
 type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions";
-type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Tuile";
+type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile";
 
 
 const NAV_ITEMS: PageKey[] = [
@@ -24,6 +24,7 @@ const NAV_ITEMS: PageKey[] = [
 const PRODUCT_MENU_ITEMS: ProductMenuKey[] = [
     "Mapei",
     "Prosol",
+    "Schluter",
     "Tuile"
 ];
 

@@ -28,7 +28,7 @@ import "../styles/products.css";
 
 
 type FilterState = "active" | "inactive" | "all";
-type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Tuile";
+type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile";
 type PageSize = 10 | 20 | 50 | "all";
 
 
@@ -263,6 +263,9 @@ function matchesProductMenu(
 
     if (productMenu === "Mapei")
         return searchableText.includes("mapei");
+
+    if (productMenu === "Schluter")
+        return searchableText.includes("schluter");
 
     if (productMenu === "Tuile")
         return (product.product_type_name || "").toLowerCase() === "tuile";
