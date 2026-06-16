@@ -35,6 +35,7 @@ class UserCreate(BaseModel):
     username: str
     full_name: str
     email: str | None = None
+    phone_number: str | None = None
     role: UserRole
     password: str
     active: bool = True
@@ -44,6 +45,7 @@ class UserUpdate(BaseModel):
     username: str | None = None
     full_name: str | None = None
     email: str | None = None
+    phone_number: str | None = None
     role: UserRole | None = None
     password: str | None = None
     active: bool | None = None
@@ -52,6 +54,7 @@ class UserUpdate(BaseModel):
 class ProfileUpdate(BaseModel):
     full_name: str
     email: str | None = None
+    phone_number: str | None = None
     current_password: str | None = None
     new_password: str | None = None
 
@@ -180,6 +183,7 @@ def user_payload(row):
         "username": values["username"],
         "full_name": values["full_name"],
         "email": values["email"],
+        "phone_number": values["phone_number"],
         "role": values["role"],
         "active": values["active"],
         "must_change_password": values["must_change_password"],
@@ -214,6 +218,14 @@ def ensure_user_columns(db):
             """
         )
     )
+    db.execute(
+        text(
+            """
+            ALTER TABLE app_user
+            ADD COLUMN IF NOT EXISTS phone_number VARCHAR(40)
+            """
+        )
+    )
     db.commit()
 
 
@@ -232,6 +244,7 @@ def get_user_by_id(
                 username,
                 full_name,
                 email,
+                phone_number,
                 role,
                 active,
                 must_change_password,
@@ -273,6 +286,7 @@ def ensure_default_admin(db):
                 username,
                 full_name,
                 email,
+                phone_number,
                 role,
                 password_hash,
                 active,
@@ -282,6 +296,7 @@ def ensure_default_admin(db):
                 :username,
                 :full_name,
                 :email,
+                :phone_number,
                 'admin',
                 :password_hash,
                 TRUE,
@@ -293,6 +308,7 @@ def ensure_default_admin(db):
             "username": DEFAULT_ADMIN_USERNAME,
             "full_name": "Administrateur Sercora",
             "email": None,
+            "phone_number": None,
             "password_hash": password_hash(DEFAULT_ADMIN_PASSWORD)
         }
     )
@@ -324,6 +340,7 @@ def get_current_user(
                     username,
                     full_name,
                     email,
+                    phone_number,
                     role,
                     active,
                     must_change_password,
@@ -376,6 +393,7 @@ def login(request: LoginRequest):
                     username,
                     full_name,
                     email,
+                    phone_number,
                     role,
                     password_hash,
                     active,
@@ -423,6 +441,7 @@ def login(request: LoginRequest):
                     username,
                     full_name,
                     email,
+                    phone_number,
                     role,
                     active,
                     must_change_password,
@@ -464,7 +483,8 @@ def update_profile(
         values = {
             "id": user["id"],
             "full_name": profile.full_name.strip(),
-            "email": (profile.email or "").strip() or None
+            "email": (profile.email or "").strip() or None,
+            "phone_number": (profile.phone_number or "").strip() or None
         }
         password_sql = ""
 
@@ -504,6 +524,7 @@ def update_profile(
                 SET
                     full_name = :full_name,
                     email = :email,
+                    phone_number = :phone_number,
                     """ + password_sql + """
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = :id
@@ -534,6 +555,7 @@ def get_users(_admin=Depends(require_admin)):
                     username,
                     full_name,
                     email,
+                    phone_number,
                     role,
                     active,
                     must_change_password,
@@ -572,6 +594,7 @@ def create_user(
                         username,
                         full_name,
                         email,
+                        phone_number,
                         role,
                         password_hash,
                         active,
@@ -581,6 +604,7 @@ def create_user(
                         :username,
                         :full_name,
                         :email,
+                        :phone_number,
                         :role,
                         :password_hash,
                         :active,
@@ -593,6 +617,7 @@ def create_user(
                     "username": user.username.strip(),
                     "full_name": user.full_name.strip(),
                     "email": (user.email or "").strip() or None,
+                    "phone_number": (user.phone_number or "").strip() or None,
                     "role": user.role,
                     "password_hash": password_hash(user.password),
                     "active": user.active
@@ -645,6 +670,7 @@ def update_user(
             "username": user.username,
             "full_name": user.full_name,
             "email": user.email,
+            "phone_number": user.phone_number,
             "role": user.role,
             "active": user.active
         }
@@ -666,6 +692,7 @@ def update_user(
                         username = COALESCE(:username, username),
                         full_name = COALESCE(:full_name, full_name),
                         email = :email,
+                        phone_number = :phone_number,
                         role = COALESCE(:role, role),
                         active = COALESCE(:active, active),
                         """ + password_sql + """

@@ -34,6 +34,7 @@ const EMPTY_USER: UserInput = {
     username: "",
     full_name: "",
     email: null,
+    phone_number: null,
     role: "execution",
     active: true
 };
@@ -134,6 +135,7 @@ function UsersPage({
                 username: user.username,
                 full_name: user.full_name,
                 email: user.email,
+                phone_number: user.phone_number,
                 role: user.role,
                 active: user.active
             }
@@ -158,7 +160,8 @@ function UsersPage({
             ...form,
             username: form.username.trim(),
             full_name: form.full_name.trim(),
-            email: (form.email || "").trim() || null
+            email: (form.email || "").trim() || null,
+            phone_number: (form.phone_number || "").trim() || null
         };
 
         try {
@@ -213,7 +216,8 @@ function UsersPage({
             ...form,
             username: form.username.trim(),
             full_name: form.full_name.trim(),
-            email: (form.email || "").trim() || null
+            email: (form.email || "").trim() || null,
+            phone_number: (form.phone_number || "").trim() || null
         };
 
         try {
@@ -375,6 +379,7 @@ function UsersPage({
                                 <tr>
                                     <th>Usager</th>
                                     <th>Nom</th>
+                                    <th>Téléphone</th>
                                     <th>Role</th>
                                     <th>Etat</th>
                                     <th>Création</th>
@@ -397,6 +402,7 @@ function UsersPage({
                                         >
                                             <td>{user.username}</td>
                                             <td>{user.full_name}</td>
+                                            <td>{user.phone_number || "-"}</td>
                                             <td>{user.role}</td>
                                             <td>
                                                 {user.active ? "Actif" : "Inactif"}
@@ -467,6 +473,23 @@ function UsersPage({
                                 {
                                     ...form,
                                     email: event.target.value
+                                }
+                            )
+                        }
+                    />
+                </label>
+
+                <label className="field-stack">
+                    <span>Téléphone</span>
+                    <input
+                        value={form.phone_number || ""}
+                        type="tel"
+                        placeholder="+15145551212"
+                        onChange={
+                            event => setForm(
+                                {
+                                    ...form,
+                                    phone_number: event.target.value
                                 }
                             )
                         }

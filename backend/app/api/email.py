@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from app.api.auth import require_admin, password_hash
+from app.api.auth import ensure_user_columns, require_admin, password_hash
 from app.database.database import SessionLocal
 
 
@@ -40,10 +40,21 @@ class EmailTestRequest(BaseModel):
     recipient: str
 
 
+class SmsSettingsInput(BaseModel):
+    provider_name: str = ""
+    account_id: str | None = None
+    api_key: str | None = None
+    api_secret: str | None = None
+    from_number: str | None = None
+    alert_minutes_before: int = 30
+    active: bool = False
+
+
 class InviteUserRequest(BaseModel):
     username: str
     full_name: str
     email: str
+    phone_number: str | None = None
     role: UserRole
     active: bool = True
 
@@ -100,6 +111,53 @@ def settings_payload(row):
     }
 
 
+def sms_settings_payload(row):
+
+    if row is None:
+        return {
+            "provider_name": "",
+            "account_id": "",
+            "api_key": "",
+            "from_number": "",
+            "alert_minutes_before": 30,
+            "active": False,
+            "secret_configured": False
+        }
+
+    return {
+        "provider_name": row.provider_name or "",
+        "account_id": row.account_id or "",
+        "api_key": row.api_key or "",
+        "from_number": row.from_number or "",
+        "alert_minutes_before": row.alert_minutes_before or 30,
+        "active": row.active,
+        "secret_configured": bool(row.api_secret)
+    }
+
+
+def ensure_sms_settings_table(db):
+
+    db.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS app_sms_settings (
+                id SMALLINT PRIMARY KEY DEFAULT 1,
+                provider_name VARCHAR(80),
+                account_id VARCHAR(255),
+                api_key VARCHAR(255),
+                api_secret TEXT,
+                from_number VARCHAR(40),
+                alert_minutes_before INTEGER DEFAULT 30,
+                active BOOLEAN DEFAULT FALSE,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT single_sms_settings CHECK (id = 1)
+            )
+            """
+        )
+    )
+    db.commit()
+
+
 def get_settings_row(db):
 
     return db.execute(
@@ -117,6 +175,28 @@ def get_settings_row(db):
                 use_ssl,
                 active
             FROM app_email_settings
+            WHERE id = 1
+            """
+        )
+    ).fetchone()
+
+
+def get_sms_settings_row(db):
+
+    ensure_sms_settings_table(db)
+
+    return db.execute(
+        text(
+            """
+            SELECT
+                provider_name,
+                account_id,
+                api_key,
+                api_secret,
+                from_number,
+                alert_minutes_before,
+                active
+            FROM app_sms_settings
             WHERE id = 1
             """
         )
@@ -373,6 +453,7 @@ def test_email_settings(
     db = SessionLocal()
 
     try:
+        ensure_user_columns(db)
         settings = require_email_settings(db)
         send_email(
             settings,
@@ -384,6 +465,99 @@ def test_email_settings(
         return {
             "message": "Test email sent"
         }
+
+    finally:
+        db.close()
+
+
+@router.get("/admin/sms-settings")
+def get_sms_settings(_admin=Depends(require_admin)):
+
+    db = SessionLocal()
+
+    try:
+        return sms_settings_payload(
+            get_sms_settings_row(db)
+        )
+
+    finally:
+        db.close()
+
+
+@router.put("/admin/sms-settings")
+def save_sms_settings(
+    settings: SmsSettingsInput,
+    _admin=Depends(require_admin)
+):
+
+    db = SessionLocal()
+
+    try:
+        current = get_sms_settings_row(db)
+        api_secret = (
+            settings.api_secret if settings.api_secret else
+            (current.api_secret if current is not None else None)
+        )
+        alert_minutes_before = max(
+            1,
+            min(
+                1440,
+                settings.alert_minutes_before or 30
+            )
+        )
+
+        db.execute(
+            text(
+                """
+                INSERT INTO app_sms_settings (
+                    id,
+                    provider_name,
+                    account_id,
+                    api_key,
+                    api_secret,
+                    from_number,
+                    alert_minutes_before,
+                    active,
+                    updated_at
+                )
+                VALUES (
+                    1,
+                    :provider_name,
+                    :account_id,
+                    :api_key,
+                    :api_secret,
+                    :from_number,
+                    :alert_minutes_before,
+                    :active,
+                    CURRENT_TIMESTAMP
+                )
+                ON CONFLICT (id)
+                DO UPDATE SET
+                    provider_name = EXCLUDED.provider_name,
+                    account_id = EXCLUDED.account_id,
+                    api_key = EXCLUDED.api_key,
+                    api_secret = EXCLUDED.api_secret,
+                    from_number = EXCLUDED.from_number,
+                    alert_minutes_before = EXCLUDED.alert_minutes_before,
+                    active = EXCLUDED.active,
+                    updated_at = CURRENT_TIMESTAMP
+                """
+            ),
+            {
+                "provider_name": settings.provider_name.strip(),
+                "account_id": (settings.account_id or "").strip() or None,
+                "api_key": (settings.api_key or "").strip() or None,
+                "api_secret": api_secret,
+                "from_number": (settings.from_number or "").strip() or None,
+                "alert_minutes_before": alert_minutes_before,
+                "active": settings.active
+            }
+        )
+        db.commit()
+
+        return sms_settings_payload(
+            get_sms_settings_row(db)
+        )
 
     finally:
         db.close()
@@ -408,6 +582,7 @@ def invite_new_user(
                         username,
                         full_name,
                         email,
+                        phone_number,
                         role,
                         password_hash,
                         active,
@@ -417,6 +592,7 @@ def invite_new_user(
                         :username,
                         :full_name,
                         :email,
+                        :phone_number,
                         :role,
                         :password_hash,
                         :active,
@@ -429,6 +605,7 @@ def invite_new_user(
                     "username": request.username.strip(),
                     "full_name": request.full_name.strip(),
                     "email": request.email.strip(),
+                    "phone_number": (request.phone_number or "").strip() or None,
                     "role": request.role,
                     "password_hash": password_hash(secrets.token_urlsafe(32)),
                     "active": request.active

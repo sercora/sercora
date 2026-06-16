@@ -27,7 +27,7 @@ type ProjectMenuKey = "En cours" | "En Soumission" | "Création";
 type ProjectSubmissionMenuKey = "Nouveaux" | "Approuvés" | "Indécis" | "Refusés" | "Envoyés";
 type EstimateMenuKey = "En cours" | "Envoyées" | "Refusé" | "Template";
 type ToolsMenuKey = "Disponible" | "Déployé";
-type ConfigurationMenuKey = "Courriel" | "Importation";
+type ConfigurationMenuKey = "Courriel" | "VoIP/SMS" | "Importation";
 
 
 const NAV_ITEMS: PageKey[] = [
@@ -92,6 +92,7 @@ const TOOLS_MENU_ITEMS: ToolsMenuKey[] = [
 
 const CONFIGURATION_MENU_ITEMS: ConfigurationMenuKey[] = [
     "Courriel",
+    "VoIP/SMS",
     "Importation"
 ];
 

@@ -6,11 +6,14 @@ import type { FormEvent } from "react";
 
 import type {
     EmailSettings,
+    SmsSettings,
     SercoraUser
 } from "../utils/authApi";
 import {
     fetchEmailSettings,
+    fetchSmsSettings,
     saveEmailSettings,
+    saveSmsSettings,
     testEmailSettings
 } from "../utils/authApi";
 import ImportationPage from "./ImportationPage";
@@ -32,10 +35,21 @@ const EMPTY_SETTINGS: EmailSettings = {
 };
 
 
+const EMPTY_SMS_SETTINGS: SmsSettings = {
+    provider_name: "",
+    account_id: "",
+    api_key: "",
+    api_secret: "",
+    from_number: "",
+    alert_minutes_before: 30,
+    active: false
+};
+
+
 type ConfigurationPageProps = {
     token: string;
     currentUser: SercoraUser;
-    configurationMenu: "Courriel" | "Importation";
+    configurationMenu: "Courriel" | "VoIP/SMS" | "Importation";
 };
 
 
@@ -46,6 +60,7 @@ function ConfigurationPage({
 }: ConfigurationPageProps) {
 
     const [settings, setSettings] = useState<EmailSettings>(EMPTY_SETTINGS);
+    const [smsSettings, setSmsSettings] = useState<SmsSettings>(EMPTY_SMS_SETTINGS);
     const [testRecipient, setTestRecipient] = useState("");
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -60,6 +75,9 @@ function ConfigurationPage({
                 return;
 
             let isMounted = true;
+            setIsLoading(true);
+            setError(null);
+            setStatus(null);
 
             fetchEmailSettings(token)
                 .then(
@@ -85,6 +103,60 @@ function ConfigurationPage({
                             loadError instanceof Error ?
                                 loadError.message :
                                 "Impossible de charger la configuration"
+                        );
+                    }
+                )
+                .finally(
+                    () => {
+                        if (isMounted)
+                            setIsLoading(false);
+                    }
+                );
+
+            return () => {
+                isMounted = false;
+            };
+        },
+        [
+            configurationMenu,
+            token
+        ]
+    );
+
+
+    useEffect(
+        () => {
+            if (configurationMenu !== "VoIP/SMS")
+                return;
+
+            let isMounted = true;
+            setIsLoading(true);
+            setError(null);
+            setStatus(null);
+
+            fetchSmsSettings(token)
+                .then(
+                    fetchedSettings => {
+                        if (!isMounted)
+                            return;
+
+                        setSmsSettings(
+                            {
+                                ...fetchedSettings,
+                                api_secret: ""
+                            }
+                        );
+                    }
+                )
+                .catch(
+                    loadError => {
+                        if (!isMounted)
+                            return;
+
+                        setError(
+                            loadError instanceof Error ?
+                                loadError.message :
+                                "Impossible de charger la configuration SMS"
                         );
                     }
                 )
@@ -134,6 +206,43 @@ function ConfigurationPage({
                 saveError instanceof Error ?
                     saveError.message :
                     "Impossible de sauvegarder le SMTP"
+            );
+
+        } finally {
+            setIsSaving(false);
+        }
+
+    }
+
+
+    async function saveSms(
+        event: FormEvent<HTMLFormElement>
+    ) {
+
+        event.preventDefault();
+        setStatus(null);
+        setError(null);
+        setIsSaving(true);
+
+        try {
+            const savedSettings = await saveSmsSettings(
+                token,
+                smsSettings
+            );
+
+            setSmsSettings(
+                {
+                    ...savedSettings,
+                    api_secret: ""
+                }
+            );
+            setStatus("Configuration VoIP/SMS sauvegardee");
+
+        } catch (saveError) {
+            setError(
+                saveError instanceof Error ?
+                    saveError.message :
+                    "Impossible de sauvegarder la configuration SMS"
             );
 
         } finally {
@@ -196,6 +305,186 @@ function ConfigurationPage({
                 <div className="profile-editor">
                     Chargement...
                 </div>
+            </section>
+        );
+    }
+
+
+    if (configurationMenu === "VoIP/SMS") {
+        return (
+            <section className="auth-page configuration-page">
+                <form
+                    className="profile-editor"
+                    onSubmit={saveSms}
+                >
+                    <div className="auth-section-heading">
+                        <div>
+                            <span className="eyebrow">Configuration</span>
+                            <h2>VoIP/SMS</h2>
+                        </div>
+                        <span className="role-badge">
+                            {smsSettings.active ? "Actif" : "Inactif"}
+                        </span>
+                    </div>
+
+                    <div className="auth-muted">
+                        Ces paramètres serviront aux alertes SMS des estimateurs 30 minutes avant une tombée BSDQ.
+                    </div>
+
+                    <div className="auth-form-grid">
+                        <label className="field-stack">
+                            <span>Fournisseur</span>
+                            <input
+                                value={smsSettings.provider_name}
+                                placeholder="Twilio, VoIP.ms, Telnyx..."
+                                onChange={
+                                    event => setSmsSettings(
+                                        {
+                                            ...smsSettings,
+                                            provider_name: event.target.value
+                                        }
+                                    )
+                                }
+                            />
+                        </label>
+
+                        <label className="field-stack">
+                            <span>No expediteur SMS</span>
+                            <input
+                                value={smsSettings.from_number}
+                                placeholder="+15145551212"
+                                onChange={
+                                    event => setSmsSettings(
+                                        {
+                                            ...smsSettings,
+                                            from_number: event.target.value
+                                        }
+                                    )
+                                }
+                            />
+                        </label>
+                    </div>
+
+                    <div className="auth-form-grid">
+                        <label className="field-stack">
+                            <span>ID compte</span>
+                            <input
+                                value={smsSettings.account_id}
+                                autoComplete="username"
+                                onChange={
+                                    event => setSmsSettings(
+                                        {
+                                            ...smsSettings,
+                                            account_id: event.target.value
+                                        }
+                                    )
+                                }
+                            />
+                        </label>
+
+                        <label className="field-stack">
+                            <span>Cle API</span>
+                            <input
+                                value={smsSettings.api_key}
+                                autoComplete="username"
+                                onChange={
+                                    event => setSmsSettings(
+                                        {
+                                            ...smsSettings,
+                                            api_key: event.target.value
+                                        }
+                                    )
+                                }
+                            />
+                        </label>
+                    </div>
+
+                    <div className="auth-form-grid">
+                        <label className="field-stack">
+                            <span>Secret / token API</span>
+                            <input
+                                value={smsSettings.api_secret || ""}
+                                type="password"
+                                autoComplete="new-password"
+                                placeholder={
+                                    smsSettings.secret_configured ?
+                                        "Laisser vide pour conserver" :
+                                        ""
+                                }
+                                onChange={
+                                    event => setSmsSettings(
+                                        {
+                                            ...smsSettings,
+                                            api_secret: event.target.value
+                                        }
+                                    )
+                                }
+                            />
+                        </label>
+
+                        <label className="field-stack">
+                            <span>Alerte avant depot BSDQ</span>
+                            <input
+                                value={smsSettings.alert_minutes_before}
+                                type="number"
+                                min={1}
+                                max={1440}
+                                onChange={
+                                    event => setSmsSettings(
+                                        {
+                                            ...smsSettings,
+                                            alert_minutes_before: Number(event.target.value)
+                                        }
+                                    )
+                                }
+                            />
+                        </label>
+                    </div>
+
+                    <div className="checkbox-grid">
+                        <label className="checkbox-line">
+                            <input
+                                type="checkbox"
+                                checked={smsSettings.active}
+                                onChange={
+                                    event => setSmsSettings(
+                                        {
+                                            ...smsSettings,
+                                            active: event.target.checked
+                                        }
+                                    )
+                                }
+                            />
+                            <span>Activer les alertes SMS BSDQ</span>
+                        </label>
+                    </div>
+
+                    {error && (
+                        <div className="auth-error">
+                            {error}
+                        </div>
+                    )}
+
+                    {status && (
+                        <div className="auth-success">
+                            {status}
+                        </div>
+                    )}
+
+                    <div className="auth-actions">
+                        <button
+                            type="submit"
+                            className="primary-auth-button"
+                            disabled={
+                                isSaving ||
+                                !smsSettings.provider_name.trim() ||
+                                !smsSettings.from_number.trim()
+                            }
+                        >
+                            {isSaving ? "Sauvegarde..." : "Sauvegarder"}
+                        </button>
+                    </div>
+                </form>
             </section>
         );
     }

@@ -9,6 +9,7 @@ export type SercoraUser = {
     username: string;
     full_name: string;
     email: string | null;
+    phone_number: string | null;
     role: UserRole;
     active: boolean;
     must_change_password: boolean;
@@ -27,6 +28,7 @@ export type UserInput = {
     username: string;
     full_name: string;
     email: string | null;
+    phone_number: string | null;
     role: UserRole;
     password?: string;
     active: boolean;
@@ -36,6 +38,7 @@ export type UserInput = {
 export type ProfileInput = {
     full_name: string;
     email: string | null;
+    phone_number: string | null;
     current_password?: string;
     new_password?: string;
 };
@@ -53,6 +56,18 @@ export type EmailSettings = {
     use_ssl: boolean;
     active: boolean;
     password_configured?: boolean;
+};
+
+
+export type SmsSettings = {
+    provider_name: string;
+    account_id: string;
+    api_key: string;
+    api_secret?: string;
+    from_number: string;
+    alert_minutes_before: number;
+    active: boolean;
+    secret_configured?: boolean;
 };
 
 
@@ -311,6 +326,37 @@ export function testEmailSettings(
                     recipient
                 }
             )
+        }
+    ).then(parseResponse);
+
+}
+
+
+export function fetchSmsSettings(
+    token: string
+): Promise<SmsSettings> {
+
+    return fetch(
+        API_URL + "/admin/sms-settings",
+        {
+            headers: authHeaders(token)
+        }
+    ).then(parseResponse);
+
+}
+
+
+export function saveSmsSettings(
+    token: string,
+    settings: SmsSettings
+): Promise<SmsSettings> {
+
+    return fetch(
+        API_URL + "/admin/sms-settings",
+        {
+            method: "PUT",
+            headers: authHeaders(token),
+            body: JSON.stringify(settings)
         }
     ).then(parseResponse);
 

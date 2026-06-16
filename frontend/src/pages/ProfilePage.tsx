@@ -27,6 +27,7 @@ function ProfilePage({
 
     const [fullName, setFullName] = useState(user.full_name);
     const [email, setEmail] = useState(user.email || "");
+    const [phoneNumber, setPhoneNumber] = useState(user.phone_number || "");
     const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [status, setStatus] = useState<string | null>(null);
@@ -45,7 +46,8 @@ function ProfilePage({
 
         const payload: ProfileInput = {
             full_name: fullName,
-            email: email.trim() || null
+            email: email.trim() || null,
+            phone_number: phoneNumber.trim() || null
         };
 
         if (newPassword) {
@@ -115,6 +117,18 @@ function ProfilePage({
                         type="email"
                         onChange={
                             event => setEmail(event.target.value)
+                        }
+                    />
+                </label>
+
+                <label className="field-stack">
+                    <span>Téléphone</span>
+                    <input
+                        value={phoneNumber}
+                        type="tel"
+                        placeholder="+15145551212"
+                        onChange={
+                            event => setPhoneNumber(event.target.value)
                         }
                     />
                 </label>
