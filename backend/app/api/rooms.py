@@ -119,6 +119,28 @@ def create_room(room: RoomCreate):
         }
     ).fetchone()
 
+    db.execute(
+        text(
+            """
+            INSERT INTO estimate_quantity (
+                estimate_line_id,
+                room_id,
+                quantity
+            )
+            SELECT
+                id,
+                :room_id,
+                0
+            FROM estimate_line
+            WHERE estimate_id = :estimate_id
+            """
+        ),
+        {
+            "room_id": row.id,
+            "estimate_id": room.estimate_id
+        }
+    )
+
     db.commit()
 
     db.close()

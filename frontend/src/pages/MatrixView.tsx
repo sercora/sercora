@@ -20,23 +20,36 @@ import {
 } from "../utils/matrixCalculations";
 
 import {
+    createEstimateLine,
+    createEstimateRoom,
     estimateFileUrl,
     fetchEstimateMatrix,
     fetchEstimateFolders,
+    fetchSurfaceTypes,
     updateEstimateMatrixSummary,
     updateEstimateLine as saveEstimateLine,
     updateEstimateQuantity as saveEstimateQuantity
 } from "../utils/matrixApi";
 import type {
     EstimateFolderItem,
+    EstimateLineInput,
+    EstimateMatrixResponse,
+    EstimateMatrixSummary,
     EstimateMatrixSummaryInput,
-    EstimateMatrixSummary
+    SurfaceType
 } from "../utils/matrixApi";
+import {
+    fetchProductPage
+} from "../utils/productsApi";
+import type {
+    Product
+} from "../utils/productsApi";
 
 import "../styles/grid.css";
 
 
 const LINE_EDITABLE_FIELDS = [
+    "surface_name",
     "loss_percent",
     "purchase_price",
     "profit_percent",
@@ -117,6 +130,7 @@ function MatrixView({
     const [rowData, setRowData] = useState<any[]>([]);
 
     const [zoom, setZoom] = useState("100");
+    const [surfaceTypes, setSurfaceTypes] = useState<SurfaceType[]>([]);
     const [matrixSummary, setMatrixSummary] = useState<EstimateMatrixSummary | null>(null);
     const [summaryForm, setSummaryForm] = useState({
         used_hourly_rate: "",
@@ -127,6 +141,12 @@ function MatrixView({
     });
     const [isSummarySaving, setIsSummarySaving] = useState(false);
     const [summaryStatus, setSummaryStatus] = useState("");
+    const [newRoomName, setNewRoomName] = useState("");
+    const [productSearch, setProductSearch] = useState("");
+    const [productResults, setProductResults] = useState<Product[]>([]);
+    const [selectedProductId, setSelectedProductId] = useState("");
+    const [matrixActionStatus, setMatrixActionStatus] = useState("");
+    const [isMatrixActionLoading, setIsMatrixActionLoading] = useState(false);
     const [folderPath, setFolderPath] = useState("");
     const [rootName, setRootName] = useState("");
     const [folderItems, setFolderItems] = useState<EstimateFolderItem[]>([]);
@@ -197,6 +217,19 @@ function MatrixView({
         [
             folderPath,
             rootName
+        ]
+    );
+
+
+    const selectedProduct = useMemo(
+        () =>
+            productResults.find(
+                product =>
+                    String(product.id) === selectedProductId
+            ) || null,
+        [
+            productResults,
+            selectedProductId
         ]
     );
 
@@ -309,6 +342,11 @@ function MatrixView({
             params.data.line_id,
             {
 
+                surface_type_id:
+                    parseNumber(
+                        params.data.surface_type_id
+                    ),
+
                 loss_percent:
                     parseNumber(
                         params.data.loss_percent
@@ -355,10 +393,33 @@ function MatrixView({
         )
             return;
 
-        params.data[field] =
-            parseNumber(
-                params.newValue
-            );
+        if (field === "surface_name") {
+
+            const surfaceType =
+                surfaceTypes.find(
+                    surface =>
+                        surface.name === params.newValue
+                );
+
+            if (!surfaceType) {
+                refreshGrid();
+                return;
+            }
+
+            params.data.surface_name =
+                surfaceType.name;
+
+            params.data.surface_type_id =
+                surfaceType.id;
+
+        } else {
+
+            params.data[field] =
+                parseNumber(
+                    params.newValue
+                );
+
+        }
 
         refreshGrid();
 
@@ -571,6 +632,388 @@ function MatrixView({
     }
 
 
+    function buildMatrixRows(
+        matrix: EstimateMatrixResponse
+    ) {
+
+        return matrix.lines.map(
+
+            (line: any) => {
+
+                const row: any = {
+
+                    line_id:
+                        line.line_id,
+
+                    surface_type_id:
+                        line.surface_type_id,
+
+                    surface_name:
+                        line.surface_name,
+
+                    product_name:
+                        line.product_name,
+
+                    manufacturer_name:
+                        line.manufacturer_name,
+
+                    unit_name:
+                        line.unit_name,
+
+                    grout_color:
+                        line.grout_color,
+
+                    loss_percent:
+                        line.loss_percent,
+
+                    purchase_price:
+                        line.purchase_price,
+
+                    profit_percent:
+                        line.profit_percent,
+
+                    installation_cost:
+                        line.installation_cost
+
+                };
+
+                matrix.rooms.forEach(
+
+                    (room: string) => {
+
+                        row[room] =
+                            line.quantities[room]?.quantity ?? 0;
+
+                        row[
+                            room + "_id"
+                        ] =
+                            line.quantities[room]?.id;
+
+                    }
+
+                );
+
+                return row;
+
+            }
+
+        );
+
+    }
+
+
+    function buildMatrixColumns(
+        matrix: EstimateMatrixResponse,
+        surfaceRows: SurfaceType[]
+    ) {
+
+        const numericEditableClass = [
+            "editable-cell",
+            "numeric-cell"
+        ];
+
+        const calculatedClass = [
+            "calculated-cell",
+            "numeric-cell"
+        ];
+
+        const surfaceNames =
+            surfaceRows.map(
+                surface =>
+                    surface.name
+            );
+
+        const roomColumns = matrix.rooms.map(
+
+            (room: string) => ({
+
+                field: room,
+
+                headerName: room,
+
+                width: 82,
+
+                minWidth: 72,
+
+                editable: true,
+
+                valueParser: (params: any) =>
+                    parseNumber(params.newValue),
+
+                cellClass: numericEditableClass
+
+            })
+
+        );
+
+        return [
+
+            {
+                headerName: "FINI",
+                marryChildren: true,
+                children: [
+                    {
+                        field: "surface_name",
+                        headerName: "SURFACE",
+                        width: 120,
+                        minWidth: 96,
+                        pinned: "left",
+                        editable: true,
+                        cellEditor: "agSelectCellEditor",
+                        cellEditorParams: {
+                            values: surfaceNames
+                        },
+                        cellClass: "editable-cell"
+                    },
+                    {
+                        field: "product_name",
+                        headerName: "DESCRIPTION",
+                        width: 300,
+                        minWidth: 220,
+                        pinned: "left",
+                        cellClass: getSupplierClass
+                    },
+                    {
+                        field: "unit_name",
+                        headerName: "UNITÉ DE MESURE",
+                        width: 92,
+                        minWidth: 72,
+                        cellClass: "calculated-cell"
+                    },
+                    {
+                        field: "grout_color",
+                        headerName: "COULIS",
+                        width: 88,
+                        minWidth: 72,
+                        cellClass: "calculated-cell"
+                    }
+                ]
+            },
+
+            {
+                headerName: "TAKE OFF",
+                marryChildren: true,
+                children: roomColumns
+            },
+
+            {
+                headerName: "MATÉRIEL",
+                marryChildren: true,
+                children: [
+                    {
+                        headerName: "TOTAL",
+                        width: 82,
+                        minWidth: 72,
+                        cellClass: calculatedClass,
+                        valueGetter:
+                            (params: any) =>
+                                getQtyTotal(
+                                    params,
+                                    matrix.rooms
+                                )
+                    },
+                    {
+                        field: "loss_percent",
+                        headerName: "PERTE EN %",
+                        width: 86,
+                        minWidth: 74,
+                        editable: true,
+                        valueParser: (params: any) =>
+                            parseNumber(params.newValue),
+                        cellClass: numericEditableClass
+                    },
+                    {
+                        headerName: "PERTE EN UNITÉ",
+                        width: 96,
+                        minWidth: 84,
+                        cellClass: calculatedClass,
+                        valueGetter:
+                            (params: any) =>
+                                getLossQuantity(
+                                    params,
+                                    matrix.rooms
+                                ).toFixed(2)
+                    },
+                    {
+                        headerName: "QUANTITÉ AVEC PERTE",
+                        width: 112,
+                        minWidth: 96,
+                        cellClass: calculatedClass,
+                        valueGetter:
+                            (params: any) =>
+                                getQtyWithLoss(
+                                    params,
+                                    matrix.rooms
+                                ).toFixed(2)
+                    },
+                    {
+                        field: "purchase_price",
+                        headerName: "COUTANT",
+                        width: 86,
+                        minWidth: 76,
+                        editable: true,
+                        valueParser: (params: any) =>
+                            parseNumber(params.newValue),
+                        valueFormatter: (params: any) =>
+                            formatMoney(params.value),
+                        cellClass: numericEditableClass
+                    },
+                    {
+                        field: "profit_percent",
+                        headerName: "PROFIT %",
+                        width: 78,
+                        minWidth: 70,
+                        editable: true,
+                        valueParser: (params: any) =>
+                            parseNumber(params.newValue),
+                        cellClass: numericEditableClass
+                    },
+                    {
+                        headerName: "PROFIT UNITAIRE",
+                        width: 94,
+                        minWidth: 82,
+                        cellClass: calculatedClass,
+                        valueGetter:
+                            (params: any) =>
+                                getUnitProfit(params).toFixed(2)
+                    },
+                    {
+                        headerName: "PROFIT TOTAL",
+                        width: 94,
+                        minWidth: 82,
+                        cellClass: calculatedClass,
+                        valueGetter:
+                            (params: any) =>
+                                getProfit(
+                                    params,
+                                    matrix.rooms
+                                ).toFixed(2)
+                    },
+                    {
+                        headerName: "VENDANT UNITAIRE",
+                        width: 102,
+                        minWidth: 90,
+                        cellClass: calculatedClass,
+                        valueGetter:
+                            (params: any) =>
+                                getUnitSellPrice(params).toFixed(2)
+                    },
+                    {
+                        headerName: "VENDANT TOTAL",
+                        width: 100,
+                        minWidth: 88,
+                        cellClass: [
+                            "calculated-cell",
+                            "numeric-cell",
+                            "total-cell"
+                        ],
+                        valueGetter:
+                            (params: any) =>
+                                getSellPrice(
+                                    params,
+                                    matrix.rooms
+                                ).toFixed(2)
+                    }
+                ]
+            },
+
+            {
+                headerName: "INSTALLATION",
+                marryChildren: true,
+                children: [
+                    {
+                        field: "installation_cost",
+                        headerName: "UNITAIRE",
+                        width: 86,
+                        minWidth: 78,
+                        editable: true,
+                        valueParser: (params: any) =>
+                            parseNumber(params.newValue),
+                        valueFormatter: (params: any) =>
+                            formatMoney(params.value),
+                        cellClass: numericEditableClass
+                    },
+                    {
+                        headerName: "TOTAL VENDANT",
+                        width: 104,
+                        minWidth: 92,
+                        cellClass: [
+                            "calculated-cell",
+                            "numeric-cell",
+                            "total-cell"
+                        ],
+                        valueGetter:
+                            (params: any) =>
+                                getInstallationSellTotal(
+                                    params,
+                                    matrix.rooms
+                                ).toFixed(2)
+                    }
+                ]
+            }
+
+        ];
+
+    }
+
+
+    function applyMatrix(
+        matrix: EstimateMatrixResponse,
+        surfaceRows: SurfaceType[]
+    ) {
+
+        setColumnDefs(
+            buildMatrixColumns(
+                matrix,
+                surfaceRows
+            )
+        );
+
+        setMatrixSummary(
+            matrix.summary
+        );
+
+        syncSummaryForm(
+            matrix.summary
+        );
+
+        setRowData(
+            buildMatrixRows(
+                matrix
+            )
+        );
+
+    }
+
+
+    function reloadMatrix() {
+
+        return Promise.all(
+            [
+                fetchEstimateMatrix(),
+                fetchSurfaceTypes()
+            ]
+        )
+
+        .then(
+            ([
+                matrix,
+                surfaceRows
+            ]) => {
+                setSurfaceTypes(
+                    surfaceRows
+                );
+
+                applyMatrix(
+                    matrix,
+                    surfaceRows
+                );
+            }
+        );
+
+    }
+
+
     function saveSummaryBlock() {
 
         if (!matrixSummary)
@@ -599,76 +1042,7 @@ function MatrixView({
                     )
                 );
 
-                return fetchEstimateMatrix();
-            }
-        )
-
-        .then(
-            matrix => {
-                setMatrixSummary(matrix.summary);
-                syncSummaryForm(matrix.summary);
-
-                const rows = matrix.lines.map(
-
-                    (line: any) => {
-
-                        const row: any = {
-
-                            line_id:
-                                line.line_id,
-
-                            surface_name:
-                                line.surface_name,
-
-                            product_name:
-                                line.product_name,
-
-                            manufacturer_name:
-                                line.manufacturer_name,
-
-                            unit_name:
-                                line.unit_name,
-
-                            grout_color:
-                                line.grout_color,
-
-                            loss_percent:
-                                line.loss_percent,
-
-                            purchase_price:
-                                line.purchase_price,
-
-                            profit_percent:
-                                line.profit_percent,
-
-                            installation_cost:
-                                line.installation_cost
-
-                        };
-
-                        matrix.rooms.forEach(
-
-                            (room: string) => {
-
-                                row[room] =
-                                    line.quantities[room]?.quantity ?? 0;
-
-                                row[
-                                    room + "_id"
-                                ] =
-                                    line.quantities[room]?.id;
-
-                            }
-
-                        );
-
-                        return row;
-
-                    }
-
-                );
-
-                setRowData(rows);
+                return reloadMatrix();
             }
         )
 
@@ -703,6 +1077,177 @@ function MatrixView({
     }
 
 
+    function searchProductsForLine() {
+
+        setIsMatrixActionLoading(true);
+        setMatrixActionStatus("");
+
+        fetchProductPage(
+            {
+                limit: 20,
+                offset: 0,
+                search: productSearch.trim(),
+                supplier: "",
+                status: "active",
+                productMenu: "Tous"
+            }
+        )
+
+        .then(
+            response => {
+                setProductResults(response.rows);
+                setSelectedProductId(
+                    response.rows[0] ?
+                        String(response.rows[0].id) :
+                        ""
+                );
+                setMatrixActionStatus(
+                    response.rows.length ?
+                        response.rows.length + " produit(s) trouvé(s)." :
+                        "Aucun produit trouvé."
+                );
+            }
+        )
+
+        .catch(
+            () => {
+                setProductResults([]);
+                setSelectedProductId("");
+                setMatrixActionStatus("Recherche de produit impossible.");
+            }
+        )
+
+        .finally(
+            () => {
+                setIsMatrixActionLoading(false);
+            }
+        );
+
+    }
+
+
+    function addRoom() {
+
+        if (!matrixSummary)
+            return;
+
+        const roomName =
+            newRoomName.trim();
+
+        if (!roomName) {
+            setMatrixActionStatus("Inscrire un nom de local.");
+            return;
+        }
+
+        setIsMatrixActionLoading(true);
+        setMatrixActionStatus("");
+
+        createEstimateRoom(
+            {
+                estimate_id:
+                    matrixSummary.estimate.id,
+                phase_name:
+                    "",
+                floor_name:
+                    "",
+                room_name:
+                    roomName
+            }
+        )
+
+        .then(
+            () => {
+                setNewRoomName("");
+                setMatrixActionStatus("Local ajouté.");
+                return reloadMatrix();
+            }
+        )
+
+        .catch(
+            () => {
+                setMatrixActionStatus("Ajout du local impossible.");
+            }
+        )
+
+        .finally(
+            () => {
+                setIsMatrixActionLoading(false);
+            }
+        );
+
+    }
+
+
+    function addLine() {
+
+        if (!matrixSummary)
+            return;
+
+        if (!selectedProduct) {
+            setMatrixActionStatus("Sélectionner un produit.");
+            return;
+        }
+
+        if (!selectedProduct.default_unit_id) {
+            setMatrixActionStatus("Ce produit n'a pas d'unité par défaut.");
+            return;
+        }
+
+        if (!surfaceTypes.length) {
+            setMatrixActionStatus("Aucune surface active disponible.");
+            return;
+        }
+
+        const line: EstimateLineInput = {
+            estimate_id:
+                matrixSummary.estimate.id,
+            product_id:
+                selectedProduct.id,
+            surface_type_id:
+                surfaceTypes[0].id,
+            unit_id:
+                selectedProduct.default_unit_id,
+            grout_color:
+                selectedProduct.default_grout_color,
+            loss_percent:
+                15,
+            purchase_price:
+                selectedProduct.default_purchase_price ?? 0,
+            profit_percent:
+                matrixSummary.rates.global_profit_percent ?? 20,
+            installation_cost:
+                0
+        };
+
+        setIsMatrixActionLoading(true);
+        setMatrixActionStatus("");
+
+        createEstimateLine(
+            line
+        )
+
+        .then(
+            () => {
+                setMatrixActionStatus("Ligne ajoutée.");
+                return reloadMatrix();
+            }
+        )
+
+        .catch(
+            () => {
+                setMatrixActionStatus("Ajout de la ligne impossible.");
+            }
+        )
+
+        .finally(
+            () => {
+                setIsMatrixActionLoading(false);
+            }
+        );
+
+    }
+
+
     function supplierQuoteRows(
         summary: EstimateMatrixSummary
     ) {
@@ -730,6 +1275,99 @@ function MatrixView({
                 notes: null
             }
         ];
+
+    }
+
+
+    function renderMatrixActions() {
+
+        if (!matrixSummary)
+            return null;
+
+        return (
+            <section className="matrix-action-bar">
+                <div className="matrix-action-group">
+                    <input
+                        type="text"
+                        value={newRoomName}
+                        onChange={
+                            event =>
+                                setNewRoomName(event.target.value)
+                        }
+                        placeholder="Nom du local"
+                    />
+                    <button
+                        type="button"
+                        onClick={addRoom}
+                        disabled={isMatrixActionLoading}
+                    >
+                        Ajouter local
+                    </button>
+                </div>
+
+                <div className="matrix-action-group wide">
+                    <input
+                        type="search"
+                        value={productSearch}
+                        onChange={
+                            event =>
+                                setProductSearch(event.target.value)
+                        }
+                        onKeyDown={
+                            event => {
+                                if (event.key === "Enter")
+                                    searchProductsForLine();
+                            }
+                        }
+                        placeholder="Produit à ajouter"
+                    />
+                    <button
+                        type="button"
+                        onClick={searchProductsForLine}
+                        disabled={isMatrixActionLoading}
+                    >
+                        Chercher
+                    </button>
+                    <select
+                        value={selectedProductId}
+                        onChange={
+                            event =>
+                                setSelectedProductId(event.target.value)
+                        }
+                    >
+                        <option value="">Sélectionner un produit</option>
+                        {productResults.map(
+                            product => (
+                                <option
+                                    key={product.id}
+                                    value={product.id}
+                                >
+                                    {[
+                                        product.manufacturer_name,
+                                        product.name,
+                                        product.size_name,
+                                        product.supplier_product_code
+                                    ].filter(Boolean).join(" - ")}
+                                </option>
+                            )
+                        )}
+                    </select>
+                    <button
+                        type="button"
+                        onClick={addLine}
+                        disabled={isMatrixActionLoading}
+                    >
+                        Ajouter ligne
+                    </button>
+                </div>
+
+                {matrixActionStatus && (
+                    <span className="matrix-action-status">
+                        {matrixActionStatus}
+                    </span>
+                )}
+            </section>
+        );
 
     }
 
@@ -970,330 +1608,7 @@ function MatrixView({
             if (folderStatus)
                 return;
 
-            fetchEstimateMatrix()
-
-            .then(
-
-                matrix => {
-
-                    const numericEditableClass = [
-                        "editable-cell",
-                        "numeric-cell"
-                    ];
-
-                    const calculatedClass = [
-                        "calculated-cell",
-                        "numeric-cell"
-                    ];
-
-                    const roomColumns = matrix.rooms.map(
-
-                        (room: string) => ({
-
-                            field: room,
-
-                            headerName: room,
-
-                            width: 82,
-
-                            minWidth: 72,
-
-                            editable: true,
-
-                            valueParser: (params: any) =>
-                                parseNumber(params.newValue),
-
-                            cellClass: numericEditableClass
-
-                        })
-
-                    );
-
-
-                    const cols: any[] = [
-
-                        {
-                            headerName: "FINI",
-                            marryChildren: true,
-                            children: [
-                                {
-                                    field: "surface_name",
-                                    headerName: "SURFACE",
-                                    width: 120,
-                                    minWidth: 96,
-                                    pinned: "left",
-                                    cellClass: "calculated-cell"
-                                },
-                                {
-                                    field: "product_name",
-                                    headerName: "DESCRIPTION",
-                                    width: 300,
-                                    minWidth: 220,
-                                    pinned: "left",
-                                    cellClass: getSupplierClass
-                                },
-                                {
-                                    field: "unit_name",
-                                    headerName: "UNITÉ DE MESURE",
-                                    width: 92,
-                                    minWidth: 72,
-                                    cellClass: "calculated-cell"
-                                },
-                                {
-                                    field: "grout_color",
-                                    headerName: "COULIS",
-                                    width: 88,
-                                    minWidth: 72,
-                                    cellClass: "calculated-cell"
-                                }
-                            ]
-                        },
-
-                        {
-                            headerName: "TAKE OFF",
-                            marryChildren: true,
-                            children: roomColumns
-                        },
-
-                        {
-                            headerName: "MATÉRIEL",
-                            marryChildren: true,
-                            children: [
-                                {
-                                    headerName: "TOTAL",
-                                    width: 82,
-                                    minWidth: 72,
-                                    cellClass: calculatedClass,
-                                    valueGetter:
-                                        (params: any) =>
-                                            getQtyTotal(
-                                                params,
-                                                matrix.rooms
-                                            )
-                                },
-                                {
-                                    field: "loss_percent",
-                                    headerName: "PERTE EN %",
-                                    width: 86,
-                                    minWidth: 74,
-                                    editable: true,
-                                    valueParser: (params: any) =>
-                                        parseNumber(params.newValue),
-                                    cellClass: numericEditableClass
-                                },
-                                {
-                                    headerName: "PERTE EN UNITÉ",
-                                    width: 96,
-                                    minWidth: 84,
-                                    cellClass: calculatedClass,
-                                    valueGetter:
-                                        (params: any) =>
-                                            getLossQuantity(
-                                                params,
-                                                matrix.rooms
-                                            ).toFixed(2)
-                                },
-                                {
-                                    headerName: "QUANTITÉ AVEC PERTE",
-                                    width: 112,
-                                    minWidth: 96,
-                                    cellClass: calculatedClass,
-                                    valueGetter:
-                                        (params: any) =>
-                                            getQtyWithLoss(
-                                                params,
-                                                matrix.rooms
-                                            ).toFixed(2)
-                                },
-                                {
-                                    field: "purchase_price",
-                                    headerName: "COUTANT",
-                                    width: 86,
-                                    minWidth: 76,
-                                    editable: true,
-                                    valueParser: (params: any) =>
-                                        parseNumber(params.newValue),
-                                    valueFormatter: (params: any) =>
-                                        formatMoney(params.value),
-                                    cellClass: numericEditableClass
-                                },
-                                {
-                                    field: "profit_percent",
-                                    headerName: "PROFIT %",
-                                    width: 78,
-                                    minWidth: 70,
-                                    editable: true,
-                                    valueParser: (params: any) =>
-                                        parseNumber(params.newValue),
-                                    cellClass: numericEditableClass
-                                },
-                                {
-                                    headerName: "PROFIT UNITAIRE",
-                                    width: 94,
-                                    minWidth: 82,
-                                    cellClass: calculatedClass,
-                                    valueGetter:
-                                        (params: any) =>
-                                            getUnitProfit(params).toFixed(2)
-                                },
-                                {
-                                    headerName: "PROFIT TOTAL",
-                                    width: 94,
-                                    minWidth: 82,
-                                    cellClass: calculatedClass,
-                                    valueGetter:
-                                        (params: any) =>
-                                            getProfit(
-                                                params,
-                                                matrix.rooms
-                                            ).toFixed(2)
-                                },
-                                {
-                                    headerName: "VENDANT UNITAIRE",
-                                    width: 102,
-                                    minWidth: 90,
-                                    cellClass: calculatedClass,
-                                    valueGetter:
-                                        (params: any) =>
-                                            getUnitSellPrice(params).toFixed(2)
-                                },
-                                {
-                                    headerName: "VENDANT TOTAL",
-                                    width: 100,
-                                    minWidth: 88,
-                                    cellClass: [
-                                        "calculated-cell",
-                                        "numeric-cell",
-                                        "total-cell"
-                                    ],
-                                    valueGetter:
-                                        (params: any) =>
-                                            getSellPrice(
-                                                params,
-                                                matrix.rooms
-                                            ).toFixed(2)
-                                }
-                            ]
-                        },
-
-                        {
-                            headerName: "INSTALLATION",
-                            marryChildren: true,
-                            children: [
-                                {
-                                    field: "installation_cost",
-                                    headerName: "UNITAIRE",
-                                    width: 86,
-                                    minWidth: 78,
-                                    editable: true,
-                                    valueParser: (params: any) =>
-                                        parseNumber(params.newValue),
-                                    valueFormatter: (params: any) =>
-                                        formatMoney(params.value),
-                                    cellClass: numericEditableClass
-                                },
-                                {
-                                    headerName: "TOTAL VENDANT",
-                                    width: 104,
-                                    minWidth: 92,
-                                    cellClass: [
-                                        "calculated-cell",
-                                        "numeric-cell",
-                                        "total-cell"
-                                    ],
-                                    valueGetter:
-                                        (params: any) =>
-                                            getInstallationSellTotal(
-                                                params,
-                                                matrix.rooms
-                                            ).toFixed(2)
-                                }
-                            ]
-                        }
-
-                    ];
-
-
-                    setColumnDefs(
-                        cols
-                    );
-                    setMatrixSummary(
-                        matrix.summary
-                    );
-                    syncSummaryForm(
-                        matrix.summary
-                    );
-
-
-                    const rows = matrix.lines.map(
-
-                        (line: any) => {
-
-                            const row: any = {
-
-                                line_id:
-                                    line.line_id,
-
-                                surface_name:
-                                    line.surface_name,
-
-                                product_name:
-                                    line.product_name,
-
-                                manufacturer_name:
-                                    line.manufacturer_name,
-
-                                unit_name:
-                                    line.unit_name,
-
-                                grout_color:
-                                    line.grout_color,
-
-                                loss_percent:
-                                    line.loss_percent,
-
-                                purchase_price:
-                                    line.purchase_price,
-
-                                profit_percent:
-                                    line.profit_percent,
-
-                                installation_cost:
-                                    line.installation_cost
-
-                            };
-
-
-                            matrix.rooms.forEach(
-
-                                (room: string) => {
-
-                                    row[room] =
-                                        line.quantities[room]?.quantity ?? 0;
-
-                                    row[
-                                        room + "_id"
-                                    ] =
-                                        line.quantities[room]?.id;
-
-                                }
-
-                            );
-
-                            return row;
-
-                        }
-
-                    );
-
-
-                    setRowData(
-                        rows
-                    );
-
-                }
-
-            );
+            reloadMatrix();
 
         },
 
@@ -1469,6 +1784,8 @@ function MatrixView({
         <div className="matrix-page">
 
             {renderMatrixSummary()}
+
+            {renderMatrixActions()}
 
             <ZoomToolbar
                 zoom={zoom}

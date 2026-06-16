@@ -90,6 +90,36 @@ export type EstimateMatrixResponse = {
 };
 
 
+export type SurfaceType = {
+    id: number;
+    name: string;
+    category: string | null;
+    sort_order: number;
+    active: boolean;
+};
+
+
+export type EstimateRoomInput = {
+    estimate_id: number;
+    phase_name: string;
+    floor_name: string;
+    room_name: string;
+};
+
+
+export type EstimateLineInput = {
+    estimate_id: number;
+    product_id: number;
+    surface_type_id: number;
+    unit_id: number;
+    grout_color: string | null;
+    loss_percent: number;
+    purchase_price: number;
+    profit_percent: number;
+    installation_cost: number;
+};
+
+
 function parseResponse(response: Response) {
 
     if (!response.ok)
@@ -152,6 +182,60 @@ export function fetchEstimateMatrix(): Promise<EstimateMatrixResponse> {
     .then(
         response => response.json()
     );
+
+}
+
+
+export function fetchSurfaceTypes(): Promise<SurfaceType[]> {
+
+    return fetch(
+        API_URL +
+        "/surface-types"
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function createEstimateRoom(
+    room: EstimateRoomInput
+) {
+
+    return fetch(
+        API_URL +
+        "/rooms",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(room)
+        }
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function createEstimateLine(
+    line: EstimateLineInput
+) {
+
+    return fetch(
+        API_URL +
+        "/estimate-lines",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(line)
+        }
+    )
+
+    .then(parseResponse);
 
 }
 
@@ -230,6 +314,7 @@ export function updateEstimateQuantity(
 export function updateEstimateLine(
     lineId: any,
     line: {
+        surface_type_id: number;
         loss_percent: number;
         purchase_price: number;
         profit_percent: number;

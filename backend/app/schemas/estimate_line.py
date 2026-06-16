@@ -17,6 +17,7 @@ class EstimateLineCreate(BaseModel):
 
 
 class EstimateLineUpdate(BaseModel):
+    surface_type_id: int
     loss_percent: float
     purchase_price: float
     profit_percent: float

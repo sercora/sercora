@@ -411,6 +411,138 @@
 }
 
 
+.matrix-action-bar {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    flex: 0 0 auto;
+
+    min-width: 0;
+
+    padding: 8px 12px;
+
+    border-bottom: 1px solid #c9ced6;
+
+    background-color: #eef1f2;
+
+    font-family: Calibri, Arial, sans-serif;
+
+}
+
+
+.matrix-action-group {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    min-width: 0;
+
+}
+
+
+.matrix-action-group.wide {
+
+    flex: 1 1 auto;
+
+}
+
+
+.matrix-action-group input,
+.matrix-action-group select {
+
+    height: 30px;
+
+    min-width: 130px;
+
+    padding: 0 8px;
+
+    border: 1px solid #b9c0ca;
+
+    border-radius: 4px;
+
+    background-color: #ffffff;
+
+    color: #171a1f;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 13px;
+
+}
+
+
+.matrix-action-group.wide input {
+
+    flex: 0 0 220px;
+
+}
+
+
+.matrix-action-group select {
+
+    flex: 1 1 260px;
+
+    min-width: 180px;
+
+}
+
+
+.matrix-action-group button {
+
+    height: 30px;
+
+    padding: 0 10px;
+
+    border: 1px solid #2f6f43;
+
+    border-radius: 4px;
+
+    background-color: #2f6f43;
+
+    color: #ffffff;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    white-space: nowrap;
+
+    cursor: pointer;
+
+}
+
+
+.matrix-action-group button:disabled {
+
+    cursor: default;
+
+    opacity: 0.6;
+
+}
+
+
+.matrix-action-status {
+
+    flex: 0 0 auto;
+
+    color: #5c6670;
+
+    font-size: 12px;
+
+    white-space: nowrap;
+
+}
+
+
 .estimate-folder-page {
 
     background-color: #f4f5f7;

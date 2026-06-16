@@ -151,6 +151,28 @@ def create_estimate_line(line: EstimateLineCreate):
         }
     ).fetchone()
 
+    db.execute(
+        text(
+            """
+            INSERT INTO estimate_quantity (
+                estimate_line_id,
+                room_id,
+                quantity
+            )
+            SELECT
+                :estimate_line_id,
+                id,
+                0
+            FROM room
+            WHERE estimate_id = :estimate_id
+            """
+        ),
+        {
+            "estimate_line_id": row.id,
+            "estimate_id": line.estimate_id
+        }
+    )
+
     db.commit()
 
     db.close()
@@ -174,6 +196,7 @@ def update_estimate_line(
             """
             UPDATE estimate_line
             SET
+                surface_type_id = :surface_type_id,
                 loss_percent = :loss_percent,
                 purchase_price = :purchase_price,
                 profit_percent = :profit_percent,
@@ -185,6 +208,7 @@ def update_estimate_line(
         ),
         {
             "id": line_id,
+            "surface_type_id": line.surface_type_id,
             "loss_percent": line.loss_percent,
             "purchase_price": line.purchase_price,
             "profit_percent": line.profit_percent,

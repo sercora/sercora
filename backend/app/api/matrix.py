@@ -270,6 +270,8 @@ def get_matrix(estimate_id: int):
 
                 l.id AS line_id,
 
+                l.surface_type_id,
+
                 p.name AS product_name,
 
                 p.manufacturer_name,
@@ -305,17 +307,18 @@ def get_matrix(estimate_id: int):
             JOIN unit u
                 ON u.id = l.unit_id
 
-            JOIN estimate_quantity q
+            LEFT JOIN estimate_quantity q
                 ON q.estimate_line_id = l.id
 
-            JOIN room r
+            LEFT JOIN room r
                 ON r.id = q.room_id
+                AND r.estimate_id = l.estimate_id
 
             WHERE l.estimate_id = :estimate_id
 
             ORDER BY
                 l.id,
-                r.room_name
+                r.room_name NULLS LAST
             """
         ),
         {
@@ -334,6 +337,8 @@ def get_matrix(estimate_id: int):
             matrix[line_id] = {
 
                 "line_id": line_id,
+
+                "surface_type_id": row.surface_type_id,
 
                 "product_name": row.product_name,
 
@@ -356,6 +361,9 @@ def get_matrix(estimate_id: int):
                 "quantities": {}
 
             }
+
+        if row.room_name is None:
+            continue
 
         matrix[line_id]["quantities"][row.room_name] = {
 
@@ -381,6 +389,56 @@ def get_matrix(estimate_id: int):
         "lines": list(matrix.values())
 
     }
+
+
+@router.get("/surface-types")
+def get_surface_types():
+
+    db = SessionLocal()
+
+    try:
+        rows = db.execute(
+            text(
+                """
+                SELECT
+                    id,
+                    name,
+                    category,
+                    sort_order,
+                    active
+                FROM surface_type
+                WHERE active = TRUE
+                ORDER BY
+                    CASE
+                        WHEN lower(coalesce(category, '')) LIKE '%plancher%'
+                            OR lower(name) LIKE '%plancher%'
+                            OR lower(name) LIKE '%plinthe%' THEN 1
+                        WHEN lower(coalesce(category, '')) LIKE '%mur%'
+                            OR lower(coalesce(category, '')) LIKE '%vertical%'
+                            OR lower(name) LIKE '%mur%'
+                            OR lower(name) LIKE '%colonne%'
+                            OR lower(name) LIKE '%meuble%' THEN 2
+                        ELSE 3
+                    END,
+                    sort_order,
+                    name
+                """
+            )
+        ).fetchall()
+
+        return [
+            {
+                "id": row.id,
+                "name": row.name,
+                "category": row.category,
+                "sort_order": row.sort_order,
+                "active": row.active
+            }
+            for row in rows
+        ]
+
+    finally:
+        db.close()
 
 
 @router.put("/estimates/{estimate_id}/matrix-summary")
