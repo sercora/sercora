@@ -79,6 +79,25 @@
 }
 
 
+.matrix-toolbar-context {
+
+    margin-left: auto;
+
+    padding: 0 8px;
+
+    color: #5c6670;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    line-height: 26px;
+
+    white-space: nowrap;
+
+}
+
+
 .sercora-grid {
 
     --sercora-zoom: 1;

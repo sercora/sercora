@@ -1,5 +1,6 @@
 type ZoomToolbarProps = {
     zoom: string;
+    contextLabel?: string;
     onFitToScreen: () => void;
     onZoomChange: (zoom: string) => void;
 };
@@ -7,6 +8,7 @@ type ZoomToolbarProps = {
 
 function ZoomToolbar({
     zoom,
+    contextLabel,
     onFitToScreen,
     onZoomChange
 }: ZoomToolbarProps) {
@@ -46,6 +48,12 @@ function ZoomToolbar({
             >
                 150%
             </button>
+
+            {contextLabel && (
+                <span className="matrix-toolbar-context">
+                    {contextLabel}
+                </span>
+            )}
 
         </div>
 

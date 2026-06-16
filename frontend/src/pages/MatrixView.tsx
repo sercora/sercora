@@ -83,7 +83,17 @@ const GRID_LOCALE_TEXT = {
 };
 
 
-function MatrixView() {
+type EstimateMenuKey = "En cours" | "Envoyées" | "Refusées";
+
+
+type MatrixViewProps = {
+    estimateMenu: EstimateMenuKey;
+};
+
+
+function MatrixView({
+    estimateMenu
+}: MatrixViewProps) {
 
     const gridRef = useRef<any>(null);
 
@@ -675,6 +685,7 @@ function MatrixView() {
 
             <ZoomToolbar
                 zoom={zoom}
+                contextLabel={"Soumissions " + estimateMenu.toLowerCase()}
                 onFitToScreen={fitToScreen}
                 onZoomChange={applyZoom}
             />

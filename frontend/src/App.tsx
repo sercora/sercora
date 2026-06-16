@@ -10,6 +10,7 @@ import "./App.css";
 
 type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile";
+type EstimateMenuKey = "En cours" | "Envoyées" | "Refusées";
 
 
 const NAV_ITEMS: PageKey[] = [
@@ -29,6 +30,13 @@ const PRODUCT_MENU_ITEMS: ProductMenuKey[] = [
 ];
 
 
+const ESTIMATE_MENU_ITEMS: EstimateMenuKey[] = [
+    "En cours",
+    "Envoyées",
+    "Refusées"
+];
+
+
 const PAGE_CONTEXT: Record<PageKey, string> = {
     Clients: "Relations et comptes",
     Projets: "Chantiers et suivis",
@@ -42,6 +50,7 @@ function App() {
 
     const [activePage, setActivePage] = useState<PageKey>("Soumissions");
     const [activeProductMenu, setActiveProductMenu] = useState<ProductMenuKey>("Tous");
+    const [activeEstimateMenu, setActiveEstimateMenu] = useState<EstimateMenuKey>("En cours");
 
 
     return (
@@ -66,6 +75,9 @@ function App() {
                         {activePage}
                         {activePage === "Produits" && activeProductMenu !== "Tous" && (
                             " - " + activeProductMenu
+                        )}
+                        {activePage === "Soumissions" && (
+                            " - " + activeEstimateMenu
                         )}
                     </h1>
                 </div>
@@ -114,6 +126,9 @@ function App() {
 
                                             if (item === "Produits")
                                                 setActiveProductMenu("Tous");
+
+                                            if (item === "Soumissions")
+                                                setActiveEstimateMenu("En cours");
                                         }
                                     }
                                 >
@@ -148,6 +163,35 @@ function App() {
                                         )}
                                     </div>
                                 )}
+
+                                {item === "Soumissions" && (
+                                    <div className="nav-submenu">
+                                        {ESTIMATE_MENU_ITEMS.map(
+                                            estimateMenuItem => (
+                                                <button
+                                                    key={estimateMenuItem}
+                                                    type="button"
+                                                    className={
+                                                        (
+                                                            activePage === "Soumissions" &&
+                                                            activeEstimateMenu === estimateMenuItem
+                                                        ) ?
+                                                            "nav-subitem active" :
+                                                            "nav-subitem"
+                                                    }
+                                                    onClick={
+                                                        () => {
+                                                            setActiveEstimateMenu(estimateMenuItem);
+                                                            setActivePage("Soumissions");
+                                                        }
+                                                    }
+                                                >
+                                                    {estimateMenuItem}
+                                                </button>
+                                            )
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )
                     )}
@@ -167,7 +211,10 @@ function App() {
                     )}
 
                     {activePage === "Soumissions" && (
-                        <MatrixView />
+                        <MatrixView
+                            key={activeEstimateMenu}
+                            estimateMenu={activeEstimateMenu}
+                        />
                     )}
                 </main>
 
