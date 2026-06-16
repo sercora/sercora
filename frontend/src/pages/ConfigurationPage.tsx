@@ -375,7 +375,7 @@ function ConfigurationPage({
                     </div>
 
                     <div className="auth-muted">
-                        VoIP.ms: pour un token Bearer, laisse ID compte vide et mets le token dans Cle API ou Secret / token API.
+                        VoIP.ms: ID compte = API Username, Secret / token API = API Password. Le champ Cle API n'est pas utilise pour VoIP.ms.
                     </div>
 
                     <div className="auth-form-grid">
