@@ -394,6 +394,14 @@ def get_matrix(estimate_id: int):
 
                 l.installation_cost,
 
+                l.installation_link_source_line_id,
+
+                l.installation_link_multiplier,
+
+                l.quantity_link_source_line_ids,
+
+                l.quantity_link_multiplier,
+
                 r.id AS room_id,
 
                 r.phase_name,
@@ -490,6 +498,18 @@ def get_matrix(estimate_id: int):
                 "profit_percent": float(row.profit_percent),
 
                 "installation_cost": float(row.installation_cost),
+
+                "installation_link_source_line_id":
+                    row.installation_link_source_line_id,
+
+                "installation_link_multiplier":
+                    float(row.installation_link_multiplier or 1),
+
+                "quantity_link_source_line_ids":
+                    row.quantity_link_source_line_ids or [],
+
+                "quantity_link_multiplier":
+                    float(row.quantity_link_multiplier or 1),
 
                 "quantities": {}
 

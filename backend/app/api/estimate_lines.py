@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
 
@@ -536,7 +538,11 @@ def update_estimate_line(
                 loss_percent = :loss_percent,
                 purchase_price = :purchase_price,
                 profit_percent = :profit_percent,
-                installation_cost = :installation_cost
+                installation_cost = :installation_cost,
+                installation_link_source_line_id = :installation_link_source_line_id,
+                installation_link_multiplier = :installation_link_multiplier,
+                quantity_link_source_line_ids = CAST(:quantity_link_source_line_ids AS JSONB),
+                quantity_link_multiplier = :quantity_link_multiplier
             WHERE
                 id = :id
             RETURNING id
@@ -548,7 +554,15 @@ def update_estimate_line(
             "loss_percent": line.loss_percent,
             "purchase_price": line.purchase_price,
             "profit_percent": line.profit_percent,
-            "installation_cost": line.installation_cost
+            "installation_cost": line.installation_cost,
+            "installation_link_source_line_id":
+                line.installation_link_source_line_id,
+            "installation_link_multiplier":
+                line.installation_link_multiplier,
+            "quantity_link_source_line_ids":
+                json.dumps(line.quantity_link_source_line_ids),
+            "quantity_link_multiplier":
+                line.quantity_link_multiplier
         }
     ).fetchone()
 

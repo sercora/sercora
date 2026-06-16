@@ -227,6 +227,14 @@ CREATE TABLE estimate_line (
 
     installation_cost NUMERIC(12,2),
 
+    installation_link_source_line_id BIGINT REFERENCES estimate_line(id) ON DELETE SET NULL,
+
+    installation_link_multiplier NUMERIC(12,4) DEFAULT 1,
+
+    quantity_link_source_line_ids JSONB DEFAULT '[]'::jsonb,
+
+    quantity_link_multiplier NUMERIC(12,4) DEFAULT 1,
+
     sort_order INTEGER DEFAULT 0,
 
     notes TEXT

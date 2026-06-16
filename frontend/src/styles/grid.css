@@ -1178,6 +1178,134 @@
 }
 
 
+.line-link-modal {
+
+    max-width: 840px;
+
+}
+
+
+.line-link-content {
+
+    display: grid;
+
+    gap: 14px;
+
+    min-height: 0;
+
+}
+
+
+.line-link-section {
+
+    display: grid;
+
+    gap: 10px;
+
+    padding: 12px;
+
+    border: 1px solid #d6dde8;
+
+    border-radius: 8px;
+
+    background-color: #f8fafc;
+
+}
+
+
+.line-link-section h3 {
+
+    margin: 0;
+
+    color: #263647;
+
+    font-size: 0.9rem;
+
+}
+
+
+.line-link-section label {
+
+    display: grid;
+
+    gap: 6px;
+
+    color: #526273;
+
+    font-size: 0.82rem;
+
+    font-weight: 700;
+
+}
+
+
+.line-link-section select,
+.line-link-section input[type="number"] {
+
+    width: 100%;
+
+    min-width: 0;
+
+    padding: 8px 10px;
+
+    border: 1px solid #c9d2df;
+
+    border-radius: 6px;
+
+    background-color: #ffffff;
+
+    color: #17202a;
+
+}
+
+
+.line-link-source-list {
+
+    display: grid;
+
+    gap: 6px;
+
+    max-height: 260px;
+
+    overflow-y: auto;
+
+    padding: 4px;
+
+}
+
+
+.line-link-source-list label {
+
+    grid-template-columns: 18px minmax(0, 1fr);
+
+    align-items: center;
+
+    padding: 6px 8px;
+
+    border: 1px solid #dce3ec;
+
+    border-radius: 6px;
+
+    background-color: #ffffff;
+
+    color: #263647;
+
+    font-weight: 600;
+
+}
+
+
+.line-link-source-list span {
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+}
+
+
 .replace-product-surface,
 .replace-product-position,
 .replace-product-apply-all {
@@ -2015,6 +2143,24 @@ Couleurs fournisseurs
     font-weight: 700;
 
     text-align: center;
+
+}
+
+
+.sercora-grid .linked-line-cell {
+
+    color: #7b4b00;
+
+}
+
+
+.sercora-grid .linked-cell {
+
+    background-color: #fff4cf !important;
+
+    color: #5f3d00;
+
+    font-weight: 700;
 
 }
 

@@ -38,6 +38,7 @@ import {
 import type {
     EstimateFolderItem,
     EstimateLineInput,
+    EstimateLineUpdateInput,
     EstimateMatrixResponse,
     EstimateMatrixSummary,
     EstimateMatrixSummaryInput,
@@ -313,6 +314,13 @@ function MatrixView({
     const [replaceMatchingProduct, setReplaceMatchingProduct] = useState(false);
     const [replaceProductStatus, setReplaceProductStatus] = useState("");
     const [isReplaceProductLoading, setIsReplaceProductLoading] = useState(false);
+    const [linkLine, setLinkLine] = useState<any | null>(null);
+    const [installationLinkSourceId, setInstallationLinkSourceId] = useState("");
+    const [installationLinkMultiplier, setInstallationLinkMultiplier] = useState("1");
+    const [quantityLinkSourceIds, setQuantityLinkSourceIds] = useState<number[]>([]);
+    const [quantityLinkMultiplier, setQuantityLinkMultiplier] = useState("1");
+    const [linkStatus, setLinkStatus] = useState("");
+    const [isLinkSaving, setIsLinkSaving] = useState(false);
     const [matrixActionStatus, setMatrixActionStatus] = useState("");
     const [isMatrixActionLoading, setIsMatrixActionLoading] = useState(false);
     const [units, setUnits] = useState<Unit[]>([]);
@@ -475,9 +483,11 @@ function MatrixView({
     function refreshGrid() {
 
         setRowData(
-            previousRows => [
-                ...previousRows
-            ]
+            previousRows =>
+                applyLinkedRows(
+                    previousRows,
+                    roomColumns
+                )
         );
 
         gridRef.current?.api?.refreshCells(
@@ -609,34 +619,7 @@ function MatrixView({
 
         saveEstimateLine(
             params.data.line_id,
-            {
-
-                surface_type_id:
-                    parseNumber(
-                        params.data.surface_type_id
-                    ),
-
-                loss_percent:
-                    parseNumber(
-                        params.data.loss_percent
-                    ),
-
-                purchase_price:
-                    parseNumber(
-                        params.data.purchase_price
-                    ),
-
-                profit_percent:
-                    parseNumber(
-                        params.data.profit_percent
-                    ),
-
-                installation_cost:
-                    parseNumber(
-                        params.data.installation_cost
-                    )
-
-            }
+            lineUpdatePayload(params.data)
         )
 
         .then(
@@ -787,6 +770,11 @@ function MatrixView({
             return;
         }
 
+        if (field === "link_line") {
+            openLineLinkDialog(params.data);
+            return;
+        }
+
         if (
             field !== "product_name" ||
             !params.data?.product_id
@@ -795,6 +783,122 @@ function MatrixView({
 
         openProductEditor(
             Number(params.data.product_id)
+        );
+
+    }
+
+
+    function openLineLinkDialog(
+        row: any
+    ) {
+
+        setLinkLine(row);
+        setInstallationLinkSourceId(
+            row.installation_link_source_line_id ?
+                String(row.installation_link_source_line_id) :
+                ""
+        );
+        setInstallationLinkMultiplier(
+            String(row.installation_link_multiplier ?? 1)
+        );
+        setQuantityLinkSourceIds(
+            linkedLineIds(row.quantity_link_source_line_ids)
+        );
+        setQuantityLinkMultiplier(
+            String(row.quantity_link_multiplier ?? 1)
+        );
+        setLinkStatus("");
+
+    }
+
+
+    function toggleQuantityLinkSource(
+        lineId: number,
+        checked: boolean
+    ) {
+
+        setQuantityLinkSourceIds(
+            previousIds => {
+                if (checked)
+                    return Array.from(
+                        new Set([
+                            ...previousIds,
+                            lineId
+                        ])
+                    );
+
+                return previousIds.filter(
+                    previousId =>
+                        previousId !== lineId
+                );
+            }
+        );
+
+    }
+
+
+    function saveLineLinks() {
+
+        if (!linkLine)
+            return;
+
+        const targetLineId =
+            Number(linkLine.line_id);
+
+        const installationSourceId =
+            installationLinkSourceId ?
+                Number(installationLinkSourceId) :
+                null;
+
+        if (installationSourceId === targetLineId) {
+            setLinkStatus("La ligne ne peut pas se lier à elle-même.");
+            return;
+        }
+
+        const quantitySourceIds =
+            quantityLinkSourceIds.filter(
+                lineId =>
+                    lineId !== targetLineId
+            );
+
+        setIsLinkSaving(true);
+        setLinkStatus("");
+
+        saveEstimateLine(
+            targetLineId,
+            lineUpdatePayload(
+                linkLine,
+                {
+                    installation_link_source_line_id:
+                        installationSourceId,
+                    installation_link_multiplier:
+                        parseNumber(installationLinkMultiplier || 1),
+                    quantity_link_source_line_ids:
+                        quantitySourceIds,
+                    quantity_link_multiplier:
+                        parseNumber(quantityLinkMultiplier || 1)
+                }
+            )
+        )
+
+        .then(
+            () => {
+                setLinkStatus("Liens sauvegardés.");
+                setLinkLine(null);
+                return reloadMatrix();
+            }
+        )
+
+        .catch(
+            () => {
+                setLinkStatus("Sauvegarde des liens impossible.");
+            }
+        )
+
+        .finally(
+            () => {
+                setIsLinkSaving(false);
+            }
         );
 
     }
@@ -990,6 +1094,144 @@ function MatrixView({
     }
 
 
+    function linkedLineIds(value: any) {
+
+        if (Array.isArray(value))
+            return value.map(Number).filter(Boolean);
+
+        if (typeof value === "string") {
+            try {
+                const parsed = JSON.parse(value);
+
+                if (Array.isArray(parsed))
+                    return parsed.map(Number).filter(Boolean);
+            } catch {
+                return [];
+            }
+        }
+
+        return [];
+
+    }
+
+
+    function lineUpdatePayload(
+        row: any,
+        overrides: Partial<EstimateLineUpdateInput> = {}
+    ): EstimateLineUpdateInput {
+
+        return {
+            surface_type_id:
+                parseNumber(row.surface_type_id),
+            loss_percent:
+                parseNumber(row.loss_percent),
+            purchase_price:
+                parseNumber(row.purchase_price),
+            profit_percent:
+                parseNumber(row.profit_percent),
+            installation_cost:
+                parseNumber(row.installation_cost),
+            installation_link_source_line_id:
+                row.installation_link_source_line_id || null,
+            installation_link_multiplier:
+                parseNumber(row.installation_link_multiplier || 1),
+            quantity_link_source_line_ids:
+                linkedLineIds(row.quantity_link_source_line_ids),
+            quantity_link_multiplier:
+                parseNumber(row.quantity_link_multiplier || 1),
+            ...overrides
+        };
+
+    }
+
+
+    function applyLinkedRows(
+        rows: any[],
+        rooms: EstimateRoomColumn[]
+    ) {
+
+        const nextRows =
+            rows.map(
+                row => ({
+                    ...row,
+                    installation_is_linked: false,
+                    quantity_is_linked: false
+                })
+            );
+
+        const rowsById =
+            new Map<number, any>();
+
+        nextRows.forEach(
+            row => {
+                rowsById.set(
+                    Number(row.line_id),
+                    row
+                );
+            }
+        );
+
+        nextRows.forEach(
+            row => {
+                const sourceId =
+                    Number(row.installation_link_source_line_id || 0);
+
+                const source =
+                    rowsById.get(sourceId);
+
+                if (
+                    source &&
+                    source.line_id !== row.line_id
+                ) {
+                    row.installation_cost =
+                        Number(source.installation_cost || 0) *
+                        Number(row.installation_link_multiplier || 1);
+
+                    row.installation_is_linked = true;
+                }
+
+                const quantitySourceIds =
+                    linkedLineIds(
+                        row.quantity_link_source_line_ids
+                    ).filter(
+                        lineId =>
+                            lineId !== Number(row.line_id)
+                    );
+
+                if (!quantitySourceIds.length)
+                    return;
+
+                rooms.forEach(
+                    room => {
+                        const quantity =
+                            quantitySourceIds.reduce(
+                                (total, lineId) => {
+                                    const quantitySource =
+                                        rowsById.get(lineId);
+
+                                    return total +
+                                        Number(
+                                            quantitySource?.[room.key] || 0
+                                        );
+                                },
+                                0
+                            );
+
+                        row[room.key] =
+                            quantity *
+                            Number(row.quantity_link_multiplier || 1);
+                    }
+                );
+
+                row.quantity_is_linked = true;
+            }
+        );
+
+        return nextRows;
+
+    }
+
+
     function summaryInputPayload(): EstimateMatrixSummaryInput {
 
         return {
@@ -1083,7 +1325,19 @@ function MatrixView({
                         line.profit_percent,
 
                     installation_cost:
-                        line.installation_cost
+                        line.installation_cost,
+
+                    installation_link_source_line_id:
+                        line.installation_link_source_line_id,
+
+                    installation_link_multiplier:
+                        line.installation_link_multiplier ?? 1,
+
+                    quantity_link_source_line_ids:
+                        linkedLineIds(line.quantity_link_source_line_ids),
+
+                    quantity_link_multiplier:
+                        line.quantity_link_multiplier ?? 1
 
                 };
 
@@ -1164,12 +1418,18 @@ function MatrixView({
 
                 minWidth: 72,
 
-                editable: true,
+                editable: (params: any) =>
+                    !params.data?.quantity_is_linked,
 
                 valueParser: (params: any) =>
                     parseNumber(params.newValue),
 
-                cellClass: numericEditableClass,
+                cellClass: (params: any) => [
+                    ...numericEditableClass,
+                    params.data?.quantity_is_linked ?
+                        "linked-cell" :
+                        ""
+                ].filter(Boolean),
 
                 headerClass: "takeoff-room-header"
 
@@ -1348,6 +1608,28 @@ function MatrixView({
                         cellClass: "replace-product-cell"
                     },
                     {
+                        field: "link_line",
+                        headerName: "",
+                        width: 52,
+                        minWidth: 48,
+                        maxWidth: 58,
+                        pinned: "left",
+                        sortable: false,
+                        filter: false,
+                        resizable: false,
+                        suppressMovable: true,
+                        cellRenderer: () => "Lier",
+                        cellClass: (params: any) => [
+                            "replace-product-cell",
+                            (
+                                params.data?.installation_is_linked ||
+                                params.data?.quantity_is_linked
+                            ) ?
+                                "linked-line-cell" :
+                                ""
+                        ].filter(Boolean)
+                    },
+                    {
                         field: "unit_name",
                         headerName: "UNITÉ DE MESURE",
                         width: 92,
@@ -1502,12 +1784,18 @@ function MatrixView({
                         headerName: "UNITAIRE",
                         width: 86,
                         minWidth: 78,
-                        editable: true,
+                        editable: (params: any) =>
+                            !params.data?.installation_is_linked,
                         valueParser: (params: any) =>
                             parseNumber(params.newValue),
                         valueFormatter: (params: any) =>
                             formatMoney(params.value),
-                        cellClass: numericEditableClass
+                        cellClass: (params: any) => [
+                            ...numericEditableClass,
+                            params.data?.installation_is_linked ?
+                                "linked-cell" :
+                                ""
+                        ].filter(Boolean)
                     },
                     {
                         headerName: "TOTAL VENDANT",
@@ -1560,8 +1848,13 @@ function MatrixView({
         );
 
         setRowData(
-            buildMatrixRows(
-                matrix
+            applyLinkedRows(
+                buildMatrixRows(
+                    matrix
+                ),
+                matrixRoomColumns(
+                    matrix
+                )
             )
         );
 
@@ -1851,18 +2144,13 @@ function MatrixView({
             updates.push(
                 saveEstimateLine(
                     replaceLine.line_id,
-                    {
+                    lineUpdatePayload(
+                        replaceLine,
+                        {
                         surface_type_id:
-                            surfaceTypeId,
-                        loss_percent:
-                            parseNumber(replaceLine.loss_percent),
-                        purchase_price:
-                            parseNumber(replaceLine.purchase_price),
-                        profit_percent:
-                            parseNumber(replaceLine.profit_percent),
-                        installation_cost:
-                            parseNumber(replaceLine.installation_cost)
-                    }
+                            surfaceTypeId
+                        }
+                    )
                 )
             );
 
@@ -2972,6 +3260,174 @@ function MatrixView({
     }
 
 
+    function renderLineLinkDialog() {
+
+        if (!linkLine)
+            return null;
+
+        const availableLines =
+            rowData.filter(
+                row =>
+                    Number(row.line_id) !== Number(linkLine.line_id)
+            );
+
+        return (
+            <div className="matrix-modal-backdrop">
+                <section className="matrix-product-modal line-link-modal">
+                    <header>
+                        <h2>Lier la ligne</h2>
+                        <button
+                            type="button"
+                            onClick={
+                                () => {
+                                    setLinkLine(null);
+                                    setLinkStatus("");
+                                }
+                            }
+                        >
+                            Fermer
+                        </button>
+                    </header>
+
+                    <div className="line-link-content">
+                        <div className="replace-product-current">
+                            <span>Ligne {linkLine.line_number}</span>
+                            <strong>{linkLine.product_name}</strong>
+                            <span>{linkLine.surface_name}</span>
+                        </div>
+
+                        <section className="line-link-section">
+                            <h3>Installation unitaire</h3>
+                            <label>
+                                Source
+                                <select
+                                    value={installationLinkSourceId}
+                                    onChange={
+                                        event =>
+                                            setInstallationLinkSourceId(
+                                                event.target.value
+                                            )
+                                    }
+                                >
+                                    <option value="">Aucun lien</option>
+                                    {availableLines.map(
+                                        row => (
+                                            <option
+                                                key={row.line_id}
+                                                value={row.line_id}
+                                            >
+                                                {[
+                                                    "#" + row.line_number,
+                                                    row.surface_name,
+                                                    row.product_name
+                                                ].filter(Boolean).join(" - ")}
+                                            </option>
+                                        )
+                                    )}
+                                </select>
+                            </label>
+
+                            <label>
+                                Multiplicateur
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={installationLinkMultiplier}
+                                    onChange={
+                                        event =>
+                                            setInstallationLinkMultiplier(
+                                                event.target.value
+                                            )
+                                    }
+                                />
+                            </label>
+                        </section>
+
+                        <section className="line-link-section">
+                            <h3>Quantités</h3>
+                            <label>
+                                Multiplicateur
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={quantityLinkMultiplier}
+                                    onChange={
+                                        event =>
+                                            setQuantityLinkMultiplier(
+                                                event.target.value
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <div className="line-link-source-list">
+                                {availableLines.map(
+                                    row => (
+                                        <label key={row.line_id}>
+                                            <input
+                                                type="checkbox"
+                                                checked={
+                                                    quantityLinkSourceIds.includes(
+                                                        Number(row.line_id)
+                                                    )
+                                                }
+                                                onChange={
+                                                    event =>
+                                                        toggleQuantityLinkSource(
+                                                            Number(row.line_id),
+                                                            event.target.checked
+                                                        )
+                                                }
+                                            />
+                                            <span>
+                                                {[
+                                                    "#" + row.line_number,
+                                                    row.surface_name,
+                                                    row.product_name
+                                                ].filter(Boolean).join(" - ")}
+                                            </span>
+                                        </label>
+                                    )
+                                )}
+
+                                {availableLines.length === 0 && (
+                                    <div>Aucune autre ligne disponible.</div>
+                                )}
+                            </div>
+                        </section>
+                    </div>
+
+                    <footer>
+                        {linkStatus && (
+                            <span>{linkStatus}</span>
+                        )}
+                        <button
+                            type="button"
+                            onClick={
+                                () => {
+                                    setLinkLine(null);
+                                    setLinkStatus("");
+                                }
+                            }
+                            disabled={isLinkSaving}
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="button"
+                            onClick={saveLineLinks}
+                            disabled={isLinkSaving}
+                        >
+                            Sauvegarder
+                        </button>
+                    </footer>
+                </section>
+            </div>
+        );
+
+    }
+
+
     function renderTileSurfaceSelector() {
 
         if (!tileSurfaceProduct)
@@ -3652,6 +4108,8 @@ function MatrixView({
             {renderMatrixActions()}
 
             {renderReplaceProductDialog()}
+
+            {renderLineLinkDialog()}
 
             {renderTileSurfaceSelector()}
 

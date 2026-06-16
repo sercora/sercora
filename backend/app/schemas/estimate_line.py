@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 
@@ -23,6 +23,10 @@ class EstimateLineUpdate(BaseModel):
     purchase_price: float
     profit_percent: float
     installation_cost: float
+    installation_link_source_line_id: Optional[int] = None
+    installation_link_multiplier: float = 1
+    quantity_link_source_line_ids: list[int] = Field(default_factory=list)
+    quantity_link_multiplier: float = 1
 
 
 class EstimateLinePositionUpdate(BaseModel):

@@ -149,6 +149,19 @@ export type EstimateLineProductUpdateInput = {
 };
 
 
+export type EstimateLineUpdateInput = {
+    surface_type_id: number;
+    loss_percent: number;
+    purchase_price: number;
+    profit_percent: number;
+    installation_cost: number;
+    installation_link_source_line_id?: number | null;
+    installation_link_multiplier?: number;
+    quantity_link_source_line_ids?: number[];
+    quantity_link_multiplier?: number;
+};
+
+
 function parseResponse(response: Response) {
 
     if (!response.ok)
@@ -401,13 +414,7 @@ export function updateEstimateQuantity(
 
 export function updateEstimateLine(
     lineId: any,
-    line: {
-        surface_type_id: number;
-        loss_percent: number;
-        purchase_price: number;
-        profit_percent: number;
-        installation_cost: number;
-    }
+    line: EstimateLineUpdateInput
 ) {
 
     return fetch(
