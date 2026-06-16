@@ -21,6 +21,7 @@ import "./App.css";
 type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura" | "Olympia";
 type EstimateMenuKey = "En cours" | "Envoyées" | "Refusées";
+type ConfigurationMenuKey = "Courriel" | "Importation";
 
 
 const NAV_ITEMS: PageKey[] = [
@@ -55,6 +56,12 @@ const ESTIMATE_MENU_ITEMS: EstimateMenuKey[] = [
 ];
 
 
+const CONFIGURATION_MENU_ITEMS: ConfigurationMenuKey[] = [
+    "Courriel",
+    "Importation"
+];
+
+
 const PAGE_CONTEXT: Record<PageKey, string> = {
     Clients: "Relations et comptes",
     Projets: "Chantiers et suivis",
@@ -75,6 +82,7 @@ function App() {
     const [activePage, setActivePage] = useState<PageKey>("Soumissions");
     const [activeProductMenu, setActiveProductMenu] = useState<ProductMenuKey>("Tous");
     const [activeEstimateMenu, setActiveEstimateMenu] = useState<EstimateMenuKey>("En cours");
+    const [activeConfigurationMenu, setActiveConfigurationMenu] = useState<ConfigurationMenuKey>("Courriel");
     const [token, setToken] = useState<string | null>(
         () => localStorage.getItem(AUTH_TOKEN_KEY)
     );
@@ -232,6 +240,9 @@ function App() {
                         {activePage === "Soumissions" && (
                             " - " + activeEstimateMenu
                         )}
+                        {activePage === "Configuration" && (
+                            " - " + activeConfigurationMenu
+                        )}
                     </h1>
                 </div>
 
@@ -307,6 +318,9 @@ function App() {
 
                                             if (item === "Soumissions")
                                                 setActiveEstimateMenu("En cours");
+
+                                            if (item === "Configuration")
+                                                setActiveConfigurationMenu("Courriel");
                                         }
                                     }
                                 >
@@ -403,6 +417,35 @@ function App() {
                                         )}
                                     </div>
                                 )}
+
+                                {item === "Configuration" && currentUser.role === "admin" && (
+                                    <div className="nav-submenu">
+                                        {CONFIGURATION_MENU_ITEMS.map(
+                                            configurationMenuItem => (
+                                                <button
+                                                    key={configurationMenuItem}
+                                                    type="button"
+                                                    className={
+                                                        (
+                                                            activePage === "Configuration" &&
+                                                            activeConfigurationMenu === configurationMenuItem
+                                                        ) ?
+                                                            "nav-subitem active" :
+                                                            "nav-subitem"
+                                                    }
+                                                    onClick={
+                                                        () => {
+                                                            setActiveConfigurationMenu(configurationMenuItem);
+                                                            setActivePage("Configuration");
+                                                        }
+                                                    }
+                                                >
+                                                    {configurationMenuItem}
+                                                </button>
+                                            )
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )
                     )}
@@ -447,6 +490,7 @@ function App() {
                         <ConfigurationPage
                             token={token}
                             currentUser={currentUser}
+                            configurationMenu={activeConfigurationMenu}
                         />
                     )}
                 </main>

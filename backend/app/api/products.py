@@ -536,6 +536,56 @@ async def upload_schluter_price_list(request: Request):
             temp_path.unlink()
 
 
+@router.post("/products/centura/price-list")
+async def upload_centura_price_list(request: Request):
+
+    content = await request.body()
+
+    if not content:
+        raise HTTPException(
+            status_code=400,
+            detail="Price list file is empty"
+        )
+
+    temp_path = None
+
+    try:
+        with NamedTemporaryFile(
+            suffix=".xlsx",
+            delete=False
+        ) as temp_file:
+            temp_file.write(content)
+            temp_path = Path(temp_file.name)
+
+        db = SessionLocal()
+
+        try:
+            discount_percent = supplier_discount_percent(
+                db,
+                "Centura"
+            )
+
+        finally:
+            db.close()
+
+        result = import_price_list(
+            temp_path,
+            None,
+            False,
+            "Centura",
+            discount_percent
+        )
+
+        return {
+            **result,
+            "supplier": "Centura"
+        }
+
+    finally:
+        if temp_path and temp_path.exists():
+            temp_path.unlink()
+
+
 @router.post("/products/olympia/price-list")
 async def upload_olympia_price_list(request: Request):
 

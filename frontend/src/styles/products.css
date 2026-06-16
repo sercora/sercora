@@ -142,13 +142,6 @@
 }
 
 
-.products-toolbar .supplier-filter {
-
-    flex-basis: 132px;
-
-}
-
-
 .products-toolbar button {
 
     flex: 0 0 86px;
@@ -167,21 +160,98 @@
 }
 
 
-.products-toolbar .prosol-price-action {
+.products-toolbar .price-list-input {
 
-    flex-basis: 104px;
-
-}
-
-
-.products-toolbar .schluter-upload-action {
-
-    flex-basis: 118px;
+    display: none;
 
 }
 
 
-.products-toolbar .supplier-discount-controls {
+.importation-page {
+
+    width: 100%;
+
+}
+
+
+.importation-panel {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 14px;
+
+    width: min(1040px, 100%);
+
+    margin: 0 auto;
+
+}
+
+
+.importation-row {
+
+    display: grid;
+
+    grid-template-columns: minmax(180px, 1fr) minmax(0, 2.4fr);
+
+    gap: 16px;
+
+    align-items: center;
+
+    padding: 16px;
+
+    border: 1px solid #ccd6cf;
+
+    border-radius: 8px;
+
+    background: #ffffff;
+
+    box-shadow: 0 1px 2px rgba(16, 22, 17, 0.06);
+
+}
+
+
+.importation-row h3 {
+
+    margin: 0 0 4px;
+
+    color: #172016;
+
+    font-size: 18px;
+
+    line-height: 23px;
+
+}
+
+
+.importation-row p {
+
+    margin: 0;
+
+    color: #5c6860;
+
+    font-size: 13px;
+
+    line-height: 18px;
+
+}
+
+
+.importation-actions {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    justify-content: flex-end;
+
+    gap: 8px;
+
+}
+
+
+.discount-field {
 
     display: flex;
 
@@ -189,34 +259,33 @@
 
     gap: 6px;
 
-    flex: 0 0 auto;
+    color: #263028;
+
+    font-size: 13px;
+
+    font-weight: 700;
 
 }
 
 
-.products-toolbar .supplier-discount-controls input {
+.discount-field input {
 
-    flex: 0 0 58px;
+    width: 72px;
 
-    min-width: 58px;
-
-}
-
-
-.products-toolbar .supplier-discount-controls button {
-
-    flex-basis: auto;
-
-    min-width: 82px;
+    height: 36px;
 
     padding: 0 8px;
 
-    white-space: nowrap;
+    border: 1px solid #b9c4bc;
+
+    border-radius: 5px;
+
+    font: inherit;
 
 }
 
 
-.products-toolbar .price-list-input {
+.importation-actions .price-list-input {
 
     display: none;
 

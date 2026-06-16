@@ -13,6 +13,7 @@ import {
     saveEmailSettings,
     testEmailSettings
 } from "../utils/authApi";
+import ImportationPage from "./ImportationPage";
 
 import "../styles/auth.css";
 
@@ -34,12 +35,14 @@ const EMPTY_SETTINGS: EmailSettings = {
 type ConfigurationPageProps = {
     token: string;
     currentUser: SercoraUser;
+    configurationMenu: "Courriel" | "Importation";
 };
 
 
 function ConfigurationPage({
     token,
-    currentUser
+    currentUser,
+    configurationMenu
 }: ConfigurationPageProps) {
 
     const [settings, setSettings] = useState<EmailSettings>(EMPTY_SETTINGS);
@@ -53,6 +56,9 @@ function ConfigurationPage({
 
     useEffect(
         () => {
+            if (configurationMenu !== "Courriel")
+                return;
+
             let isMounted = true;
 
             fetchEmailSettings(token)
@@ -94,6 +100,7 @@ function ConfigurationPage({
             };
         },
         [
+            configurationMenu,
             token
         ]
     );
@@ -169,6 +176,15 @@ function ConfigurationPage({
                 <div className="profile-editor">
                     Acces reserve aux administrateurs.
                 </div>
+            </section>
+        );
+    }
+
+
+    if (configurationMenu === "Importation") {
+        return (
+            <section className="auth-page configuration-page">
+                <ImportationPage />
             </section>
         );
     }

@@ -111,7 +111,7 @@ export type PriceListImportResponse = {
     imported: number;
     failed: number;
     supplier: string;
-    discount_percent: number;
+    discount_percent: number | null;
 };
 
 
@@ -176,6 +176,30 @@ export function uploadSchluterPriceList(
     return fetch(
         API_URL +
         "/products/schluter/price-list",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": (
+                    file.type ||
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            },
+            body: file
+        }
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function uploadCenturaPriceList(
+    file: File
+): Promise<PriceListImportResponse> {
+
+    return fetch(
+        API_URL +
+        "/products/centura/price-list",
         {
             method: "POST",
             headers: {

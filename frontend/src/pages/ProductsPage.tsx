@@ -2,34 +2,24 @@ import {
     useCallback,
     useEffect,
     useMemo,
-    useRef,
     useState
 } from "react";
 import type { ChangeEvent } from "react";
 
 import {
-    applySupplierDiscount,
     createProduct,
     disableProduct,
     fetchProductPage,
-    fetchSupplierDiscounts,
     fetchProductTypes,
     fetchUnits,
-    saveSupplierDiscount,
-    updateProduct,
-    uploadOlympiaPriceList,
-    uploadSchluterPriceList
+    updateProduct
 } from "../utils/productsApi";
 import type {
     Product,
     ProductInput,
-    SupplierDiscount,
     ProductType,
     Unit
 } from "../utils/productsApi";
-import {
-    updateProsolPrices
-} from "../utils/prosolApi";
 
 import "../styles/products.css";
 
@@ -297,25 +287,15 @@ function ProductsPage({
     const [totalProductCount, setTotalProductCount] = useState(0);
     const [productTypes, setProductTypes] = useState<ProductType[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
-    const [supplierDiscounts, setSupplierDiscounts] = useState<SupplierDiscount[]>([]);
-    const [discountInputs, setDiscountInputs] = useState<Record<string, string>>({});
     const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
     const [form, setForm] = useState<ProductInput>(EMPTY_FORM);
     const [query, setQuery] = useState("");
-    const [supplierFilter, setSupplierFilter] = useState("");
     const [showInactiveProducts, setShowInactiveProducts] = useState(false);
     const [pageSize, setPageSize] = useState<PageSize>(20);
     const [currentPage, setCurrentPage] = useState(1);
     const [isEditorVisible, setIsEditorVisible] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [isUpdatingProsolPrices, setIsUpdatingProsolPrices] = useState(false);
-    const [isUploadingSchluter, setIsUploadingSchluter] = useState(false);
-    const [isUploadingOlympia, setIsUploadingOlympia] = useState(false);
-    const [isSavingDiscount, setIsSavingDiscount] = useState(false);
-    const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
     const [statusMessage, setStatusMessage] = useState("");
-    const schluterFileInputRef = useRef<HTMLInputElement | null>(null);
-    const olympiaFileInputRef = useRef<HTMLInputElement | null>(null);
 
 
     useEffect(
@@ -325,21 +305,18 @@ function ProductsPage({
             Promise.all(
                 [
                     fetchProductTypes(),
-                    fetchUnits(),
-                    fetchSupplierDiscounts()
+                    fetchUnits()
                 ]
             )
 
             .then(
                 ([
                     typeRows,
-                    unitRows,
-                    discountRows
+                    unitRows
                 ]) => {
 
                     setProductTypes(typeRows);
                     setUnits(unitRows);
-                    setSupplierDiscounts(discountRows);
 
                     if (typeRows.length > 0) {
                         setForm(
@@ -371,67 +348,12 @@ function ProductsPage({
     );
 
 
-    const discountSupplierName = useMemo(
-        () => {
-            if (
-                productMenu === "Schluter" ||
-                productMenu === "Centura" ||
-                productMenu === "Olympia"
-            )
-                return productMenu;
-
-            return null;
-        },
-        [
-            productMenu
-        ]
-    );
-
-
-    const activeSupplierDiscount = useMemo(
-        () => supplierDiscounts.find(
-            supplierDiscount =>
-                supplierDiscount.supplier_name === discountSupplierName
-        ) || null,
-        [
-            discountSupplierName,
-            supplierDiscounts
-        ]
-    );
-
-
-    const discountInput = useMemo(
-        () => {
-            if (!discountSupplierName)
-                return "";
-
-            if (discountInputs[discountSupplierName] !== undefined)
-                return discountInputs[discountSupplierName];
-
-            if (
-                activeSupplierDiscount?.discount_percent === null ||
-                activeSupplierDiscount?.discount_percent === undefined
-            )
-                return "";
-
-            return String(activeSupplierDiscount.discount_percent);
-        },
-        [
-            activeSupplierDiscount,
-            discountInputs,
-            discountSupplierName
-        ]
-    );
-
-
     const filteredProducts = useMemo(
 
         () => {
 
             const normalizedQuery =
                 query.trim().toLowerCase();
-            const normalizedSupplier =
-                supplierFilter.trim().toLowerCase();
 
             return products.filter(
                 product => {
@@ -441,19 +363,6 @@ function ProductsPage({
                             product,
                             productMenu
                         )
-                    )
-                        return false;
-
-                    if (
-                        normalizedSupplier &&
-                        ![
-                            product.supplier_names,
-                            product.manufacturer_name
-                        ]
-                        .filter(Boolean)
-                        .join(" ")
-                        .toLowerCase()
-                        .includes(normalizedSupplier)
                     )
                         return false;
 
@@ -486,8 +395,7 @@ function ProductsPage({
         [
             productMenu,
             products,
-            query,
-            supplierFilter
+            query
         ]
 
     );
@@ -538,7 +446,7 @@ function ProductsPage({
                     search:
                         query.trim(),
                     supplier:
-                        supplierFilter.trim(),
+                        "",
                     status:
                         showInactiveProducts ?
                             "all" :
@@ -561,7 +469,6 @@ function ProductsPage({
             productMenu,
             query,
             showInactiveProducts,
-            supplierFilter,
             visiblePage
         ]
 
@@ -603,50 +510,6 @@ function ProductsPage({
 
         [
             filteredProducts
-        ]
-
-    );
-
-
-    const supplierOptions = useMemo(
-
-        () => {
-
-            const supplierNames = new Set<string>();
-
-            products.forEach(
-                product => {
-
-                    [
-                        product.supplier_names,
-                        product.manufacturer_name
-                    ]
-                    .filter(Boolean)
-                    .join(",")
-                    .split(",")
-                    .map(
-                        supplier =>
-                            supplier.trim()
-                    )
-                    .filter(Boolean)
-                    .forEach(
-                        supplier =>
-                            supplierNames.add(supplier)
-                    );
-
-                }
-            );
-
-            return Array.from(supplierNames)
-            .sort(
-                (left, right) =>
-                    left.localeCompare(right)
-            );
-
-        },
-
-        [
-            products
         ]
 
     );
@@ -911,291 +774,6 @@ function ProductsPage({
     }
 
 
-    function refreshProsolPrices() {
-
-        setIsUpdatingProsolPrices(true);
-        setStatusMessage("");
-
-        updateProsolPrices()
-
-        .then(
-            response => {
-
-                setStatusMessage(
-                    "Prix Prosol mis à jour: " +
-                    response.updated +
-                    (
-                        response.failed ?
-                            " / erreurs: " + response.failed :
-                            ""
-                    )
-                );
-
-                return loadProducts();
-
-            }
-        )
-
-        .catch(
-            () => {
-
-                setStatusMessage(
-                    "Mise à jour des prix Prosol impossible."
-                );
-
-            }
-        )
-
-        .finally(
-            () => {
-
-                setIsUpdatingProsolPrices(false);
-
-            }
-        );
-
-    }
-
-
-    function saveDiscount() {
-
-        if (!discountSupplierName)
-            return;
-
-        const normalizedDiscount =
-            discountInput.trim().replace(",", ".");
-        const discountPercent =
-            normalizedDiscount ?
-                Number(normalizedDiscount) :
-                null;
-
-        if (
-            discountPercent !== null &&
-            (
-                Number.isNaN(discountPercent) ||
-                discountPercent < 0 ||
-                discountPercent > 100
-            )
-        ) {
-            setStatusMessage(
-                "Rabais invalide."
-            );
-            return;
-        }
-
-        setIsSavingDiscount(true);
-        setStatusMessage("");
-
-        saveSupplierDiscount(
-            discountSupplierName,
-            {
-                discount_percent: discountPercent,
-                active: true
-            }
-        )
-
-        .then(
-            () =>
-                fetchSupplierDiscounts()
-        )
-
-        .then(
-            discountRows => {
-
-                setSupplierDiscounts(discountRows);
-                setStatusMessage(
-                    "Rabais " + discountSupplierName + " sauvegardé."
-                );
-
-            }
-        )
-
-        .catch(
-            () => {
-
-                setStatusMessage(
-                    "Sauvegarde du rabais impossible."
-                );
-
-            }
-        )
-
-        .finally(
-            () => {
-
-                setIsSavingDiscount(false);
-
-            }
-        );
-
-    }
-
-
-    function applyDiscount() {
-
-        if (!discountSupplierName)
-            return;
-
-        setIsApplyingDiscount(true);
-        setStatusMessage("");
-
-        applySupplierDiscount(
-            discountSupplierName
-        )
-
-        .then(
-            response => {
-
-                setStatusMessage(
-                    "Rabais " +
-                    response.supplier +
-                    " appliqué: " +
-                    response.updated +
-                    " produits."
-                );
-
-                return loadProducts();
-
-            }
-        )
-
-        .catch(
-            () => {
-
-                setStatusMessage(
-                    "Application du rabais impossible."
-                );
-
-            }
-        )
-
-        .finally(
-            () => {
-
-                setIsApplyingDiscount(false);
-
-            }
-        );
-
-    }
-
-
-    function uploadSchluterFile(
-        event: ChangeEvent<HTMLInputElement>
-    ) {
-
-        const file =
-            event.target.files?.[0];
-
-        if (!file)
-            return;
-
-        setIsUploadingSchluter(true);
-        setStatusMessage("");
-
-        uploadSchluterPriceList(file)
-
-        .then(
-            response => {
-
-                setStatusMessage(
-                    "Liste Schluter importée: " +
-                    response.imported +
-                    " produits, erreurs: " +
-                    response.failed +
-                    (
-                        response.discount_percent !== null ?
-                            ", rabais: " + response.discount_percent + "%" :
-                            ""
-                    )
-                );
-                setCurrentPage(1);
-
-                return loadProducts();
-
-            }
-        )
-
-        .catch(
-            () => {
-
-                setStatusMessage(
-                    "Import de la liste Schluter impossible."
-                );
-
-            }
-        )
-
-        .finally(
-            () => {
-
-                setIsUploadingSchluter(false);
-                event.target.value = "";
-
-            }
-        );
-
-    }
-
-
-    function uploadOlympiaFile(
-        event: ChangeEvent<HTMLInputElement>
-    ) {
-
-        const file =
-            event.target.files?.[0];
-
-        if (!file)
-            return;
-
-        setIsUploadingOlympia(true);
-        setStatusMessage("");
-
-        uploadOlympiaPriceList(file)
-
-        .then(
-            response => {
-
-                setStatusMessage(
-                    "Liste Olympia importée: " +
-                    response.imported +
-                    " produits, erreurs: " +
-                    response.failed +
-                    (
-                        response.discount_percent !== null ?
-                            ", rabais: " + response.discount_percent + "%" :
-                            ", rabais non configuré"
-                    )
-                );
-                setCurrentPage(1);
-
-                return loadProducts();
-
-            }
-        )
-
-        .catch(
-            () => {
-
-                setStatusMessage(
-                    "Import de la liste Olympia impossible."
-                );
-
-            }
-        )
-
-        .finally(
-            () => {
-
-                setIsUploadingOlympia(false);
-                event.target.value = "";
-
-            }
-        );
-
-    }
-
-
     return (
 
         <section
@@ -1221,29 +799,6 @@ function ProductsPage({
                         }
                         placeholder="Rechercher"
                     />
-
-                    <select
-                        className="supplier-filter"
-                        value={supplierFilter}
-                        onChange={
-                            event => {
-                                setCurrentPage(1);
-                                setSupplierFilter(event.target.value);
-                            }
-                        }
-                    >
-                        <option value="">Fournisseurs</option>
-                        {supplierOptions.map(
-                            supplier => (
-                                <option
-                                    key={supplier}
-                                    value={supplier}
-                                >
-                                    {supplier}
-                                </option>
-                            )
-                        )}
-                    </select>
 
                     <label className="inactive-products-toggle">
                         <input
@@ -1272,106 +827,6 @@ function ProductsPage({
                     >
                         {isEditorVisible ? "Cacher" : "Afficher"}
                     </button>
-
-                    {productMenu === "Prosol" && (
-                        <button
-                            type="button"
-                            className="prosol-price-action"
-                            onClick={refreshProsolPrices}
-                            disabled={isUpdatingProsolPrices}
-                        >
-                            Prix Prosol
-                        </button>
-                    )}
-
-                    {productMenu === "Schluter" && (
-                        <>
-                            <input
-                                ref={schluterFileInputRef}
-                                type="file"
-                                className="price-list-input"
-                                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                onChange={uploadSchluterFile}
-                            />
-
-                            <button
-                                type="button"
-                                className="schluter-upload-action"
-                                onClick={
-                                    () =>
-                                        schluterFileInputRef.current?.click()
-                                }
-                                disabled={isUploadingSchluter}
-                            >
-                                Liste Schluter
-                            </button>
-                        </>
-                    )}
-
-                    {productMenu === "Olympia" && (
-                        <>
-                            <input
-                                ref={olympiaFileInputRef}
-                                type="file"
-                                className="price-list-input"
-                                accept=".pdf,application/pdf"
-                                onChange={uploadOlympiaFile}
-                            />
-
-                            <button
-                                type="button"
-                                className="schluter-upload-action"
-                                onClick={
-                                    () =>
-                                        olympiaFileInputRef.current?.click()
-                                }
-                                disabled={isUploadingOlympia}
-                            >
-                                Liste Olympia
-                            </button>
-                        </>
-                    )}
-
-                    {discountSupplierName && (
-                        <div className="supplier-discount-controls">
-                            <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.01"
-                                value={discountInput}
-                                placeholder="%"
-                                onChange={
-                                    event =>
-                                        discountSupplierName &&
-                                        setDiscountInputs(
-                                            previousInputs => ({
-                                                ...previousInputs,
-                                                [discountSupplierName]:
-                                                    event.target.value
-                                            })
-                                        )
-                                }
-                            />
-                            <button
-                                type="button"
-                                onClick={saveDiscount}
-                                disabled={isSavingDiscount}
-                            >
-                                Sauver rabais
-                            </button>
-                            <button
-                                type="button"
-                                onClick={applyDiscount}
-                                disabled={
-                                    isApplyingDiscount ||
-                                    !discountInput.trim()
-                                }
-                            >
-                                Appliquer
-                            </button>
-                        </div>
-                    )}
 
                 </div>
 
