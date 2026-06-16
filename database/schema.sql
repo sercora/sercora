@@ -205,7 +205,11 @@ CREATE TABLE room (
 
     phase_name VARCHAR(50),
 
+    phase_label VARCHAR(120),
+
     floor_name VARCHAR(50),
+
+    floor_label VARCHAR(120),
 
     room_name VARCHAR(255),
 

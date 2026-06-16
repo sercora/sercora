@@ -309,7 +309,9 @@ function MatrixView({
     const [isSummarySaving, setIsSummarySaving] = useState(false);
     const [summaryStatus, setSummaryStatus] = useState("");
     const [newRoomPhase, setNewRoomPhase] = useState("");
+    const [newRoomPhaseLabel, setNewRoomPhaseLabel] = useState("");
     const [newRoomFloor, setNewRoomFloor] = useState("");
+    const [newRoomFloorLabel, setNewRoomFloorLabel] = useState("");
     const [newRoomName, setNewRoomName] = useState("");
     const [productSearch, setProductSearch] = useState("");
     const [newLinePosition, setNewLinePosition] = useState("");
@@ -346,7 +348,9 @@ function MatrixView({
     const [editingRoom, setEditingRoom] = useState<EstimateRoomColumn | null>(null);
     const [roomEditForm, setRoomEditForm] = useState({
         phase_name: "",
+        phase_label: "",
         floor_name: "",
+        floor_label: "",
         room_name: ""
     });
     const [roomEditStatus, setRoomEditStatus] = useState("");
@@ -466,7 +470,11 @@ function MatrixView({
                     room,
                 phase_name:
                     "",
+                phase_label:
+                    "",
                 floor_name:
+                    "",
+                floor_label:
                     "",
                 room_name:
                     room
@@ -486,6 +494,54 @@ function MatrixView({
             room =>
                 room.key
         );
+
+    }
+
+
+    function labelWithCode(
+        label: string | null | undefined,
+        code: string | null | undefined
+    ) {
+
+        const cleanLabel =
+            String(label || "").trim();
+
+        const cleanCode =
+            String(code || "").trim();
+
+        if (
+            cleanLabel &&
+            cleanCode &&
+            cleanLabel !== cleanCode
+        )
+            return cleanLabel + " (" + cleanCode + ")";
+
+        return cleanLabel || cleanCode;
+
+    }
+
+
+    function paletteClass(
+        prefix: string,
+        value: string | null | undefined
+    ) {
+
+        const text =
+            String(value || "").trim();
+
+        if (!text)
+            return "";
+
+        let hash = 0;
+
+        for (let index = 0; index < text.length; index += 1)
+            hash =
+                (
+                    hash +
+                    text.charCodeAt(index)
+                ) % 6;
+
+        return prefix + "-color-" + hash;
 
     }
 
@@ -1936,10 +1992,18 @@ function MatrixView({
 
                 headerTooltip: [
                     room.phase_name ?
-                        "Phase: " + room.phase_name :
+                        "Phase: " +
+                            labelWithCode(
+                                room.phase_label,
+                                room.phase_name
+                            ) :
                         "",
                     room.floor_name ?
-                        "Étage: " + room.floor_name :
+                        "Étage: " +
+                            labelWithCode(
+                                room.floor_label,
+                                room.floor_name
+                            ) :
                         "",
                     "Local: " + room.room_name
                 ].filter(Boolean).join(" | "),
@@ -1962,13 +2026,23 @@ function MatrixView({
                         ""
                 ].filter(Boolean),
 
-                headerClass: "takeoff-room-header"
+                headerClass: [
+                    "takeoff-room-header",
+                    paletteClass(
+                        "phase",
+                        room.phase_name
+                    ),
+                    paletteClass(
+                        "floor",
+                        room.floor_name
+                    )
+                ].filter(Boolean)
 
             })
 
         );
 
-        const roomGroups = new Map<string, Map<string, any[]>>();
+        const roomGroups = new Map<string, any>();
 
         matrixRoomColumns(
             matrix
@@ -1983,7 +2057,12 @@ function MatrixView({
                 if (!roomGroups.has(phaseName))
                     roomGroups.set(
                         phaseName,
-                        new Map()
+                        {
+                            label:
+                                room.phase_label?.trim() || "",
+                            floors:
+                                new Map()
+                        }
                     );
 
                 const phaseGroup =
@@ -1992,13 +2071,18 @@ function MatrixView({
                 if (!phaseGroup)
                     return;
 
-                if (!phaseGroup.has(floorName))
-                    phaseGroup.set(
+                if (!phaseGroup.floors.has(floorName))
+                    phaseGroup.floors.set(
                         floorName,
-                        []
+                        {
+                            label:
+                                room.floor_label?.trim() || "",
+                            columns:
+                                []
+                        }
                     );
 
-                phaseGroup.get(floorName)?.push(
+                phaseGroup.floors.get(floorName)?.columns.push(
                     flatRoomColumns.find(
                         column =>
                             column.field === room.key
@@ -2012,29 +2096,42 @@ function MatrixView({
         ).map(
             ([
                 phaseName,
-                floorGroups
+                phaseGroup
             ]) => {
                 const floorChildren =
-                    Array.from(
-                        floorGroups.entries()
+                    Array.from<[string, any]>(
+                        phaseGroup.floors.entries() as Iterable<[string, any]>
                     ).map(
                         ([
                             floorName,
-                            columns
+                            floorGroup
                         ]) => {
                             const visibleColumns =
-                                columns.filter(Boolean);
+                                floorGroup.columns.filter(Boolean);
 
                             if (!floorName)
                                 return visibleColumns;
 
                             return {
                                 headerName:
-                                    floorName,
+                                    labelWithCode(
+                                        floorGroup.label,
+                                        floorName
+                                    ),
                                 headerTooltip:
-                                    "Étage: " + floorName,
+                                    "Étage: " +
+                                        labelWithCode(
+                                            floorGroup.label,
+                                            floorName
+                                        ),
                                 headerClass:
-                                    "takeoff-floor-header",
+                                    [
+                                        "takeoff-floor-header",
+                                        paletteClass(
+                                            "floor",
+                                            floorName
+                                        )
+                                    ],
                                 marryChildren:
                                     true,
                                 children:
@@ -2048,11 +2145,24 @@ function MatrixView({
 
                 return {
                     headerName:
-                        phaseName,
+                        labelWithCode(
+                            phaseGroup.label,
+                            phaseName
+                        ),
                     headerTooltip:
-                        "Phase: " + phaseName,
+                        "Phase: " +
+                            labelWithCode(
+                                phaseGroup.label,
+                                phaseName
+                            ),
                     headerClass:
-                        "takeoff-phase-header",
+                        [
+                            "takeoff-phase-header",
+                            paletteClass(
+                                "phase",
+                                phaseName
+                            )
+                        ],
                     marryChildren:
                         true,
                     children:
@@ -2873,8 +2983,12 @@ function MatrixView({
                     matrixSummary.estimate.id,
                 phase_name:
                     newRoomPhase.trim(),
+                phase_label:
+                    newRoomPhaseLabel.trim(),
                 floor_name:
                     newRoomFloor.trim(),
+                floor_label:
+                    newRoomFloorLabel.trim(),
                 room_name:
                     roomName
             }
@@ -2883,6 +2997,8 @@ function MatrixView({
         .then(
             () => {
                 setNewRoomName("");
+                setNewRoomPhaseLabel("");
+                setNewRoomFloorLabel("");
                 setMatrixActionStatus("Local ajouté.");
                 return reloadMatrix();
             }
@@ -2912,8 +3028,12 @@ function MatrixView({
             {
                 phase_name:
                     room.phase_name || "",
+                phase_label:
+                    room.phase_label || "",
                 floor_name:
                     room.floor_name || "",
+                floor_label:
+                    room.floor_label || "",
                 room_name:
                     room.room_name || ""
             }
@@ -2941,8 +3061,12 @@ function MatrixView({
             {
                 phase_name:
                     roomEditForm.phase_name.trim(),
+                phase_label:
+                    roomEditForm.phase_label.trim(),
                 floor_name:
                     roomEditForm.floor_name.trim(),
+                floor_label:
+                    roomEditForm.floor_label.trim(),
                 room_name:
                     roomEditForm.room_name.trim()
             }
@@ -3488,12 +3612,30 @@ function MatrixView({
                     />
                     <input
                         type="text"
+                        value={newRoomPhaseLabel}
+                        onChange={
+                            event =>
+                                setNewRoomPhaseLabel(event.target.value)
+                        }
+                        placeholder="Nom phase"
+                    />
+                    <input
+                        type="text"
                         value={newRoomFloor}
                         onChange={
                             event =>
                                 setNewRoomFloor(event.target.value)
                         }
                         placeholder="Étage"
+                    />
+                    <input
+                        type="text"
+                        value={newRoomFloorLabel}
+                        onChange={
+                            event =>
+                                setNewRoomFloorLabel(event.target.value)
+                        }
+                        placeholder="Nom étage"
                     />
                     <input
                         type="text"
@@ -4209,10 +4351,18 @@ function MatrixView({
                                         <span>
                                             {[
                                                 room.phase_name ?
-                                                    "Phase " + room.phase_name :
+                                                    "Phase " +
+                                                        labelWithCode(
+                                                            room.phase_label,
+                                                            room.phase_name
+                                                        ) :
                                                     "",
                                                 room.floor_name ?
-                                                    "Étage " + room.floor_name :
+                                                    "Étage " +
+                                                        labelWithCode(
+                                                            room.floor_label,
+                                                            room.floor_name
+                                                        ) :
                                                     ""
                                             ].filter(Boolean).join(" | ") ||
                                                 "Sans phase / étage"}
@@ -4242,6 +4392,24 @@ function MatrixView({
                             </label>
 
                             <label>
+                                Nom phase
+                                <input
+                                    type="text"
+                                    value={roomEditForm.phase_label}
+                                    onChange={
+                                        event =>
+                                            setRoomEditForm(
+                                                previousForm => ({
+                                                    ...previousForm,
+                                                    phase_label:
+                                                        event.target.value
+                                                })
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label>
                                 Étage
                                 <input
                                     type="text"
@@ -4252,6 +4420,24 @@ function MatrixView({
                                                 previousForm => ({
                                                     ...previousForm,
                                                     floor_name:
+                                                        event.target.value
+                                                })
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label>
+                                Nom étage
+                                <input
+                                    type="text"
+                                    value={roomEditForm.floor_label}
+                                    onChange={
+                                        event =>
+                                            setRoomEditForm(
+                                                previousForm => ({
+                                                    ...previousForm,
+                                                    floor_label:
                                                         event.target.value
                                                 })
                                             )

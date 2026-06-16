@@ -20,7 +20,9 @@ def get_rooms():
                 id,
                 estimate_id,
                 phase_name,
+                phase_label,
                 floor_name,
+                floor_label,
                 room_name
             FROM room
             ORDER BY
@@ -40,7 +42,9 @@ def get_rooms():
                 "id": row.id,
                 "estimate_id": row.estimate_id,
                 "phase_name": row.phase_name,
+                "phase_label": row.phase_label,
                 "floor_name": row.floor_name,
+                "floor_label": row.floor_label,
                 "room_name": row.room_name
             }
         )
@@ -62,7 +66,9 @@ def get_room(room_id: int):
                 id,
                 estimate_id,
                 phase_name,
+                phase_label,
                 floor_name,
+                floor_label,
                 room_name
             FROM room
             WHERE id=:id
@@ -84,7 +90,9 @@ def get_room(room_id: int):
         "id": row.id,
         "estimate_id": row.estimate_id,
         "phase_name": row.phase_name,
+        "phase_label": row.phase_label,
         "floor_name": row.floor_name,
+        "floor_label": row.floor_label,
         "room_name": row.room_name
     }
 
@@ -100,13 +108,17 @@ def create_room(room: RoomCreate):
             INSERT INTO room (
                 estimate_id,
                 phase_name,
+                phase_label,
                 floor_name,
+                floor_label,
                 room_name
             )
             VALUES (
                 :estimate_id,
                 :phase_name,
+                :phase_label,
                 :floor_name,
+                :floor_label,
                 :room_name
             )
             RETURNING id
@@ -115,7 +127,9 @@ def create_room(room: RoomCreate):
         {
             "estimate_id": room.estimate_id,
             "phase_name": room.phase_name,
+            "phase_label": room.phase_label,
             "floor_name": room.floor_name,
+            "floor_label": room.floor_label,
             "room_name": room.room_name
         }
     ).fetchone()
@@ -166,7 +180,9 @@ def update_room(
             UPDATE room
             SET
                 phase_name = :phase_name,
+                phase_label = :phase_label,
                 floor_name = :floor_name,
+                floor_label = :floor_label,
                 room_name = :room_name
             WHERE id = :id
             RETURNING id
@@ -175,7 +191,9 @@ def update_room(
         {
             "id": room_id,
             "phase_name": room.phase_name,
+            "phase_label": room.phase_label,
             "floor_name": room.floor_name,
+            "floor_label": room.floor_label,
             "room_name": room.room_name
         }
     ).fetchone()

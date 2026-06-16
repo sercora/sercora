@@ -108,7 +108,9 @@ export type EstimateRoomColumn = {
     id: number;
     key: string;
     phase_name: string | null;
+    phase_label: string | null;
     floor_name: string | null;
+    floor_label: string | null;
     room_name: string;
 };
 
@@ -125,14 +127,18 @@ export type SurfaceType = {
 export type EstimateRoomInput = {
     estimate_id: number;
     phase_name: string;
+    phase_label?: string;
     floor_name: string;
+    floor_label?: string;
     room_name: string;
 };
 
 
 export type EstimateRoomUpdateInput = {
     phase_name: string;
+    phase_label?: string;
     floor_name: string;
+    floor_label?: string;
     room_name: string;
 };
 

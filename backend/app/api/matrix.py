@@ -347,7 +347,9 @@ def get_matrix(estimate_id: int):
             SELECT
                 id,
                 phase_name,
+                phase_label,
                 floor_name,
+                floor_label,
                 room_name
             FROM room
             WHERE estimate_id = :estimate_id
@@ -368,7 +370,9 @@ def get_matrix(estimate_id: int):
             "id": row.id,
             "key": "room_" + str(row.id),
             "phase_name": row.phase_name,
+            "phase_label": row.phase_label,
             "floor_name": row.floor_name,
+            "floor_label": row.floor_label,
             "room_name": row.room_name
         }
         for row in room_rows

@@ -2106,11 +2106,119 @@ Header
 }
 
 
+.sercora-grid .phase-color-0 {
+
+    background-color: #b8d7ee !important;
+
+    color: #12364f;
+
+}
+
+
+.sercora-grid .phase-color-1 {
+
+    background-color: #c7e7c2 !important;
+
+    color: #1e4b24;
+
+}
+
+
+.sercora-grid .phase-color-2 {
+
+    background-color: #f3cfb4 !important;
+
+    color: #633414;
+
+}
+
+
+.sercora-grid .phase-color-3 {
+
+    background-color: #d8c7ee !important;
+
+    color: #3f2860;
+
+}
+
+
+.sercora-grid .phase-color-4 {
+
+    background-color: #f4e391 !important;
+
+    color: #594a00;
+
+}
+
+
+.sercora-grid .phase-color-5 {
+
+    background-color: #bfe3de !important;
+
+    color: #164c45;
+
+}
+
+
 .sercora-grid .takeoff-floor-header {
 
     background-color: #e8d9f1 !important;
 
     color: #422555;
+
+}
+
+
+.sercora-grid .floor-color-0 {
+
+    background-color: #f6d6df !important;
+
+    color: #5b2335;
+
+}
+
+
+.sercora-grid .floor-color-1 {
+
+    background-color: #d5e8f8 !important;
+
+    color: #183d59;
+
+}
+
+
+.sercora-grid .floor-color-2 {
+
+    background-color: #e6e0c8 !important;
+
+    color: #4a4220;
+
+}
+
+
+.sercora-grid .floor-color-3 {
+
+    background-color: #cfe5c0 !important;
+
+    color: #29471a;
+
+}
+
+
+.sercora-grid .floor-color-4 {
+
+    background-color: #f6d9be !important;
+
+    color: #5c3717;
+
+}
+
+
+.sercora-grid .floor-color-5 {
+
+    background-color: #d8d2f0 !important;
+
+    color: #362a62;
 
 }
 
@@ -2189,6 +2297,8 @@ Toutes les cellules
     padding-right: 3px;
 
     color: #171a1f;
+
+    text-align: center;
 
 }
 
@@ -2279,6 +2389,8 @@ Couleurs fournisseurs
 .sercora-grid .product-link-cell {
 
     cursor: pointer;
+
+    text-align: left;
 
     text-decoration: underline;
 
@@ -2453,7 +2565,7 @@ Alignement numerique
 
 .sercora-grid .numeric-cell {
 
-    text-align: right;
+    text-align: center;
 
     font-variant-numeric: tabular-nums;
 
