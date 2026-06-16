@@ -589,6 +589,8 @@ function ProjectsPage({
 
         setFolderProject(null);
         setProjectFolderPath("");
+        setProjectRootName("");
+        setProjectFolderSearch("");
         setProjectFolderItems([]);
         setProjectFilePreview(null);
         setProjectPreviewPath("");
@@ -687,6 +689,258 @@ function ProjectsPage({
         }
 
         openProjectFilePreview(item);
+
+    }
+
+
+    function renderProjectFilePreview() {
+
+        if (!folderProject)
+            return null;
+
+        if (!projectFilePreview && !projectPreviewError && !isProjectPreviewLoading)
+            return (
+                <aside className="estimate-file-preview empty">
+                    Sélectionner un PDF, Word, Excel ou courriel .msg.
+                </aside>
+            );
+
+        return (
+            <aside className="estimate-file-preview">
+                <header>
+                    <strong>
+                        {projectFilePreview?.name || "Prévisualisation"}
+                    </strong>
+                    <div>
+                        {projectPreviewPath && (
+                            <button
+                                type="button"
+                                onClick={
+                                    () =>
+                                        window.open(
+                                            projectFileUrl(
+                                                folderProject.id,
+                                                projectPreviewPath
+                                            ),
+                                            "_blank",
+                                            "noopener,noreferrer"
+                                        )
+                                }
+                            >
+                                Ouvrir
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={
+                                () => {
+                                    setProjectFilePreview(null);
+                                    setProjectPreviewPath("");
+                                    setProjectPdfPreviewUrl("");
+                                    setProjectPreviewError("");
+                                }
+                            }
+                        >
+                            Fermer
+                        </button>
+                    </div>
+                </header>
+
+                {isProjectPreviewLoading && (
+                    <div className="estimate-file-preview-empty">
+                        Chargement...
+                    </div>
+                )}
+
+                {projectPreviewError && (
+                    <div className="estimate-folder-error">
+                        {projectPreviewError}
+                    </div>
+                )}
+
+                {projectFilePreview?.type === "pdf" && projectPdfPreviewUrl && (
+                    <object
+                        className="estimate-pdf-object"
+                        data={projectPdfPreviewUrl}
+                        type="application/pdf"
+                    >
+                        <div className="estimate-file-preview-empty">
+                            Prévisualisation non disponible dans ce navigateur.
+                        </div>
+                    </object>
+                )}
+
+                {projectFilePreview?.type === "msg" && (
+                    <div className="msg-preview">
+                        <h2>{projectFilePreview.subject}</h2>
+                        <dl>
+                            <dt>De</dt>
+                            <dd>{projectFilePreview.from || "-"}</dd>
+                            <dt>À</dt>
+                            <dd>{projectFilePreview.to || "-"}</dd>
+                            {projectFilePreview.cc && (
+                                <>
+                                    <dt>CC</dt>
+                                    <dd>{projectFilePreview.cc}</dd>
+                                </>
+                            )}
+                            <dt>Date</dt>
+                            <dd>{projectFilePreview.date || "-"}</dd>
+                        </dl>
+                        {projectFilePreview.attachments.length > 0 && (
+                            <div className="msg-attachments">
+                                <strong>Pièces jointes</strong>
+                                {projectFilePreview.attachments.map(
+                                    attachment => (
+                                        <span key={attachment}>
+                                            {attachment}
+                                        </span>
+                                    )
+                                )}
+                            </div>
+                        )}
+                        {projectFilePreview.html ? (
+                            <iframe
+                                className="msg-html-frame"
+                                title={projectFilePreview.subject || projectFilePreview.name}
+                                sandbox=""
+                                srcDoc={projectFilePreview.html}
+                            />
+                        ) : (
+                            <pre>
+                                {projectFilePreview.body || "Aucun contenu texte."}
+                            </pre>
+                        )}
+                    </div>
+                )}
+            </aside>
+        );
+
+    }
+
+
+    function renderProjectFolderPage() {
+
+        if (!folderProject)
+            return null;
+
+        return (
+            <div className="matrix-page estimate-folder-page">
+                <div className="estimate-folder-toolbar">
+                    <button
+                        type="button"
+                        className="estimate-folder-back"
+                        onClick={closeProjectFolder}
+                    >
+                        Retour aux projets
+                    </button>
+
+                    <div className="estimate-folder-breadcrumbs">
+                        {projectFolderBreadcrumbs.map(
+                            (breadcrumb, index) => (
+                                <button
+                                    key={`${breadcrumb.path}-${index}`}
+                                    type="button"
+                                    onClick={
+                                        () =>
+                                            openProjectFolderPath(breadcrumb.path)
+                                    }
+                                >
+                                    {index > 0 && "/ "}
+                                    {breadcrumb.label}
+                                </button>
+                            )
+                        )}
+                    </div>
+
+                    <input
+                        type="search"
+                        value={projectFolderSearch}
+                        onChange={
+                            event =>
+                                setProjectFolderSearch(event.target.value)
+                        }
+                        placeholder="Rechercher"
+                    />
+                </div>
+
+                <div className="estimate-folder-content">
+                    {projectFolderPath && (
+                        <button
+                            type="button"
+                            className="estimate-folder-back"
+                            onClick={openProjectFolderParent}
+                        >
+                            Remonter
+                        </button>
+                    )}
+
+                    {projectFolderError && (
+                        <div className="estimate-folder-error">
+                            {projectFolderError}
+                        </div>
+                    )}
+
+                    {isProjectFolderLoading && (
+                        <div className="estimate-folder-empty">
+                            Chargement...
+                        </div>
+                    )}
+
+                    {!isProjectFolderLoading && !projectFolderError && (
+                        <div className="estimate-folder-browser">
+                            <div className="estimate-folder-list">
+                                {filteredProjectFolderItems.map(
+                                    item => (
+                                        <button
+                                            key={item.relative_path}
+                                            type="button"
+                                            className={
+                                                [
+                                                    item.is_dir ?
+                                                        "estimate-folder-item directory" :
+                                                        "estimate-folder-item file",
+                                                    item.relative_path === projectPreviewPath ?
+                                                        "selected" :
+                                                        ""
+                                                ].filter(Boolean).join(" ")
+                                            }
+                                            onClick={
+                                                () =>
+                                                    openProjectFolderItem(item)
+                                            }
+                                        >
+                                            <span className="estimate-folder-icon">
+                                                {item.is_dir ? "Dossier" : "Fichier"}
+                                            </span>
+                                            <span className="estimate-folder-name">
+                                                {item.name}
+                                            </span>
+                                            <span className="estimate-folder-meta">
+                                                {item.is_dir ?
+                                                    "" :
+                                                    formatFileSize(item.size)}
+                                            </span>
+                                            <span className="estimate-folder-date">
+                                                {formatFileDate(item.modified_at)}
+                                            </span>
+                                        </button>
+                                    )
+                                )}
+
+                                {filteredProjectFolderItems.length === 0 && (
+                                    <div className="estimate-folder-empty">
+                                        Aucun élément à afficher.
+                                    </div>
+                                )}
+                            </div>
+
+                            {renderProjectFilePreview()}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
 
     }
 
@@ -890,6 +1144,10 @@ function ProjectsPage({
             projects
         ]
     );
+
+
+    if (folderProject)
+        return renderProjectFolderPage();
 
 
     if (projectMenu === "Création") {
@@ -1504,243 +1762,6 @@ function ProjectsPage({
                             )}
                         </tbody>
                     </table>
-                </div>
-            )}
-
-            {folderProject && (
-                <div className="business-modal-backdrop">
-                    <section className="business-modal project-folder-modal">
-                        <header>
-                            <div>
-                                <span>Dossier projet</span>
-                                <h2>{folderProject.project_name}</h2>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={closeProjectFolder}
-                            >
-                                Fermer
-                            </button>
-                        </header>
-
-                        <div className="estimate-folder-toolbar">
-                            <div className="estimate-folder-breadcrumbs">
-                                {projectFolderBreadcrumbs.map(
-                                    (breadcrumb, index) => (
-                                        <button
-                                            key={`${breadcrumb.path}-${index}`}
-                                            type="button"
-                                            onClick={
-                                                () =>
-                                                    openProjectFolderPath(breadcrumb.path)
-                                            }
-                                        >
-                                            {index > 0 && "/ "}
-                                            {breadcrumb.label}
-                                        </button>
-                                    )
-                                )}
-                            </div>
-                            <input
-                                type="search"
-                                value={projectFolderSearch}
-                                placeholder="Rechercher dans le dossier"
-                                onChange={
-                                    event =>
-                                        setProjectFolderSearch(event.target.value)
-                                }
-                            />
-                        </div>
-
-                        <div className="estimate-folder-content">
-                            {projectFolderPath && (
-                                <button
-                                    type="button"
-                                    className="estimate-folder-back"
-                                    onClick={openProjectFolderParent}
-                                >
-                                    Remonter
-                                </button>
-                            )}
-
-                            {projectFolderError && (
-                                <div className="estimate-folder-error">
-                                    {projectFolderError}
-                                </div>
-                            )}
-
-                            {isProjectFolderLoading && (
-                                <div className="estimate-folder-empty">
-                                    Chargement...
-                                </div>
-                            )}
-
-                            {!isProjectFolderLoading && !projectFolderError && (
-                                <div className="estimate-folder-browser">
-                                    <div className="estimate-folder-list">
-                                        {filteredProjectFolderItems.map(
-                                            item => (
-                                                <button
-                                                    key={item.relative_path}
-                                                    type="button"
-                                                    className={
-                                                        [
-                                                            item.is_dir ?
-                                                                "estimate-folder-item directory" :
-                                                                "estimate-folder-item file",
-                                                            item.relative_path === projectPreviewPath ?
-                                                                "selected" :
-                                                                ""
-                                                        ].filter(Boolean).join(" ")
-                                                    }
-                                                    onClick={
-                                                        () =>
-                                                            openProjectFolderItem(item)
-                                                    }
-                                                >
-                                                    <span className="estimate-folder-icon">
-                                                        {item.is_dir ? "Dossier" : "Fichier"}
-                                                    </span>
-                                                    <span className="estimate-folder-name">
-                                                        {item.name}
-                                                    </span>
-                                                    <span className="estimate-folder-meta">
-                                                        {item.is_dir ?
-                                                            "" :
-                                                            formatFileSize(item.size)}
-                                                    </span>
-                                                    <span className="estimate-folder-date">
-                                                        {formatFileDate(item.modified_at)}
-                                                    </span>
-                                                </button>
-                                            )
-                                        )}
-
-                                        {filteredProjectFolderItems.length === 0 && (
-                                            <div className="estimate-folder-empty">
-                                                Aucun élément à afficher.
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {!projectFilePreview && !projectPreviewError && !isProjectPreviewLoading ? (
-                                        <aside className="estimate-file-preview empty">
-                                            Sélectionner un PDF, Word, Excel ou courriel .msg.
-                                        </aside>
-                                    ) : (
-                                        <aside className="estimate-file-preview">
-                                            <header>
-                                                <strong>
-                                                    {projectFilePreview?.name || "Prévisualisation"}
-                                                </strong>
-                                                <div>
-                                                    {projectPreviewPath && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={
-                                                                () =>
-                                                                    window.open(
-                                                                        projectFileUrl(
-                                                                            folderProject.id,
-                                                                            projectPreviewPath
-                                                                        ),
-                                                                        "_blank",
-                                                                        "noopener,noreferrer"
-                                                                    )
-                                                            }
-                                                        >
-                                                            Ouvrir
-                                                        </button>
-                                                    )}
-                                                    <button
-                                                        type="button"
-                                                        onClick={
-                                                            () => {
-                                                                setProjectFilePreview(null);
-                                                                setProjectPreviewPath("");
-                                                                setProjectPdfPreviewUrl("");
-                                                                setProjectPreviewError("");
-                                                            }
-                                                        }
-                                                    >
-                                                        Fermer
-                                                    </button>
-                                                </div>
-                                            </header>
-
-                                            {isProjectPreviewLoading && (
-                                                <div className="estimate-file-preview-empty">
-                                                    Chargement...
-                                                </div>
-                                            )}
-
-                                            {projectPreviewError && (
-                                                <div className="estimate-folder-error">
-                                                    {projectPreviewError}
-                                                </div>
-                                            )}
-
-                                            {projectFilePreview?.type === "pdf" && projectPdfPreviewUrl && (
-                                                <object
-                                                    className="estimate-pdf-object"
-                                                    data={projectPdfPreviewUrl}
-                                                    type="application/pdf"
-                                                >
-                                                    <div className="estimate-file-preview-empty">
-                                                        Prévisualisation non disponible dans ce navigateur.
-                                                    </div>
-                                                </object>
-                                            )}
-
-                                            {projectFilePreview?.type === "msg" && (
-                                                <div className="msg-preview">
-                                                    <h2>{projectFilePreview.subject}</h2>
-                                                    <dl>
-                                                        <dt>De</dt>
-                                                        <dd>{projectFilePreview.from || "-"}</dd>
-                                                        <dt>À</dt>
-                                                        <dd>{projectFilePreview.to || "-"}</dd>
-                                                        {projectFilePreview.cc && (
-                                                            <>
-                                                                <dt>CC</dt>
-                                                                <dd>{projectFilePreview.cc}</dd>
-                                                            </>
-                                                        )}
-                                                        <dt>Date</dt>
-                                                        <dd>{projectFilePreview.date || "-"}</dd>
-                                                    </dl>
-                                                    {projectFilePreview.attachments.length > 0 && (
-                                                        <div className="msg-attachments">
-                                                            <strong>Pièces jointes</strong>
-                                                            {projectFilePreview.attachments.map(
-                                                                attachment => (
-                                                                    <span key={attachment}>
-                                                                        {attachment}
-                                                                    </span>
-                                                                )
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                    {projectFilePreview.html ? (
-                                                        <iframe
-                                                            className="msg-html-frame"
-                                                            title={projectFilePreview.subject || projectFilePreview.name}
-                                                            sandbox=""
-                                                            srcDoc={projectFilePreview.html}
-                                                        />
-                                                    ) : (
-                                                        <pre>
-                                                            {projectFilePreview.body || "Aucun contenu texte."}
-                                                        </pre>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </aside>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </section>
                 </div>
             )}
 

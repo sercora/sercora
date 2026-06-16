@@ -592,30 +592,6 @@
 }
 
 
-.project-folder-modal {
-
-    width: min(1280px, calc(100vw - 36px));
-
-    height: min(820px, calc(100vh - 36px));
-
-}
-
-
-.project-folder-modal > .estimate-folder-toolbar,
-.project-folder-modal > .estimate-folder-content {
-
-    min-width: 0;
-
-}
-
-
-.project-folder-modal > .estimate-folder-content {
-
-    flex: 1 1 auto;
-
-}
-
-
 .business-pill {
 
     display: inline-flex;
