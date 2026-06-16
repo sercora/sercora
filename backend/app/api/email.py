@@ -595,18 +595,20 @@ def send_sms(
         return response
 
     if provider in ("voipms", "voip"):
+        voip_api_password = settings.api_key or settings.api_secret
+
         if (
             not settings.account_id or
-            not settings.api_secret
+            not voip_api_password
         ):
             raise HTTPException(
                 status_code=400,
-                detail="VoIP.ms requiert l'ID compte et le secret/token API"
+                detail="VoIP.ms requiert l'ID compte et l'API password"
             )
 
         form_values = {
             "api_username": settings.account_id,
-            "api_password": settings.api_secret,
+            "api_password": voip_api_password,
             "method": "sendSMS",
             "did": settings.from_number,
             "dst": clean_destination,
