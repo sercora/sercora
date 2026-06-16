@@ -1230,24 +1230,6 @@ function MatrixView({
     }
 
 
-    function formatRate(
-        value: number | null | undefined
-    ) {
-
-        if (value === null || value === undefined)
-            return "";
-
-        return value.toLocaleString(
-            "fr-CA",
-            {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }
-        ) + " $";
-
-    }
-
-
     function nullableNumber(
         value: string
     ) {
@@ -2796,6 +2778,139 @@ function MatrixView({
                 [field]:
                     value
             })
+        );
+
+    }
+
+
+    function splitStructuredRow(
+        value: string,
+        columnCount: number
+    ) {
+
+        const columns =
+            value.split("|").map(
+                column =>
+                    column.trim()
+            );
+
+        return Array.from(
+            {
+                length: columnCount
+            },
+            (_item, index) =>
+                columns[index] || ""
+        );
+
+    }
+
+
+    function planPageRows() {
+
+        const rows =
+            summaryForm.plan_pages ?
+                summaryForm.plan_pages.split("\n").map(
+                    row =>
+                        splitStructuredRow(
+                            row,
+                            3
+                        )
+                ) :
+                [];
+
+        while (rows.length < 3)
+            rows.push([
+                "",
+                "",
+                ""
+            ]);
+
+        return rows;
+
+    }
+
+
+    function serializeStructuredRows(
+        rows: string[][]
+    ) {
+
+        return rows.map(
+            row =>
+                row.map(
+                    column =>
+                        column.trim()
+                ).join(" | ")
+        ).join("\n");
+
+    }
+
+
+    function updatePlanPageCell(
+        rowIndex: number,
+        columnIndex: number,
+        value: string
+    ) {
+
+        const rows =
+            planPageRows();
+
+        rows[rowIndex][columnIndex] =
+            value;
+
+        updateSummaryForm(
+            "plan_pages",
+            serializeStructuredRows(rows)
+        );
+
+    }
+
+
+    function addPlanPageRow() {
+
+        updateSummaryForm(
+            "plan_pages",
+            serializeStructuredRows(
+                [
+                    ...planPageRows(),
+                    [
+                        "",
+                        "",
+                        ""
+                    ]
+                ]
+            )
+        );
+
+    }
+
+
+    function specRow() {
+
+        return splitStructuredRow(
+            summaryForm.spec_sections,
+            2
+        );
+
+    }
+
+
+    function updateSpecCell(
+        columnIndex: number,
+        value: string
+    ) {
+
+        const row =
+            specRow();
+
+        row[columnIndex] =
+            value;
+
+        updateSummaryForm(
+            "spec_sections",
+            row.map(
+                column =>
+                    column.trim()
+            ).join(" | ")
         );
 
     }
@@ -4657,37 +4772,73 @@ function MatrixView({
                                     />
                                 </label>
 
-                                <label className="wide">
-                                    <span>Pages de plans:</span>
-                                    <textarea
-                                        rows={3}
-                                        placeholder="Page | Nom | Description"
-                                        value={summaryForm.plan_pages}
-                                        onChange={
-                                            event =>
-                                                updateSummaryForm(
-                                                    "plan_pages",
-                                                    event.target.value
+                                <div className="plan-pages-block">
+                                    <div className="plan-pages-title">
+                                        Pages de plans:
+                                    </div>
+                                    <div className="plan-pages-grid">
+                                        <div className="plan-pages-header">Page</div>
+                                        <div className="plan-pages-header">Nom</div>
+                                        <div className="plan-pages-header">Description</div>
+                                        {planPageRows().map(
+                                            (row, rowIndex) =>
+                                                row.map(
+                                                    (value, columnIndex) => (
+                                                        <input
+                                                            key={
+                                                                rowIndex +
+                                                                "-" +
+                                                                columnIndex
+                                                            }
+                                                            type="text"
+                                                            value={value}
+                                                            onChange={
+                                                                event =>
+                                                                    updatePlanPageCell(
+                                                                        rowIndex,
+                                                                        columnIndex,
+                                                                        event.target.value
+                                                                    )
+                                                            }
+                                                        />
+                                                    )
                                                 )
-                                        }
-                                    />
-                                </label>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="plan-pages-add"
+                                        onClick={addPlanPageRow}
+                                    >
+                                        Ajouter
+                                    </button>
+                                </div>
 
-                                <label className="wide">
-                                    <span>Devis:</span>
-                                    <textarea
-                                        rows={3}
-                                        placeholder="Section devis | Pages"
-                                        value={summaryForm.spec_sections}
-                                        onChange={
-                                            event =>
-                                                updateSummaryForm(
-                                                    "spec_sections",
-                                                    event.target.value
-                                                )
-                                        }
-                                    />
-                                </label>
+                                <div className="spec-line-block">
+                                    <div className="spec-line-title">
+                                        Devis:
+                                    </div>
+                                    <div className="spec-line-grid">
+                                        <div className="plan-pages-header">Pages</div>
+                                        <div className="plan-pages-header">Section</div>
+                                        {specRow().map(
+                                            (value, columnIndex) => (
+                                                <input
+                                                    key={columnIndex}
+                                                    type="text"
+                                                    value={value}
+                                                    onChange={
+                                                        event =>
+                                                            updateSpecCell(
+                                                                columnIndex,
+                                                                event.target.value
+                                                            )
+                                                    }
+                                                />
+                                            )
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -4767,33 +4918,6 @@ function MatrixView({
                     </div>
 
                     <div className="estimate-summary-rates">
-                        <div className="rates-grid current-rates">
-                            <div className="rates-label strong"></div>
-                            <div className="rates-value strong">
-                                {matrixSummary.rates.current.date}
-                            </div>
-                            <div className="rates-label">jour</div>
-                            <div className="rates-value green">
-                                {formatRate(matrixSummary.rates.current.day)}
-                            </div>
-                            <div className="rates-label">soir</div>
-                            <div className="rates-value yellow">
-                                {formatRate(matrixSummary.rates.current.evening)}
-                            </div>
-                            <div className="rates-label">fds/nuit</div>
-                            <div className="rates-value red">
-                                {formatRate(matrixSummary.rates.current.night)}
-                            </div>
-                            <div className="rates-label">civil</div>
-                            <div className="rates-value dark-red">
-                                {formatRate(matrixSummary.rates.current.civil)}
-                            </div>
-                            <div className="rates-label">T/M</div>
-                            <div className="rates-value">
-                                {formatRate(matrixSummary.rates.current.tm)}
-                            </div>
-                        </div>
-
                         <div className="rates-grid used-rates">
                             <div className="rates-label used">Taux utilisé :</div>
                             <input

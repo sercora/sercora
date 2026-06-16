@@ -129,6 +129,122 @@
 }
 
 
+.plan-pages-block,
+.spec-line-block {
+
+    display: grid;
+
+    grid-column: 1 / -1;
+
+    grid-template-columns: 116px minmax(0, 1fr);
+
+    align-items: start;
+
+}
+
+
+.plan-pages-title,
+.spec-line-title {
+
+    min-height: 22px;
+
+    padding: 2px 6px;
+
+    border: 1px solid #1f1f1f;
+
+    border-right: 0;
+
+    background-color: #ffffff;
+
+    color: #111111;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    line-height: 17px;
+
+    text-align: right;
+
+}
+
+
+.plan-pages-grid {
+
+    display: grid;
+
+    grid-template-columns: 70px 130px minmax(160px, 1fr);
+
+}
+
+
+.spec-line-grid {
+
+    display: grid;
+
+    grid-template-columns: 110px minmax(180px, 1fr);
+
+}
+
+
+.plan-pages-header {
+
+    min-height: 22px;
+
+    padding: 2px 6px;
+
+    border: 1px solid #1f1f1f;
+
+    background-color: #e7e9ed;
+
+    color: #111111;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    line-height: 17px;
+
+    text-align: center;
+
+}
+
+
+.plan-pages-add {
+
+    grid-column: 2;
+
+    justify-self: start;
+
+    height: 24px;
+
+    margin-top: 4px;
+
+    padding: 0 10px;
+
+    border: 1px solid #c6ccd4;
+
+    border-radius: 4px;
+
+    background-color: #ffffff;
+
+    color: #1f252d;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+}
+
+
 .estimate-summary-plan-details span,
 .estimate-summary-plan-details input,
 .estimate-summary-plan-details textarea {
