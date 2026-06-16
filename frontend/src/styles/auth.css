@@ -137,6 +137,19 @@
     gap: 14px;
 }
 
+.checkbox-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.smtp-test-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 10px;
+}
+
 .checkbox-line {
     display: flex;
     align-items: center;
@@ -284,6 +297,10 @@
     }
 
     .auth-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .smtp-test-row {
         grid-template-columns: 1fr;
     }
 }

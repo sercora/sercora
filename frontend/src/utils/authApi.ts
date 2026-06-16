@@ -39,6 +39,20 @@ export type ProfileInput = {
 };
 
 
+export type EmailSettings = {
+    smtp_host: string;
+    smtp_port: number;
+    smtp_username: string;
+    smtp_password?: string;
+    from_email: string;
+    from_name: string;
+    use_tls: boolean;
+    use_ssl: boolean;
+    active: boolean;
+    password_configured?: boolean;
+};
+
+
 async function parseResponse(
     response: Response
 ) {
@@ -169,6 +183,131 @@ export function updateUser(
             method: "PUT",
             headers: authHeaders(token),
             body: JSON.stringify(user)
+        }
+    ).then(parseResponse);
+
+}
+
+
+export function inviteNewUser(
+    token: string,
+    user: UserInput
+) {
+
+    return fetch(
+        API_URL + "/user-invitations",
+        {
+            method: "POST",
+            headers: authHeaders(token),
+            body: JSON.stringify(user)
+        }
+    ).then(parseResponse);
+
+}
+
+
+export function inviteExistingUser(
+    token: string,
+    userId: number
+) {
+
+    return fetch(
+        API_URL + "/users/" + userId + "/invite",
+        {
+            method: "POST",
+            headers: authHeaders(token)
+        }
+    ).then(parseResponse);
+
+}
+
+
+export function sendPasswordReset(
+    token: string,
+    userId: number
+) {
+
+    return fetch(
+        API_URL + "/users/" + userId + "/password-reset",
+        {
+            method: "POST",
+            headers: authHeaders(token)
+        }
+    ).then(parseResponse);
+
+}
+
+
+export function setPasswordFromToken(
+    setupToken: string,
+    password: string
+) {
+
+    return fetch(
+        API_URL + "/auth/set-password",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(
+                {
+                    token: setupToken,
+                    password
+                }
+            )
+        }
+    ).then(parseResponse);
+
+}
+
+
+export function fetchEmailSettings(
+    token: string
+): Promise<EmailSettings> {
+
+    return fetch(
+        API_URL + "/admin/email-settings",
+        {
+            headers: authHeaders(token)
+        }
+    ).then(parseResponse);
+
+}
+
+
+export function saveEmailSettings(
+    token: string,
+    settings: EmailSettings
+): Promise<EmailSettings> {
+
+    return fetch(
+        API_URL + "/admin/email-settings",
+        {
+            method: "PUT",
+            headers: authHeaders(token),
+            body: JSON.stringify(settings)
+        }
+    ).then(parseResponse);
+
+}
+
+
+export function testEmailSettings(
+    token: string,
+    recipient: string
+) {
+
+    return fetch(
+        API_URL + "/admin/email-settings/test",
+        {
+            method: "POST",
+            headers: authHeaders(token),
+            body: JSON.stringify(
+                {
+                    recipient
+                }
+            )
         }
     ).then(parseResponse);
 

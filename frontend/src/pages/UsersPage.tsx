@@ -13,6 +13,9 @@ import type {
 import {
     createUser,
     fetchUsers,
+    inviteExistingUser,
+    inviteNewUser,
+    sendPasswordReset,
     updateUser
 } from "../utils/authApi";
 
@@ -53,6 +56,7 @@ function UsersPage({
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [status, setStatus] = useState<string | null>(null);
 
@@ -176,6 +180,102 @@ function UsersPage({
 
         } finally {
             setIsSaving(false);
+        }
+
+    }
+
+
+    async function createAndInvite() {
+
+        setStatus(null);
+        setError(null);
+        setIsSendingEmail(true);
+
+        const payload: UserInput = {
+            ...form,
+            username: form.username.trim(),
+            full_name: form.full_name.trim(),
+            email: (form.email || "").trim() || null
+        };
+
+        try {
+            await inviteNewUser(
+                token,
+                payload
+            );
+            startNewUser();
+            setStatus("Invitation envoyee");
+            await loadUsers();
+
+        } catch (inviteError) {
+            setError(
+                inviteError instanceof Error ?
+                    inviteError.message :
+                    "Impossible d'envoyer l'invitation"
+            );
+
+        } finally {
+            setIsSendingEmail(false);
+        }
+
+    }
+
+
+    async function sendInvitation() {
+
+        if (!selectedUser)
+            return;
+
+        setStatus(null);
+        setError(null);
+        setIsSendingEmail(true);
+
+        try {
+            await inviteExistingUser(
+                token,
+                selectedUser.id
+            );
+            setStatus("Invitation envoyee");
+
+        } catch (inviteError) {
+            setError(
+                inviteError instanceof Error ?
+                    inviteError.message :
+                    "Impossible d'envoyer l'invitation"
+            );
+
+        } finally {
+            setIsSendingEmail(false);
+        }
+
+    }
+
+
+    async function resetPassword() {
+
+        if (!selectedUser)
+            return;
+
+        setStatus(null);
+        setError(null);
+        setIsSendingEmail(true);
+
+        try {
+            await sendPasswordReset(
+                token,
+                selectedUser.id
+            );
+            setStatus("Lien de mot de passe envoye");
+
+        } catch (resetError) {
+            setError(
+                resetError instanceof Error ?
+                    resetError.message :
+                    "Impossible d'envoyer le lien"
+            );
+
+        } finally {
+            setIsSendingEmail(false);
         }
 
     }
@@ -425,6 +525,47 @@ function UsersPage({
                 )}
 
                 <div className="auth-actions">
+                    {selectedUser && (
+                        <>
+                            <button
+                                type="button"
+                                className="secondary-auth-button"
+                                disabled={
+                                    isSendingEmail ||
+                                    !selectedUser.email
+                                }
+                                onClick={sendInvitation}
+                            >
+                                Invitation
+                            </button>
+                            <button
+                                type="button"
+                                className="secondary-auth-button"
+                                disabled={
+                                    isSendingEmail ||
+                                    !selectedUser.email
+                                }
+                                onClick={resetPassword}
+                            >
+                                Reset mot de passe
+                            </button>
+                        </>
+                    )}
+                    {!selectedUser && (
+                        <button
+                            type="button"
+                            className="secondary-auth-button"
+                            disabled={
+                                isSendingEmail ||
+                                !form.username.trim() ||
+                                !form.full_name.trim() ||
+                                !(form.email || "").trim()
+                            }
+                            onClick={createAndInvite}
+                        >
+                            Creer et inviter
+                        </button>
+                    )}
                     <button
                         type="button"
                         className="secondary-auth-button"

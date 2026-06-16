@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 
+import ConfigurationPage from "./pages/ConfigurationPage";
 import LoginPage from "./pages/LoginPage";
 import MatrixView from "./pages/MatrixView";
 import ProfilePage from "./pages/ProfilePage";
 import ProductsPage from "./pages/ProductsPage";
+import SetPasswordPage from "./pages/SetPasswordPage";
 import ToolsPage from "./pages/ToolsPage";
 import UsersPage from "./pages/UsersPage";
 import sercoraLogo from "./assets/sercora-logo.png";
@@ -16,7 +18,7 @@ import {
 import "./App.css";
 
 
-type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions" | "Profil" | "Usagers";
+type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile";
 type EstimateMenuKey = "En cours" | "Envoyées" | "Refusées";
 
@@ -27,7 +29,8 @@ const NAV_ITEMS: PageKey[] = [
     "Produits",
     "Outils",
     "Soumissions",
-    "Usagers"
+    "Usagers",
+    "Configuration"
 ];
 
 
@@ -53,7 +56,8 @@ const PAGE_CONTEXT: Record<PageKey, string> = {
     Outils: "Inventaire Snipe-IT",
     Soumissions: "Estimations et quantités",
     Profil: "Compte et mot de passe",
-    Usagers: "Roles et acces"
+    Usagers: "Roles et acces",
+    Configuration: "Parametres systeme"
 };
 
 
@@ -70,6 +74,9 @@ function App() {
     );
     const [currentUser, setCurrentUser] = useState<SercoraUser | null>(null);
     const [isCheckingSession, setIsCheckingSession] = useState(Boolean(token));
+    const [setupToken, setSetupToken] = useState(
+        () => new URLSearchParams(window.location.search).get("setup_token")
+    );
 
 
     useEffect(
@@ -155,6 +162,28 @@ function App() {
     }
 
 
+    function clearSetupToken() {
+
+        window.history.replaceState(
+            {},
+            "",
+            window.location.pathname
+        );
+        setSetupToken(null);
+
+    }
+
+
+    if (setupToken) {
+        return (
+            <SetPasswordPage
+                setupToken={setupToken}
+                onComplete={clearSetupToken}
+            />
+        );
+    }
+
+
     if (isCheckingSession) {
         return (
             <main className="session-loading">
@@ -235,7 +264,10 @@ function App() {
 
                     {NAV_ITEMS.filter(
                         item => (
-                            item !== "Usagers" ||
+                            (
+                                item !== "Usagers" &&
+                                item !== "Configuration"
+                            ) ||
                             currentUser.role === "admin"
                         )
                     ).map(
@@ -367,6 +399,13 @@ function App() {
 
                     {activePage === "Usagers" && (
                         <UsersPage
+                            token={token}
+                            currentUser={currentUser}
+                        />
+                    )}
+
+                    {activePage === "Configuration" && (
+                        <ConfigurationPage
                             token={token}
                             currentUser={currentUser}
                         />

@@ -11,6 +11,7 @@ from app.api.matrix import router as matrix_router
 from app.api.tools import router as tools_router
 from app.api.prosol import router as prosol_router
 from app.api.auth import router as auth_router
+from app.api.email import router as email_router
 
 
 app = FastAPI(
@@ -44,6 +45,7 @@ app.include_router(matrix_router)
 app.include_router(tools_router)
 app.include_router(prosol_router)
 app.include_router(auth_router)
+app.include_router(email_router)
 
 
 @app.get("/")
