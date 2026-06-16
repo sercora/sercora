@@ -25,11 +25,15 @@ export type ToolsResponse = {
 };
 
 
+export type ToolScope = "all" | "available" | "deployed";
+
+
 export type ToolsRequest = {
     search?: string;
     limit?: number;
     offset?: number;
     sort?: string;
+    scope?: ToolScope;
 };
 
 
@@ -55,13 +59,16 @@ export function fetchTools(
         request.search || "";
     const sort =
         request.sort || "asset_tag";
+    const scope =
+        request.scope || "all";
 
     const params = new URLSearchParams(
         {
             limit: String(limit),
             offset: String(offset),
             sort,
-            order: "asc"
+            order: "asc",
+            scope
         }
     );
 

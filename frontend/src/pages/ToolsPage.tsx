@@ -7,7 +7,8 @@ import {
     fetchTools
 } from "../utils/toolsApi";
 import type {
-    ToolAsset
+    ToolAsset,
+    ToolScope
 } from "../utils/toolsApi";
 
 import "../styles/tools.css";
@@ -15,6 +16,9 @@ import "../styles/tools.css";
 
 type PageSize = 20 | 50 | 100 | "all";
 type ToolSort = "asset_tag" | "location" | "name";
+type ToolsPageProps = {
+    toolScope: ToolScope;
+};
 
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -51,7 +55,9 @@ function statusClass(
 }
 
 
-function ToolsPage() {
+function ToolsPage({
+    toolScope
+}: ToolsPageProps) {
 
     const [tools, setTools] = useState<ToolAsset[]>([]);
     const [query, setQuery] = useState("");
@@ -142,7 +148,8 @@ function ToolsPage() {
                 search,
                 limit,
                 offset,
-                sort: nextSortBy
+                sort: nextSortBy,
+                scope: toolScope
             }
         )
 
@@ -182,7 +189,8 @@ function ToolsPage() {
                     search: "",
                     limit: DEFAULT_PAGE_SIZE,
                     offset: 0,
-                    sort: "asset_tag"
+                    sort: "asset_tag",
+                    scope: toolScope
                 }
             )
 
@@ -224,7 +232,9 @@ function ToolsPage() {
 
         },
 
-        []
+        [
+            toolScope
+        ]
 
     );
 

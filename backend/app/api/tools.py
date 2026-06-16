@@ -1,5 +1,6 @@
 import json
 import os
+import unicodedata
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -12,6 +13,9 @@ from fastapi import APIRouter, HTTPException, Query
 load_dotenv()
 
 router = APIRouter()
+
+
+TOOL_SCOPE_PATTERN = "^(all|available|deployed)$"
 
 
 def snipeit_config():
@@ -87,6 +91,65 @@ def normalize_asset(
     }
 
 
+def normalized_text(
+    value: str
+):
+
+    return "".join(
+        character
+        for character in unicodedata.normalize(
+            "NFD",
+            value or ""
+        )
+        if unicodedata.category(character) != "Mn"
+    ).strip().lower()
+
+
+def is_warehouse_location(
+    location: str
+):
+
+    return normalized_text(location) == "entrepot"
+
+
+def matches_tool_scope(
+    asset: dict[str, Any],
+    scope: str
+):
+
+    if scope == "all":
+        return True
+
+    location = asset.get("location") or ""
+
+    if scope == "available":
+        return not location or is_warehouse_location(location)
+
+    return bool(location) and not is_warehouse_location(location)
+
+
+def sort_tools(
+    rows: list[dict[str, Any]],
+    sort: str,
+    order: str
+):
+
+    sort_key = (
+        sort
+        if sort in {"asset_tag", "location", "name"}
+        else "asset_tag"
+    )
+    reverse = order == "desc"
+
+    return sorted(
+        rows,
+        key=lambda row: normalized_text(
+            str(row.get(sort_key) or "")
+        ),
+        reverse=reverse
+    )
+
+
 def snipeit_get(
     path: str,
     params: dict[str, Any]
@@ -139,26 +202,58 @@ def get_tools(
     offset: int = Query(0, ge=0),
     search: str = "",
     sort: str = "asset_tag",
-    order: str = "asc"
+    order: str = "asc",
+    scope: str = Query("all", pattern=TOOL_SCOPE_PATTERN)
 ):
+
+    snipe_limit = (
+        10000
+        if scope != "all"
+        else limit
+    )
+
+    snipe_offset = (
+        0
+        if scope != "all"
+        else offset
+    )
 
     payload = snipeit_get(
         "/hardware",
         {
-            "limit": limit,
-            "offset": offset,
+            "limit": snipe_limit,
+            "offset": snipe_offset,
             "search": search,
             "sort": sort,
             "order": order
         }
     )
 
-    rows = payload.get("rows", [])
+    rows = [
+        normalize_asset(row)
+        for row in payload.get("rows", [])
+    ]
+
+    if scope != "all":
+        rows = sort_tools(
+            [
+                row
+                for row in rows
+                if matches_tool_scope(
+                    row,
+                    scope
+                )
+            ],
+            sort,
+            order
+        )
+
+        return {
+            "total": len(rows),
+            "rows": rows[offset:offset + limit]
+        }
 
     return {
         "total": payload.get("total", len(rows)),
-        "rows": [
-            normalize_asset(row)
-            for row in rows
-        ]
+        "rows": rows
     }

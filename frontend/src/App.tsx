@@ -10,6 +10,7 @@ import ToolsPage from "./pages/ToolsPage";
 import UsersPage from "./pages/UsersPage";
 import sercoraLogo from "./assets/sercora-logo.png";
 import type { SercoraUser } from "./utils/authApi";
+import type { ToolScope } from "./utils/toolsApi";
 import {
     fetchMe,
     login
@@ -21,6 +22,7 @@ import "./App.css";
 type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura" | "Olympia";
 type EstimateMenuKey = "En cours" | "Envoyées" | "Refusé" | "Template";
+type ToolsMenuKey = "Disponible" | "Déployé";
 type ConfigurationMenuKey = "Courriel" | "Importation";
 
 
@@ -28,7 +30,6 @@ const NAV_ITEMS: PageKey[] = [
     "Clients",
     "Projets",
     "Produits",
-    "Outils",
     "Soumissions",
     "Usagers",
     "Configuration"
@@ -54,6 +55,12 @@ const ESTIMATE_MENU_ITEMS: EstimateMenuKey[] = [
     "Envoyées",
     "Refusé",
     "Template"
+];
+
+
+const TOOLS_MENU_ITEMS: ToolsMenuKey[] = [
+    "Disponible",
+    "Déployé"
 ];
 
 
@@ -83,6 +90,7 @@ function App() {
     const [activePage, setActivePage] = useState<PageKey>("Soumissions");
     const [activeProductMenu, setActiveProductMenu] = useState<ProductMenuKey>("Tous");
     const [activeEstimateMenu, setActiveEstimateMenu] = useState<EstimateMenuKey>("En cours");
+    const [activeToolsMenu, setActiveToolsMenu] = useState<ToolsMenuKey>("Disponible");
     const [activeConfigurationMenu, setActiveConfigurationMenu] = useState<ConfigurationMenuKey>("Courriel");
     const [token, setToken] = useState<string | null>(
         () => localStorage.getItem(AUTH_TOKEN_KEY)
@@ -297,12 +305,24 @@ function App() {
                                 <button
                                     type="button"
                                     className={
-                                        item === activePage ?
+                                        (
+                                            item === activePage ||
+                                            (
+                                                item === "Soumissions" &&
+                                                activePage === "Outils"
+                                            )
+                                        ) ?
                                             "nav-item active" :
                                             "nav-item"
                                     }
                                     aria-current={
-                                        item === activePage ?
+                                        (
+                                            item === activePage ||
+                                            (
+                                                item === "Soumissions" &&
+                                                activePage === "Outils"
+                                            )
+                                        ) ?
                                             "page" :
                                             undefined
                                     }
@@ -420,6 +440,52 @@ function App() {
                                                 </button>
                                             )
                                         )}
+
+                                        <div className="nav-subgroup">
+                                            <button
+                                                type="button"
+                                                className={
+                                                    activePage === "Outils" ?
+                                                        "nav-subitem active" :
+                                                        "nav-subitem"
+                                                }
+                                                onClick={
+                                                    () => {
+                                                        setActiveToolsMenu("Disponible");
+                                                        setActivePage("Outils");
+                                                    }
+                                                }
+                                            >
+                                                Outils
+                                            </button>
+
+                                            <div className="nav-submenu nested">
+                                                {TOOLS_MENU_ITEMS.map(
+                                                    toolsMenuItem => (
+                                                        <button
+                                                            key={toolsMenuItem}
+                                                            type="button"
+                                                            className={
+                                                                (
+                                                                    activePage === "Outils" &&
+                                                                    activeToolsMenu === toolsMenuItem
+                                                                ) ?
+                                                                    "nav-subitem nested active" :
+                                                                    "nav-subitem nested"
+                                                            }
+                                                            onClick={
+                                                                () => {
+                                                                    setActiveToolsMenu(toolsMenuItem);
+                                                                    setActivePage("Outils");
+                                                                }
+                                                            }
+                                                        >
+                                                            {toolsMenuItem}
+                                                        </button>
+                                                    )
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 
@@ -466,7 +532,16 @@ function App() {
                     )}
 
                     {activePage === "Outils" && (
-                        <ToolsPage />
+                        <ToolsPage
+                            key={activeToolsMenu}
+                            toolScope={
+                                (
+                                    activeToolsMenu === "Disponible" ?
+                                        "available" :
+                                        "deployed"
+                                ) as ToolScope
+                            }
+                        />
                     )}
 
                     {activePage === "Soumissions" && (
