@@ -5737,7 +5737,18 @@ function MatrixView({
                                 )}
                             </div>
                         )}
-                        <pre>{filePreview.body || "Aucun contenu texte."}</pre>
+                        {filePreview.html ? (
+                            <iframe
+                                className="msg-html-frame"
+                                title={filePreview.subject || filePreview.name}
+                                sandbox=""
+                                srcDoc={filePreview.html}
+                            />
+                        ) : (
+                            <pre>
+                                {filePreview.body || "Aucun contenu texte."}
+                            </pre>
+                        )}
                     </div>
                 )}
             </aside>

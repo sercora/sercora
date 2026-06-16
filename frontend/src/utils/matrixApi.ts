@@ -37,6 +37,7 @@ export type EstimateFilePreview =
         cc: string;
         date: string;
         body: string;
+        html: string;
         attachments: string[];
     };
 

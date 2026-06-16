@@ -90,6 +90,24 @@ def msg_preview_payload(
     target: Path
 ):
 
+    def decode_msg_value(
+        value
+    ):
+
+        if not value:
+            return ""
+
+        if isinstance(value, bytes):
+            for encoding in ("utf-8", "cp1252", "latin-1"):
+                try:
+                    return value.decode(encoding)
+                except UnicodeDecodeError:
+                    pass
+
+            return value.decode("utf-8", errors="replace")
+
+        return str(value)
+
     try:
         import extract_msg
     except ImportError as error:
@@ -106,6 +124,10 @@ def msg_preview_payload(
         message_date = str(message.date or "")
         message_subject = message.subject or target.name
         message_body = message.body or ""
+        message_html = decode_msg_value(
+            getattr(message, "htmlBody", None)
+            or getattr(message, "html_body", None)
+        )
         attachments = [
             attachment.longFilename or attachment.shortFilename or "Pièce jointe"
             for attachment in message.attachments
@@ -126,6 +148,7 @@ def msg_preview_payload(
         "cc": message_cc,
         "date": message_date,
         "body": message_body,
+        "html": message_html,
         "attachments": attachments
     }
 

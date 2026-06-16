@@ -2301,6 +2301,21 @@
 }
 
 
+.msg-html-frame {
+
+    display: block;
+
+    width: 100%;
+
+    min-height: 560px;
+
+    border: 1px solid #cfd5dc;
+
+    background-color: #ffffff;
+
+}
+
+
 .estimate-folder-empty,
 .estimate-folder-error {
 
