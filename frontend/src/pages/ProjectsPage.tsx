@@ -1,5 +1,6 @@
 import {
     useEffect,
+    useMemo,
     useRef,
     useState
 } from "react";
@@ -61,11 +62,150 @@ const EMPTY_ADDENDA = {
 };
 
 
+const WEEKDAY_LABELS = [
+    "Dim",
+    "Lun",
+    "Mar",
+    "Mer",
+    "Jeu",
+    "Ven",
+    "Sam"
+];
+
+
+const MONTH_LABEL_FORMATTER = new Intl.DateTimeFormat(
+    "fr-CA",
+    {
+        month: "long",
+        year: "numeric"
+    }
+);
+
+
+type ProjectViewMode = "Liste" | "Calendrier";
+
+
 function nullableValue(
     value: string
 ) {
 
     return value.trim() || null;
+
+}
+
+
+function padDatePart(
+    value: number
+) {
+
+    return String(value).padStart(
+        2,
+        "0"
+    );
+
+}
+
+
+function formatDateKey(
+    date: Date
+) {
+
+    return [
+        date.getFullYear(),
+        padDatePart(date.getMonth() + 1),
+        padDatePart(date.getDate())
+    ].join("-");
+
+}
+
+
+function formatMonthKey(
+    date: Date
+) {
+
+    return [
+        date.getFullYear(),
+        padDatePart(date.getMonth() + 1)
+    ].join("-");
+
+}
+
+
+function monthStart(
+    monthKey: string
+) {
+
+    const [
+        year,
+        month
+    ] = monthKey.split("-").map(Number);
+
+    return new Date(
+        year,
+        month - 1,
+        1
+    );
+
+}
+
+
+function addMonths(
+    monthKey: string,
+    offset: number
+) {
+
+    const start =
+        monthStart(monthKey);
+
+    start.setMonth(
+        start.getMonth() + offset
+    );
+
+    return formatMonthKey(start);
+
+}
+
+
+function calendarDates(
+    monthKey: string
+) {
+
+    const firstDay =
+        monthStart(monthKey);
+    const startOffset =
+        firstDay.getDay();
+    const daysInMonth =
+        new Date(
+            firstDay.getFullYear(),
+            firstDay.getMonth() + 1,
+            0
+        ).getDate();
+    const cellCount =
+        Math.ceil(
+            (startOffset + daysInMonth) / 7
+        ) * 7;
+    const firstCell =
+        new Date(
+            firstDay.getFullYear(),
+            firstDay.getMonth(),
+            1 - startOffset
+        );
+
+    return Array.from(
+        {
+            length: cellCount
+        },
+        (_item, index) => {
+            const date =
+                new Date(firstCell);
+
+            date.setDate(
+                firstCell.getDate() + index
+            );
+
+            return date;
+        }
+    );
 
 }
 
@@ -87,6 +227,7 @@ function ProjectsPage({
     const msgInputRef = useRef<HTMLInputElement | null>(null);
     const editMsgInputRef = useRef<HTMLInputElement | null>(null);
     const folderInputRef = useRef<HTMLInputElement | null>(null);
+    const calendarInitializedRef = useRef(false);
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
     const [form, setForm] = useState<ProjectInput>(EMPTY_PROJECT);
@@ -103,8 +244,64 @@ function ProjectsPage({
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isEditSaving, setIsEditSaving] = useState(false);
+    const [projectViewMode, setProjectViewMode] = useState<ProjectViewMode>("Liste");
+    const [calendarMonth, setCalendarMonth] = useState(
+        () =>
+            formatMonthKey(new Date())
+    );
     const [status, setStatus] = useState("");
     const [error, setError] = useState("");
+
+
+    const projectsByDueDate = useMemo(
+        () => {
+            const groupedProjects = new Map<string, ProjectSummary[]>();
+
+            projects.forEach(
+                project => {
+                    if (!project.bid_due_date)
+                        return;
+
+                    const dayProjects =
+                        groupedProjects.get(project.bid_due_date) || [];
+
+                    dayProjects.push(project);
+                    groupedProjects.set(
+                        project.bid_due_date,
+                        dayProjects
+                    );
+                }
+            );
+
+            return groupedProjects;
+        },
+        [
+            projects
+        ]
+    );
+
+    const calendarMonthProjects = useMemo(
+        () =>
+            projects.filter(
+                project =>
+                    project.bid_due_date?.startsWith(calendarMonth)
+            ),
+        [
+            calendarMonth,
+            projects
+        ]
+    );
+
+    const undatedProjects = useMemo(
+        () =>
+            projects.filter(
+                project =>
+                    !project.bid_due_date
+            ),
+        [
+            projects
+        ]
+    );
 
 
     function loadProjects() {
@@ -388,6 +585,37 @@ function ProjectsPage({
             loadClients();
         },
         []
+    );
+
+
+    useEffect(
+        () => {
+            if (projectMenu !== "En Soumission")
+                return;
+
+            if (calendarInitializedRef.current)
+                return;
+
+            const firstDatedProject = projects.find(
+                project =>
+                    project.bid_due_date
+            );
+
+            if (!firstDatedProject?.bid_due_date)
+                return;
+
+            setCalendarMonth(
+                firstDatedProject.bid_due_date.slice(
+                    0,
+                    7
+                )
+            );
+            calendarInitializedRef.current = true;
+        },
+        [
+            projectMenu,
+            projects
+        ]
     );
 
 
@@ -755,80 +983,244 @@ function ProjectsPage({
                 <div className="business-error">{error}</div>
             )}
 
-            <div className="business-table-wrap">
-                <table className="business-table">
-                    <thead>
-                        <tr>
-                            <th>No</th>
-                            <th>Projet</th>
-                            <th>Client</th>
-                            <th>Adresse</th>
-                            <th>Dépôt</th>
-                            <th>Échéancier</th>
-                            <th>Révisions</th>
-                            <th>Statut</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {isLoading ? (
-                            <tr>
-                                <td colSpan={9}>Chargement...</td>
-                            </tr>
-                        ) : projects.length === 0 ? (
-                            <tr>
-                                <td colSpan={9}>Aucun projet en cours.</td>
-                            </tr>
-                        ) : (
-                            projects.map(
+            {projectMenu === "En Soumission" && (
+                <div className="business-tabs">
+                    {(["Liste", "Calendrier"] as ProjectViewMode[]).map(
+                        viewMode => (
+                            <button
+                                key={viewMode}
+                                type="button"
+                                className={
+                                    projectViewMode === viewMode ?
+                                        "active" :
+                                        ""
+                                }
+                                onClick={
+                                    () =>
+                                        setProjectViewMode(viewMode)
+                                }
+                            >
+                                {viewMode}
+                            </button>
+                        )
+                    )}
+                </div>
+            )}
+
+            {projectViewMode === "Calendrier" && projectMenu === "En Soumission" ? (
+                <div className="project-calendar-wrap">
+                    <div className="project-calendar-toolbar">
+                        <button
+                            type="button"
+                            onClick={
+                                () =>
+                                    setCalendarMonth(
+                                        addMonths(
+                                            calendarMonth,
+                                            -1
+                                        )
+                                    )
+                            }
+                        >
+                            Mois précédent
+                        </button>
+                        <strong>
+                            {MONTH_LABEL_FORMATTER.format(monthStart(calendarMonth))}
+                        </strong>
+                        <button
+                            type="button"
+                            onClick={
+                                () =>
+                                    setCalendarMonth(
+                                        formatMonthKey(new Date())
+                                    )
+                            }
+                        >
+                            Aujourd'hui
+                        </button>
+                        <button
+                            type="button"
+                            onClick={
+                                () =>
+                                    setCalendarMonth(
+                                        addMonths(
+                                            calendarMonth,
+                                            1
+                                        )
+                                    )
+                            }
+                        >
+                            Mois suivant
+                        </button>
+                        <span>
+                            {calendarMonthProjects.length} dépôt(s)
+                        </span>
+                    </div>
+
+                    <div className="project-calendar-weekdays">
+                        {WEEKDAY_LABELS.map(
+                            weekday => (
+                                <div key={weekday}>{weekday}</div>
+                            )
+                        )}
+                    </div>
+
+                    <div className="project-calendar-grid">
+                        {calendarDates(calendarMonth).map(
+                            date => {
+                                const dateKey =
+                                    formatDateKey(date);
+                                const dayProjects =
+                                    projectsByDueDate.get(dateKey) || [];
+                                const isOutsideMonth =
+                                    formatMonthKey(date) !== calendarMonth;
+                                const isToday =
+                                    dateKey === formatDateKey(new Date());
+
+                                return (
+                                    <div
+                                        key={dateKey}
+                                        className={[
+                                            "project-calendar-day",
+                                            isOutsideMonth ? "outside" : "",
+                                            isToday ? "today" : "",
+                                            dayProjects.length ? "has-projects" : ""
+                                        ].filter(Boolean).join(" ")}
+                                    >
+                                        <div className="project-calendar-day-number">
+                                            {date.getDate()}
+                                        </div>
+                                        <div className="project-calendar-items">
+                                            {dayProjects.map(
+                                                project => (
+                                                    <button
+                                                        key={project.id}
+                                                        type="button"
+                                                        disabled={!project.latest_estimate_id}
+                                                        onClick={
+                                                            () => {
+                                                                if (project.latest_estimate_id)
+                                                                    onOpenEstimate(project.latest_estimate_id);
+                                                            }
+                                                        }
+                                                    >
+                                                        <strong>
+                                                            {project.project_number || "Sans no"}
+                                                        </strong>
+                                                        <span>{project.project_name}</span>
+                                                        {project.client_names && (
+                                                            <small>
+                                                                {project.client_names}
+                                                            </small>
+                                                        )}
+                                                    </button>
+                                                )
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            }
+                        )}
+                    </div>
+
+                    {undatedProjects.length > 0 && (
+                        <div className="project-calendar-undated">
+                            <strong>Sans date de dépôt</strong>
+                            {undatedProjects.map(
                                 project => (
-                                    <tr key={project.id}>
-                                        <td>{project.project_number || "-"}</td>
-                                        <td>{project.project_name}</td>
-                                        <td>{project.client_names || "-"}</td>
-                                        <td>{project.address || "-"}</td>
-                                        <td>{project.bid_due_date || "-"}</td>
-                                        <td>
-                                            {project.start_date || "-"}
-                                            {" à "}
-                                            {project.end_date || "-"}
-                                        </td>
-                                        <td>{project.revision_count}</td>
-                                        <td>{project.status || "-"}</td>
-                                        <td>
-                                            {projectMenu === "En Soumission" && (
+                                    <button
+                                        key={project.id}
+                                        type="button"
+                                        onClick={
+                                            () =>
+                                                openProjectEditor(project)
+                                        }
+                                    >
+                                        {project.project_number || "-"}
+                                        {" - "}
+                                        {project.project_name}
+                                    </button>
+                                )
+                            )}
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className="business-table-wrap">
+                    <table className="business-table">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Projet</th>
+                                <th>Client</th>
+                                <th>Adresse</th>
+                                <th>Dépôt</th>
+                                <th>Échéancier</th>
+                                <th>Révisions</th>
+                                <th>Statut</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={9}>Chargement...</td>
+                                </tr>
+                            ) : projects.length === 0 ? (
+                                <tr>
+                                    <td colSpan={9}>Aucun projet en cours.</td>
+                                </tr>
+                            ) : (
+                                projects.map(
+                                    project => (
+                                        <tr key={project.id}>
+                                            <td>{project.project_number || "-"}</td>
+                                            <td>{project.project_name}</td>
+                                            <td>{project.client_names || "-"}</td>
+                                            <td>{project.address || "-"}</td>
+                                            <td>{project.bid_due_date || "-"}</td>
+                                            <td>
+                                                {project.start_date || "-"}
+                                                {" à "}
+                                                {project.end_date || "-"}
+                                            </td>
+                                            <td>{project.revision_count}</td>
+                                            <td>{project.status || "-"}</td>
+                                            <td>
+                                                {projectMenu === "En Soumission" && (
+                                                    <button
+                                                        type="button"
+                                                        className="business-table-action"
+                                                        disabled={!project.latest_estimate_id}
+                                                        onClick={
+                                                            () => {
+                                                                if (project.latest_estimate_id)
+                                                                    onOpenEstimate(project.latest_estimate_id);
+                                                            }
+                                                        }
+                                                    >
+                                                        Dernière révision
+                                                    </button>
+                                                )}
                                                 <button
                                                     type="button"
                                                     className="business-table-action"
-                                                    disabled={!project.latest_estimate_id}
                                                     onClick={
-                                                        () => {
-                                                            if (project.latest_estimate_id)
-                                                                onOpenEstimate(project.latest_estimate_id);
-                                                        }
+                                                        () =>
+                                                            openProjectEditor(project)
                                                     }
                                                 >
-                                                    Dernière révision
+                                                    Modifier
                                                 </button>
-                                            )}
-                                            <button
-                                                type="button"
-                                                className="business-table-action"
-                                                onClick={
-                                                    () =>
-                                                        openProjectEditor(project)
-                                                }
-                                            >
-                                                Modifier
-                                            </button>
-                                        </td>
-                                    </tr>
+                                            </td>
+                                        </tr>
+                                    )
                                 )
-                            )
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             {editingProject && (
                 <div className="business-modal-backdrop">
