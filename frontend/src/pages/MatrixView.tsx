@@ -104,6 +104,35 @@ type AddendaRow = {
     description: string;
 };
 
+type ExclusionRow = {
+    label: string;
+    active: boolean;
+    custom: boolean;
+};
+
+const DEFAULT_EXCLUSIONS = [
+    "Préparation mécanique et nivellement des surfaces",
+    "Tous types de phasage",
+    "Coulis époxy, membrane scellant et silicone",
+    "Tous types de démolition et de ragréage",
+    "Travaux de soir et de fin de semaine",
+    "Protection des lieux",
+    "Fourniture du conteneur à déchets",
+    "La préparation de murs de blocs une couche mince seulement",
+    "Fourniture et installation de plinthe",
+    "Fourniture, livraison et manutention de céramique",
+    "Fourniture et installation de sandcoat dans les marches",
+    "Moulure RAL personnalisée & impression numérique personnalisée",
+    "Si des pertes de temps sont occasionnées par une mauvaise évaluation du client des quantités requise pour le projet, le temps perdu sera facturé",
+    "Toute ventilation des couts fournie est à des fins COMPTABLE seulement. TOUTE DIMINUTION OU AUGMENTATION de l’envergure DES TRAVAUX NÉCESSITERA UN AJUSTEMENT DE PRIX.",
+    "Fourniture et installation de tuiles du mail",
+    "Fourniture et installation de grille gratte-pieds",
+    "Si un monte-charge n’est pas disponible pour la manutention verticale, des frais pourraient s’appliquer pour une méthode alternative",
+    "Tout retard sur l’échéancier prévu en soumission peut occasionner des frais d’entreposage. Ces frais seront validés à la réception de votre bon de commande et votre échéancier",
+    "Découpe du carrelage autours des cloisons vitrée, nos travaux devront être fait avant l'installation de celles-ci",
+    "Tout frais de formation pour accès/ location de monte-charge / agent de sécurité / enquête pour nos employés"
+];
+
 const GRID_LOCALE_TEXT = {
     noRowsToShow: "Aucune ligne à afficher",
     loadingOoo: "Chargement...",
@@ -333,6 +362,7 @@ function MatrixView({
         plan_pages: "",
         spec_sections: "",
         addenda: "",
+        exclusions: "",
         probable_schedule: "",
         probable_schedule_from: "",
         probable_schedule_to: "",
@@ -341,6 +371,7 @@ function MatrixView({
     });
     const [isSummarySaving, setIsSummarySaving] = useState(false);
     const [summaryStatus, setSummaryStatus] = useState("");
+    const [newExclusionText, setNewExclusionText] = useState("");
     const [newRoomPhase, setNewRoomPhase] = useState("");
     const [newRoomPhaseLabel, setNewRoomPhaseLabel] = useState("");
     const [newRoomFloor, setNewRoomFloor] = useState("");
@@ -2198,6 +2229,8 @@ function MatrixView({
                 summaryForm.spec_sections.trim() || null,
             addenda:
                 summaryForm.addenda.trim() || null,
+            exclusions:
+                summaryForm.exclusions.trim() || null,
             probable_schedule:
                 [
                     summaryForm.probable_schedule_from,
@@ -2238,6 +2271,8 @@ function MatrixView({
                     summary.project.spec_sections || "",
                 addenda:
                     summary.project.addenda || "",
+                exclusions:
+                    summary.project.exclusions || "",
                 probable_schedule:
                     summary.rates.probable_schedule || "",
                 probable_schedule_from:
@@ -3383,6 +3418,172 @@ function MatrixView({
                 ]
             )
         );
+
+    }
+
+
+    function defaultExclusionRows(): ExclusionRow[] {
+
+        return DEFAULT_EXCLUSIONS.map(
+            label => ({
+                label,
+                active: true,
+                custom: false
+            })
+        );
+
+    }
+
+
+    function normalizeExclusionRows(
+        rows: ExclusionRow[]
+    ) {
+
+        const defaultRows = defaultExclusionRows();
+        const rowMap = new Map(
+            rows.map(
+                row => [
+                    row.label,
+                    row
+                ]
+            )
+        );
+        const normalizedRows = defaultRows.map(
+            defaultRow => ({
+                ...defaultRow,
+                active:
+                    rowMap.get(defaultRow.label)?.active ??
+                    defaultRow.active
+            })
+        );
+        const customRows = rows.filter(
+            row =>
+                row.custom &&
+                row.label.trim() &&
+                !DEFAULT_EXCLUSIONS.includes(row.label)
+        );
+
+        return [
+            ...normalizedRows,
+            ...customRows
+        ];
+
+    }
+
+
+    function exclusionRows() {
+
+        if (!summaryForm.exclusions)
+            return defaultExclusionRows();
+
+        try {
+            const parsedRows =
+                JSON.parse(summaryForm.exclusions);
+
+            if (Array.isArray(parsedRows))
+                return normalizeExclusionRows(
+                    parsedRows.map(
+                        row => ({
+                            label:
+                                String(row.label || row.description || ""),
+                            active:
+                                row.active === undefined ?
+                                    true :
+                                    Boolean(row.active),
+                            custom:
+                                Boolean(row.custom)
+                        })
+                    ).filter(
+                        row =>
+                            row.label.trim()
+                    )
+                );
+        } catch {
+            return normalizeExclusionRows(
+                summaryForm.exclusions.split("\n").map(
+                    label => ({
+                        label:
+                            label.trim(),
+                        active:
+                            true,
+                        custom:
+                            true
+                    })
+                ).filter(
+                    row =>
+                        row.label
+                )
+            );
+        }
+
+        return defaultExclusionRows();
+
+    }
+
+
+    function serializeExclusionRows(
+        rows: ExclusionRow[]
+    ) {
+
+        return JSON.stringify(
+            normalizeExclusionRows(rows).map(
+                row => ({
+                    label:
+                        row.label.trim(),
+                    active:
+                        row.active,
+                    custom:
+                        row.custom
+                })
+            )
+        );
+
+    }
+
+
+    function updateExclusionRow(
+        rowIndex: number,
+        active: boolean
+    ) {
+
+        const rows =
+            exclusionRows();
+
+        rows[rowIndex] = {
+            ...rows[rowIndex],
+            active
+        };
+
+        updateSummaryForm(
+            "exclusions",
+            serializeExclusionRows(rows)
+        );
+
+    }
+
+
+    function addCustomExclusion() {
+
+        const label =
+            newExclusionText.trim();
+
+        if (!label)
+            return;
+
+        updateSummaryForm(
+            "exclusions",
+            serializeExclusionRows(
+                [
+                    ...exclusionRows(),
+                    {
+                        label,
+                        active: true,
+                        custom: true
+                    }
+                ]
+            )
+        );
+        setNewExclusionText("");
 
     }
 
@@ -5433,6 +5634,65 @@ function MatrixView({
                                     >
                                         Ajouter
                                     </button>
+                                </div>
+
+                                <div className="exclusions-block">
+                                    <div className="exclusions-title">
+                                        Exclusions:
+                                    </div>
+                                    <div className="exclusions-list">
+                                        {exclusionRows().map(
+                                            (row, rowIndex) => (
+                                                <label
+                                                    key={`${row.label}-${rowIndex}`}
+                                                    className={
+                                                        row.active ?
+                                                            "exclusion-row" :
+                                                            "exclusion-row inactive"
+                                                    }
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={row.active}
+                                                        onChange={
+                                                            event =>
+                                                                updateExclusionRow(
+                                                                    rowIndex,
+                                                                    event.target.checked
+                                                                )
+                                                        }
+                                                    />
+                                                    <span>{row.label}</span>
+                                                </label>
+                                            )
+                                        )}
+                                        <div className="exclusion-add-row">
+                                            <input
+                                                type="text"
+                                                value={newExclusionText}
+                                                placeholder="Ajouter une exclusion ponctuelle"
+                                                onChange={
+                                                    event =>
+                                                        setNewExclusionText(event.target.value)
+                                                }
+                                                onKeyDown={
+                                                    event => {
+                                                        if (event.key !== "Enter")
+                                                            return;
+
+                                                        event.preventDefault();
+                                                        addCustomExclusion();
+                                                    }
+                                                }
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={addCustomExclusion}
+                                            >
+                                                Ajouter
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

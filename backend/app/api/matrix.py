@@ -25,11 +25,25 @@ class MatrixSummaryUpdate(BaseModel):
     plan_pages: str | None = None
     spec_sections: str | None = None
     addenda: str | None = None
+    exclusions: str | None = None
     probable_schedule: str | None = None
     probable_schedule_from: str | None = None
     probable_schedule_to: str | None = None
     tile_holdback_percent: float | None = Field(default=None, ge=0)
     warranty_years: int | None = Field(default=None, ge=0)
+
+
+def ensure_project_summary_columns(db):
+
+    db.execute(
+        text(
+            """
+            ALTER TABLE project
+            ADD COLUMN IF NOT EXISTS exclusions TEXT
+            """
+        )
+    )
+    db.commit()
 
 
 def normalize_line_order(
@@ -97,6 +111,8 @@ def estimate_summary(
     estimate_id: int
 ):
 
+    ensure_project_summary_columns(db)
+
     estimate_row = db.execute(
         text(
             """
@@ -116,6 +132,7 @@ def estimate_summary(
                 p.plan_pages,
                 p.spec_sections,
                 p.addenda,
+                p.exclusions,
                 p.address_line1,
                 p.address_line2,
                 p.city,
@@ -261,6 +278,7 @@ def estimate_summary(
             "plan_pages": estimate_row.plan_pages,
             "spec_sections": estimate_row.spec_sections,
             "addenda": estimate_row.addenda,
+            "exclusions": estimate_row.exclusions,
             "address": build_address(estimate_row)
         },
         "estimate": {
@@ -641,6 +659,8 @@ def update_matrix_summary(
     db = SessionLocal()
 
     try:
+        ensure_project_summary_columns(db)
+
         estimate_row = db.execute(
             text(
                 """
@@ -687,6 +707,7 @@ def update_matrix_summary(
                     plan_pages = :plan_pages,
                     spec_sections = :spec_sections,
                     addenda = :addenda,
+                    exclusions = :exclusions,
                     probable_schedule = :probable_schedule,
                     start_date = CAST(:probable_schedule_from AS DATE),
                     end_date = CAST(:probable_schedule_to AS DATE),
@@ -702,6 +723,7 @@ def update_matrix_summary(
                 "plan_pages": update.plan_pages,
                 "spec_sections": update.spec_sections,
                 "addenda": update.addenda,
+                "exclusions": update.exclusions,
                 "probable_schedule": update.probable_schedule,
                 "probable_schedule_from": update.probable_schedule_from,
                 "probable_schedule_to": update.probable_schedule_to,

@@ -156,6 +156,8 @@ CREATE TABLE project (
 
     addenda TEXT,
 
+    exclusions TEXT,
+
     status VARCHAR(50) DEFAULT 'PENDING',
 
     address_line1 VARCHAR(255),

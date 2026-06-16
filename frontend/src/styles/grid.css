@@ -133,7 +133,8 @@
 
 .plan-pages-block,
 .spec-line-block,
-.addenda-block {
+.addenda-block,
+.exclusions-block {
 
     display: grid;
 
@@ -148,7 +149,8 @@
 
 .plan-pages-title,
 .spec-line-title,
-.addenda-title {
+.addenda-title,
+.exclusions-title {
 
     min-height: 22px;
 
@@ -235,6 +237,121 @@
     min-height: 16px;
 
     padding: 0;
+
+}
+
+
+.exclusions-list {
+
+    display: grid;
+
+    gap: 0;
+
+    max-height: 220px;
+
+    overflow-y: auto;
+
+    border: 1px solid #1f1f1f;
+
+    background-color: #ffffff;
+
+}
+
+
+.exclusion-row {
+
+    display: grid;
+
+    grid-template-columns: 24px minmax(0, 1fr);
+
+    align-items: start;
+
+    min-height: 24px;
+
+    padding: 3px 6px 3px 4px;
+
+    border-bottom: 1px solid #d7dbe0;
+
+    background-color: #ffffff;
+
+    color: #111111;
+
+    font-size: 12px;
+
+    line-height: 16px;
+
+}
+
+
+.exclusion-row input {
+
+    width: 15px;
+
+    height: 15px;
+
+    min-height: 15px;
+
+    margin: 1px 0 0;
+
+    padding: 0;
+
+}
+
+
+.exclusion-row span {
+
+    border: 0;
+
+    padding: 0;
+
+    background-color: transparent;
+
+}
+
+
+.exclusion-row.inactive span {
+
+    color: #747b84;
+
+    text-decoration: line-through;
+
+}
+
+
+.exclusion-add-row {
+
+    display: grid;
+
+    grid-template-columns: minmax(0, 1fr) 82px;
+
+    gap: 4px;
+
+    padding: 4px;
+
+    background-color: #eef1f4;
+
+}
+
+
+.exclusion-add-row button {
+
+    min-height: 22px;
+
+    border: 1px solid #c6ccd4;
+
+    border-radius: 3px;
+
+    background-color: #ffffff;
+
+    color: #1f252d;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    cursor: pointer;
 
 }
 
