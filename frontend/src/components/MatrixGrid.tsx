@@ -77,6 +77,8 @@ const MatrixGrid = forwardRef<any, MatrixGridProps>(
 
                     groupDefaultExpanded={-1}
 
+                    domLayout="autoHeight"
+
                     rowHeight={22}
 
                     headerHeight={34}

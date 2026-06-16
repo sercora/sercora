@@ -2034,9 +2034,9 @@
 
     --sercora-zoom: 1;
 
-    flex: 0 0 72vh;
+    flex: 0 0 auto;
 
-    min-height: 520px;
+    min-height: 0;
 
     width: calc(100% - 32px);
 
