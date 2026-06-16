@@ -40,6 +40,7 @@ import {
     updateEstimateLine as saveEstimateLine,
     updateEstimateQuantity as saveEstimateQuantity
 } from "../utils/matrixApi";
+import { clickableMsgHtml } from "../utils/msgPreviewHtml";
 import type {
     EstimateFolderItem,
     EstimateFilePreview,
@@ -6114,8 +6115,8 @@ function MatrixView({
                             <iframe
                                 className="msg-html-frame"
                                 title={filePreview.subject || filePreview.name}
-                                sandbox=""
-                                srcDoc={filePreview.html}
+                                sandbox="allow-popups allow-popups-to-escape-sandbox"
+                                srcDoc={clickableMsgHtml(filePreview.html)}
                             />
                         ) : (
                             <pre>

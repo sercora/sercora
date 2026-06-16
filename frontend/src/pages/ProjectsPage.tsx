@@ -20,6 +20,7 @@ import {
     projectFilePreviewUrl,
     projectFileUrl
 } from "../utils/matrixApi";
+import { clickableMsgHtml } from "../utils/msgPreviewHtml";
 import type {
     BsdqProjectSearchResult,
     Client,
@@ -1176,8 +1177,8 @@ function ProjectsPage({
                             <iframe
                                 className="msg-html-frame"
                                 title={projectFilePreview.subject || projectFilePreview.name}
-                                sandbox=""
-                                srcDoc={projectFilePreview.html}
+                                sandbox="allow-popups allow-popups-to-escape-sandbox"
+                                srcDoc={clickableMsgHtml(projectFilePreview.html)}
                             />
                         ) : (
                             <pre>
