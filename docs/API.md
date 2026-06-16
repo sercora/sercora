@@ -1,8 +1,18 @@
 # Reference API
 
-Cette page resume les endpoints principaux exposes par Sercora.
+L'API Sercora est exposee par FastAPI sur:
 
-## Sante Et Version
+```text
+https://api.serco.pro
+```
+
+En developpement local:
+
+```text
+http://localhost:8000
+```
+
+## Sante
 
 ```text
 GET /
@@ -10,89 +20,174 @@ GET /health
 GET /version
 ```
 
-## Produits
+## Authentification Et Usagers
 
 ```text
-GET    /products
-GET    /products/{product_id}
-POST   /products
-PUT    /products/{product_id}
-DELETE /products/{product_id}
-GET    /product-types
-GET    /units
+POST /auth/login
+GET  /auth/me
+PUT  /auth/me
+GET  /users
+POST /users
+PUT  /users/{user_id}
+POST /users/{user_id}/invite
+POST /users/{user_id}/password-reset
+POST /auth/set-password
 ```
 
-Le `DELETE /products/{product_id}` desactive le produit au lieu de le supprimer physiquement.
-
-Les produits peuvent inclure un fournisseur et un code fournisseur via les champs:
+Roles supportes:
 
 ```text
-supplier_name
-supplier_product_code
-prosol_product_id
-prosol_uuid
-prosol_sku
-manufacturer_sku
-category_name
-default_purchase_price
-msrp_price
-price_updated_at
+admin
+execution
+estimation
+entrepot
 ```
 
-Les champs fournisseur alimentent la table de liaison `product_supplier`.
-Les champs Prosol restent dans `product` pour lier le produit local a l'article API et rafraichir les prix sans recreer le produit.
+La liste des usagers retourne aussi la date de creation et la derniere connexion.
 
-## Prosol
+## Courriel
+
+Endpoints admin:
 
 ```text
-GET  /prosol/products/search?query={texte}&limit=20
-POST /prosol/products/import
-POST /prosol/products/update-prices
+GET  /admin/email-settings
+PUT  /admin/email-settings
+POST /admin/email-settings/test
+POST /user-invitations
 ```
 
-`GET /prosol/products/search` recherche les produits Prosol et enrichit les resultats avec le code, le format, la categorie, le prix d'achat et le MSRP quand l'API Prosol retourne une offre.
+La configuration inclut SMTP, expediteur et reply-to.
 
-`POST /prosol/products/import` cree ou met a jour un produit local a partir de Prosol:
-
-```json
-{
-  "prosol_product_id": 10041,
-  "prosol_uuid": "89c5263f-9938-11eb-a3fb-f6968cef729a"
-}
-```
-
-`POST /prosol/products/update-prices` ne modifie que les prix des produits locaux deja lies a Prosol.
-
-Le backend utilise l'API:
+## Clients
 
 ```text
-https://shop.api.prosol.ca/api/storefront/products/search
+GET  /client-types
+GET  /clients
+POST /clients
+PUT  /clients/{client_id}
 ```
 
-Le backend utilise:
+Les clients sont rattaches aux projets et aux invitations.
+
+## Projets
 
 ```text
-PROSOL_API_URL=https://shop.api.prosol.ca
-PROSOL_API_TOKEN=...
+GET  /projects?scope=all
+GET  /projects?scope=current
+GET  /projects?scope=submission
+GET  /projects/{project_id}
+POST /projects
+POST /projects/with-files
+PUT  /projects/{project_id}/current-edit
 ```
 
-Le token Prosol doit rester dans `backend/.env`.
+Scopes:
 
-## Soumissions
+- `all`: tous les projets;
+- `current`: projets non fermes/refuses/archives;
+- `submission`: projets avec statut `PENDING`.
+
+La liste retourne notamment:
+
+```text
+revision_zero_estimate_id
+latest_estimate_id
+revision_count
+invitations
+addenda
+```
+
+`POST /projects/with-files` cree le projet, copie l'arborescence type NAS et accepte:
+
+- fichiers `.msg`;
+- fichiers de dossier projet;
+- client;
+- date de depot;
+- informations de projet.
+
+`PUT /projects/{project_id}/current-edit` permet:
+
+- modifier la date de depot;
+- ajouter des clients;
+- ajouter des `.msg`;
+- ajouter un addenda;
+- creer/assurer la revision 0.
+
+## Soumissions Et Revisions
 
 ```text
 GET  /estimates
 GET  /estimates/{estimate_id}
 POST /estimates
+POST /estimates/{estimate_id}/revisions
 ```
+
+`POST /estimates/{estimate_id}/revisions` clone la revision affichee:
+
+- estimate;
+- rooms;
+- estimate_line;
+- estimate_quantity;
+- liens entre lignes;
+- fournisseurs.
 
 ## Matrice
 
 ```text
 GET /estimates/{estimate_id}/matrix
+PUT /estimates/{estimate_id}/matrix-summary
+GET /surface-types
 ```
 
-Retourne les pieces, les lignes de soumission et les quantites necessaires a la matrice frontend.
+`GET /matrix` retourne:
+
+- resume de projet;
+- estimate;
+- taux;
+- clients;
+- fournisseurs;
+- echantillons;
+- locaux;
+- colonnes de locaux;
+- lignes;
+- quantites.
+
+`PUT /matrix-summary` sauvegarde:
+
+- taux utilise;
+- profit global;
+- architecte;
+- date des plans;
+- pages de plans;
+- devis;
+- addenda;
+- exclusions;
+- echeancier probable;
+- remise;
+- garantie.
+
+## Locaux
+
+```text
+GET    /rooms
+GET    /rooms/{room_id}
+POST   /rooms
+PUT    /rooms/{room_id}
+DELETE /rooms/{room_id}
+```
+
+Un local contient:
+
+```text
+phase_name
+phase_label
+floor_name
+floor_label
+room_name
+sort_order
+```
+
+L'interface utilise surtout l'etage et son libelle.
 
 ## Lignes De Soumission
 
@@ -101,7 +196,30 @@ GET    /estimate-lines
 GET    /estimate-lines/{line_id}
 POST   /estimate-lines
 PUT    /estimate-lines/{line_id}
+PUT    /estimate-lines/{line_id}/position
+PUT    /estimate-lines/{line_id}/product
 DELETE /estimate-lines/{line_id}
+```
+
+Champs importants:
+
+```text
+estimate_id
+product_id
+surface_type_id
+unit_id
+plan_code
+loss_percent
+purchase_price
+profit_percent
+profit_forced
+installation_cost
+installation_link_source_line_id
+installation_link_multiplier
+quantity_link_source_line_ids
+quantity_link_multiplier
+manpower_multiplier
+sort_order
 ```
 
 ## Quantites
@@ -114,68 +232,140 @@ PUT    /estimate-quantities/{quantity_id}
 DELETE /estimate-quantities/{quantity_id}
 ```
 
-## Projets
+Les quantites relient une ligne de soumission et un local.
+
+## Produits
 
 ```text
-GET  /projects
-GET  /projects/{project_id}
-POST /projects
+GET    /products
+GET    /products/{product_id}
+POST   /products
+PUT    /products/{product_id}
+PUT    /products/bulk
+DELETE /products/{product_id}
+GET    /product-types
+GET    /units
 ```
 
-## Pieces
+`DELETE /products/{product_id}` desactive le produit au lieu de le supprimer physiquement.
+
+La liste supporte fournisseurs, recherche, pagination et produits actifs/inactifs.
+
+Champs utiles:
 
 ```text
-GET  /rooms
-GET  /rooms/{room_id}
-POST /rooms
+name
+manufacturer_name
+collection_name
+color_name
+finish_name
+size_name
+default_unit_id
+default_purchase_price
+msrp_price
+supplier_name
+supplier_product_code
+technical_documents
+coverage_options
+active
 ```
 
-## Outils
+## Escomptes Fournisseurs
+
+```text
+GET  /supplier-discounts
+PUT  /supplier-discounts/{supplier_name}
+POST /supplier-discounts/{supplier_name}/apply
+```
+
+Utilise pour Schluter, Centura, Olympia et autres fournisseurs.
+
+## Imports Produits
+
+```text
+POST /products/schluter/price-list
+POST /products/centura/price-list
+POST /products/olympia/price-list
+```
+
+Ces endpoints alimentent les catalogues fournisseurs.
+
+## Prosol
+
+```text
+GET  /prosol/products/search
+POST /prosol/products/import
+POST /prosol/products/sync-technical-sheets
+POST /prosol/products/update-prices
+```
+
+Fonctions:
+
+- recherche Prosol;
+- import produit;
+- mise a jour des fiches techniques;
+- mise a jour des prix des produits lies.
+
+Le token Prosol reste cote backend.
+
+## Outils Snipe-IT
 
 ```text
 GET /tools
+GET /tools/{tool_id}/image
 ```
 
-Parametres:
+Parametres `/tools`:
 
 ```text
-limit   Nombre maximal d'outils, defaut 100, max 10000
-offset  Decalage de pagination
-search  Recherche Snipe-IT
-sort    Colonne de tri, defaut asset_tag. L'interface utilise asset_tag, location ou name
+scope   available ou deployed
+limit   10, 20, 50, 100 ou all cote interface
+offset  pagination
+search  recherche texte
+sort    tag, chantier, nom ou champs Snipe normalises
 order   asc ou desc
 ```
 
-Exemple:
+La reponse contient:
 
 ```text
-GET /tools?limit=100&search=drill
+id
+asset_tag
+name
+serial
+model
+category
+manufacturer
+status
+status_type
+location
+last_checkout
+updated_at
+image_url
+image_proxy_path
 ```
 
-Reponse:
+## Fichiers De Soumission
 
-```json
-{
-  "total": 467,
-  "rows": [
-    {
-      "id": 527,
-      "asset_tag": "3WAY 02",
-      "name": "3-way",
-      "serial": "",
-      "model": "outils",
-      "model_number": "",
-      "category": "outils",
-      "manufacturer": "",
-      "status": "Ready to Deploy",
-      "status_type": "deployable",
-      "assigned_to": "",
-      "location": "",
-      "last_checkout": "",
-      "updated_at": "2026-04-22 1:17PM"
-    }
-  ]
-}
+```text
+GET /estimate-folders
+GET /estimate-files
+GET /estimate-file-preview
 ```
 
-L'API `/tools` depend de `SNIPEIT_URL` et `SNIPEIT_API_TOKEN` cote serveur.
+Ces endpoints naviguent les dossiers NAS et retournent des apercus PDF, MSG, Word ou Excel lorsque possible.
+
+Statuses:
+
+```text
+in_progress
+sent
+rejected
+```
+
+## Erreurs Courantes
+
+- `404`: ressource inexistante ou route non deployee.
+- `422`: payload invalide ou date invalide.
+- `500`: erreur serveur, NAS, conversion de fichier ou integration.
+- `503`: integration externe indisponible ou token manquant.

@@ -1,9 +1,6 @@
 # Architecture
 
-Sercora est organisee en deux applications principales:
-
-- un frontend React servi comme fichiers statiques;
-- une API FastAPI qui centralise les acces aux donnees internes et aux integrations externes.
+Sercora est une application web interne composee d'un frontend React, d'une API FastAPI, d'une base PostgreSQL, d'un acces NAS et de plusieurs integrations externes.
 
 ## Vue D'ensemble
 
@@ -12,136 +9,266 @@ Navigateur
   |
   | HTTPS
   v
-nginx: sercora.serco.pro
+nginx sercora.serco.pro
   |
   v
 Frontend React statique
   |
   | HTTPS API
   v
-nginx: api.serco.pro
+nginx api.serco.pro
   |
   v
-FastAPI / Uvicorn
+FastAPI / Uvicorn / systemd
   |
   +--> PostgreSQL
-  |
-  +--> Snipe-IT API
+  +--> NAS NFS
+  +--> Snipe-IT
+  +--> Prosol
+  +--> SMTP
+  +--> LibreOffice pour apercus Office
 ```
 
 ## Frontend
 
-Le frontend est responsable de l'experience utilisateur et des interactions rapides:
+Le frontend vit dans `frontend/src`.
+
+Responsabilites:
 
 - navigation principale;
-- matrices et tableaux;
-- formulaires produit;
-- recherche et rafraichissement des outils;
-- calculs visibles cote client pour la matrice.
+- affichage des pages metier;
+- appels API;
+- calculs de matrice visibles;
+- edition de cellules;
+- recherche et pagination;
+- rendu des apercus de fichiers;
+- experience utilisateur dense et orientee production.
 
-Le frontend ne contient pas de secret. Les appels externes passent par le backend.
+Fichiers importants:
 
-### Pages
+```text
+frontend/src/App.tsx
+frontend/src/pages/MatrixView.tsx
+frontend/src/pages/ProductsPage.tsx
+frontend/src/pages/ProjectsPage.tsx
+frontend/src/pages/ToolsPage.tsx
+frontend/src/pages/UsersPage.tsx
+frontend/src/pages/ConfigurationPage.tsx
+frontend/src/utils/
+frontend/src/styles/
+```
 
-- `MatrixView`: soumissions et calculs par piece.
-- `ProductsPage`: catalogue produit.
-- `ToolsPage`: inventaire des outils.
+## Shell Applicatif
 
-### Utilitaires
+`App.tsx` gere:
 
-- `matrixApi.ts`: appels `/estimates/1/matrix`, `/estimate-quantities`, `/estimate-lines`.
-- `productsApi.ts`: appels `/products`, `/product-types`, `/units`.
-- `toolsApi.ts`: appel `/tools`.
-- `matrixCalculations.ts`: calculs de couts, pertes, profits et prix.
+- authentification et session;
+- menu principal;
+- sous-menus;
+- page active;
+- redirection depuis Projets vers la derniere revision de matrice;
+- footer avec liens GitHub, documentation et credits.
+
+Menus principaux:
+
+- Clients;
+- Projets;
+- Produits;
+- Outils;
+- Soumissions LEGACY;
+- Usagers;
+- Configuration;
+- Profil.
+
+## Matrice De Soumission
+
+`MatrixView.tsx` est le plus gros module frontend. Il utilise AG Grid et combine:
+
+- resume de projet;
+- architecte, date plans, pages de plans;
+- devis;
+- addenda;
+- exclusions;
+- fournisseurs;
+- echantillons;
+- taux et profit;
+- locaux;
+- surfaces;
+- lignes de produits;
+- quantites;
+- calculs de couts;
+- heures et jours.
+
+Les calculs purs sont dans:
+
+```text
+frontend/src/utils/matrixCalculations.ts
+```
 
 ## Backend
 
-Le backend FastAPI expose une API metier simple. Chaque fichier dans `backend/app/api/` couvre un domaine:
+Le backend vit dans `backend/app`.
 
-- `products.py`: produits, types de produit et unites;
-- `matrix.py`: matrice de soumission;
-- `estimate_lines.py`: lignes de soumission;
-- `estimate_quantities.py`: quantites par piece;
-- `projects.py`: projets;
-- `estimates.py`: soumissions;
-- `rooms.py`: pieces;
-- `tools.py`: proxy Snipe-IT.
+Point d'entree:
 
-Les routes sont enregistrees dans `backend/app/main.py`.
+```text
+backend/app/main.py
+```
+
+Routers:
+
+```text
+clients.py
+projects.py
+products.py
+matrix.py
+estimates.py
+estimate_lines.py
+estimate_quantities.py
+rooms.py
+tools.py
+prosol.py
+auth.py
+email.py
+```
+
+Le backend utilise surtout des requetes SQL explicites avec SQLAlchemy. Ce choix garde les comportements proches du schema et facilite le debogage.
 
 ## Base De Donnees
 
-PostgreSQL stocke les donnees internes. Le schema central se trouve dans `database/schema.sql`.
+PostgreSQL stocke les donnees internes.
 
-### Tables Metier
+Domaines principaux:
 
-- `product_type`: categories de produits internes.
-- `unit`: unites de mesure.
-- `surface_type`: types de surfaces.
-- `product`: catalogue produit.
-- `project`: projets.
-- `estimate`: soumissions et revisions.
-- `room`: pieces rattachees a une soumission.
-- `estimate_line`: lignes produit/surface d'une soumission.
-- `estimate_quantity`: quantites par ligne et par piece.
+- authentification et usagers;
+- clients;
+- produits;
+- fournisseurs et escomptes;
+- projets;
+- soumissions/revisions;
+- locaux;
+- lignes;
+- quantites;
+- courriel SMTP;
+- invitations;
+- exclusions et addenda;
+- fiches techniques et options de couverture.
 
-## Integration Snipe-IT
-
-Le module Outils utilise `backend/app/api/tools.py`.
-
-Flux:
-
-```text
-Frontend ToolsPage
-  -> GET /tools
-  -> FastAPI tools.py
-  -> GET {SNIPEIT_URL}/api/v1/hardware
-  -> normalisation des assets
-  -> reponse JSON Sercora
-```
-
-La normalisation reduit la reponse Snipe-IT aux champs utiles pour l'interface:
-
-- `asset_tag`
-- `name`
-- `serial`
-- `model`
-- `category`
-- `manufacturer`
-- `status`
-- `assigned_to`
-- `location`
-- `updated_at`
-
-## Configuration
-
-### Backend
-
-`backend/.env` peut contenir:
+Schema et migrations:
 
 ```text
-SNIPEIT_URL=https://snipe.serco.pro
-SNIPEIT_API_TOKEN=...
+database/schema.sql
+database/seed.sql
+database/migrations/
 ```
 
-### Frontend
+## Projets Et Revisions
 
-`frontend/.env.local` peut contenir:
+Un projet peut avoir plusieurs revisions dans `estimate`.
+
+Structure:
 
 ```text
-VITE_API_URL=http://localhost:8000
+project
+  -> estimate revision 0
+  -> estimate revision 1
+  -> estimate revision N
 ```
 
-Le deploiement production force:
+Le menu **Projets > En Soumission** ouvre la derniere revision disponible via `latest_estimate_id`.
+
+Le bouton **Enregistrer sous nouvelle revision** clone:
+
+- l'estime;
+- les locaux;
+- les lignes;
+- les quantites;
+- les liens entre lignes;
+- les soumissions fournisseurs.
+
+## NAS
+
+Sercora lit les dossiers de soumissions et peut ecrire uniquement dans le dossier de travail prevu.
+
+Racines utilisees:
 
 ```text
-VITE_API_URL=https://api.serco.pro
+/NAS/Soumissions en cours
+/NAS/Soumissions envoyees
+/NAS/@Recycle/Soumissions en cours
+/NAS_SERCORA_RW
 ```
 
-## Principes De Code
+La creation de projet copie l'arborescence de:
 
-- Garder les secrets cote backend.
-- Preferer des routes API explicites.
-- Garder les ecrans metier compacts et orientes tableau.
-- Utiliser les patterns existants avant d'ajouter une abstraction.
-- Documenter les operations sensibles dans `docs/OPERATIONS.md`.
+```text
+/NAS/Soumissions en cours/000-Dossier type
+```
+
+vers le dossier RW Sercora.
+
+## Apercus De Fichiers
+
+Les navigateurs de fichiers supportent:
+
+- dossiers;
+- PDF;
+- `.msg`;
+- Word;
+- Excel.
+
+Les fichiers Office sont convertis en PDF via LibreOffice cote serveur lorsque possible. Les `.msg` sont decodes avec texte, HTML et images distantes lorsque disponibles.
+
+## Integrations
+
+### Snipe-IT
+
+`tools.py` sert de proxy vers Snipe-IT.
+
+Le frontend ne voit jamais le token. Les images d'outils passent aussi par le backend.
+
+### Prosol
+
+`prosol.py` gere:
+
+- recherche API;
+- import de produits;
+- synchronisation des fiches techniques;
+- mise a jour des prix.
+
+### Catalogues Fournisseurs
+
+`products.py` gere les imports:
+
+- Schluter Excel;
+- Centura Excel;
+- Olympia PDF;
+- escomptes fournisseurs configurables;
+- application en lot.
+
+### SMTP
+
+`email.py` gere:
+
+- configuration SMTP admin;
+- test d'envoi;
+- invitations d'usager;
+- reset de mot de passe;
+- reply-to configurable.
+
+## Securite
+
+Principes:
+
+- secrets seulement dans `backend/.env`;
+- API externe seulement cote backend;
+- roles applicatifs pour limiter les fonctions admin;
+- NAS en lecture seule sauf dossier Sercora RW;
+- pas de token dans le frontend.
+
+## Points A Surveiller
+
+- `MatrixView.tsx` est volumineux et concentre beaucoup de logique UI.
+- Les migrations doivent suivre les champs ajoutes dynamiquement dans certains endpoints.
+- Les apercus Office dependent de LibreOffice cote serveur.
+- Les URLs NAS et montages NFS sont propres a l'environnement actuel.

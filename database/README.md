@@ -1,65 +1,163 @@
 # Database
 
-Le dossier `database/` contient le schema SQL, les migrations et les donnees initiales de Sercora.
-
-## Role
-
-La base de donnees stocke les informations internes de travail:
-
-- catalogue produits;
-- types de produits;
-- unites;
-- projets;
-- soumissions;
-- pieces;
-- lignes de soumission;
-- quantites par piece.
+Le dossier `database/` contient le schema PostgreSQL, les donnees initiales et les migrations de Sercora.
 
 ## Fichiers
 
 ```text
-schema.sql       Schema initial principal
-seed.sql         Donnees initiales de base
-migrations/      Evolutions SQL incrementales
+schema.sql
+seed.sql
+migrations/
 ```
+
+## Domaines Stockes
+
+- usagers et roles;
+- clients;
+- fournisseurs;
+- produits;
+- prix;
+- fiches techniques;
+- options de couverture;
+- projets;
+- invitations;
+- soumissions;
+- revisions;
+- locaux;
+- lignes de matrice;
+- quantites;
+- soumissions fournisseurs;
+- configuration SMTP;
+- exclusions;
+- addenda.
 
 ## Tables Principales
 
-- `product_type`: familles de produits.
-- `unit`: unites de mesure.
-- `surface_type`: types de surfaces.
-- `product`: catalogue produit interne.
-- `project`: projets.
-- `estimate`: soumissions et revisions.
-- `room`: pieces ou zones d'une soumission.
-- `estimate_line`: lignes de produits/services dans une soumission.
-- `estimate_quantity`: quantites par ligne et par piece.
+```text
+app_user
+client
+client_type
+supplier
+product_type
+unit
+surface_type
+product
+product_supplier
+product_document
+product_coverage_option
+supplier_discount
+project
+project_client
+project_invitation
+estimate
+room
+estimate_line
+estimate_quantity
+estimate_supplier_quote
+email_settings
+password_setup_token
+```
 
-## Modele De Soumission
+## Modele Projet
 
-Une soumission est construite autour de:
+```text
+project
+  -> project_client
+  -> project_invitation
+  -> estimate
+```
+
+Le projet contient aussi:
+
+- architecte;
+- date des plans;
+- pages de plans;
+- devis;
+- addenda;
+- exclusions;
+- date de depot;
+- echeancier;
+- remise;
+- garantie.
+
+## Modele Soumission
 
 ```text
 estimate
-  -> rooms
-  -> estimate_lines
-       -> estimate_quantities par room
+  -> room
+  -> estimate_line
+       -> estimate_quantity
+  -> estimate_supplier_quote
 ```
 
-Ce modele permet a la matrice frontend d'afficher les produits en lignes et les pieces en colonnes.
+Une nouvelle revision clone cette structure.
+
+## Produits
+
+Les produits peuvent etre relies a plusieurs fournisseurs par `product_supplier`.
+
+Champs importants:
+
+- manufacturier;
+- collection;
+- couleur;
+- fini;
+- format;
+- unite par defaut;
+- prix liste;
+- coutant;
+- fournisseur;
+- code fournisseur;
+- fiches techniques;
+- options de couverture;
+- actif/inactif.
+
+## Escomptes
+
+`supplier_discount` permet de configurer les escomptes par fournisseur, par exemple:
+
+- Schluter;
+- Centura;
+- Olympia.
+
+Ces escomptes peuvent etre appliques en lot.
 
 ## Migrations
 
-Les fichiers dans `migrations/` sont numerotes. Ils doivent etre appliques dans l'ordre.
-
-Convention:
+Les migrations sont numerotees:
 
 ```text
-NNN_description.sql
+002_clients_suppliers.sql
+...
+021_project_exclusions.sql
+```
+
+Regles:
+
+- appliquer dans l'ordre;
+- preferer `ADD COLUMN IF NOT EXISTS`;
+- eviter les suppressions destructives;
+- garder `schema.sql` coherent avec les migrations;
+- documenter les changements dans `docs/API.md` si l'API est affectee.
+
+## Verifications Utiles
+
+```bash
+psql postgresql://sercora@localhost:5432/sercora -c "\dt"
+psql postgresql://sercora@localhost:5432/sercora -c "\d project"
+psql postgresql://sercora@localhost:5432/sercora -c "\d estimate_line"
+```
+
+## Sauvegarde
+
+Avant une migration risquee:
+
+```bash
+pg_dump postgresql://sercora@localhost:5432/sercora > /tmp/sercora-backup.sql
 ```
 
 ## Precautions
 
-- Verifier les migrations contre une copie ou un environnement de test avant production.
-- Eviter les suppressions destructives sans sauvegarde.
-- Garder les changements de schema alignes avec les routes backend et les types frontend.
+- Ne jamais tester une migration destructive directement en production.
+- Verifier les imports fournisseur sur un echantillon quand possible.
+- Les champs ajoutes pour le frontend doivent exister dans le schema, la migration et les types TypeScript.

@@ -1,181 +1,285 @@
 # Sercora
 
-Sercora est une application interne pour structurer le travail commercial et operationnel de Carrelages Serco autour des produits, des soumissions et des outils. Son objectif est de transformer des informations dispersees en une interface de travail unique, rapide a consulter, facile a maintenir et connectee aux systemes existants.
+Sercora est l'application interne de Carrelages Serco pour centraliser les produits, les projets, les soumissions, les outils, les clients, les usagers et les integrations metier.
 
-L'application est construite comme un outil metier: sobre, direct, oriente donnees. Elle vise moins a presenter l'entreprise qu'a aider l'equipe a produire, verifier et suivre les informations necessaires au quotidien.
+Le produit vise un usage quotidien de production: estimation, catalogue, matrice de soumission, gestion de projets en soumission, navigation des dossiers NAS, consultation d'inventaire Snipe-IT et preparation progressive des automatisations fournisseur/courriel.
 
 ## Essence
 
-Sercora sert de couche applicative legere entre les besoins de terrain et les donnees internes. L'interface met l'accent sur les tableaux, les formulaires compacts, les calculs visibles et les integrations live.
+Sercora transforme des informations dispersees en une interface de travail unique:
 
-Les premieres surfaces couvertes sont:
+- catalogue produits exploitable par l'estimation;
+- matrice de soumission avec quantites, pertes, coutants, profits, vendants, heures et jours;
+- projets en soumission rattaches a des clients, invitations, addenda et revisions;
+- outils Snipe-IT visibles dans Sercora avec images;
+- importations de listes fournisseurs;
+- configuration courriel, usagers et roles.
 
-- **Soumissions**: matrice de quantites, prix, pertes, profit et installation par piece.
-- **Produits**: catalogue interne des materiaux, unites, types, couleurs, formats et etats actifs/inactifs.
-- **Outils**: consultation live des assets Snipe-IT depuis l'inventaire `snipe.serco.pro`.
-- **Clients / Projets**: espaces prevus dans la navigation pour les prochains modules.
+L'application est volontairement dense et orientee travail. Elle n'est pas une page marketing; c'est un logiciel interne pour produire plus vite et reduire les doubles entrees.
 
-## But
+## Modules
 
-Le but de Sercora est de reduire la friction entre l'estimation, le suivi des produits et la gestion des actifs.
+### Clients
 
-Concretement, l'application doit permettre de:
+Le menu Clients affiche la liste des clients. Une fenetre permet d'ajouter ou modifier un client. Les clients sont reutilises dans les projets et les invitations.
 
-- Centraliser les donnees utiles a une soumission.
-- Maintenir un catalogue produit exploitable par les estimations.
-- Consulter l'inventaire d'outils sans ouvrir un autre systeme.
-- Donner une base technique simple pour ajouter des modules metier.
-- Garder les integrations sensibles cote serveur, sans exposer les jetons dans le navigateur.
+### Projets
 
-## Forces
+Le menu Projets contient:
 
-- **Interface orientee production**: navigation laterale, tableaux denses, edition directe et peu de distraction visuelle.
-- **Matrice de soumission calculee**: les quantites par piece alimentent les totaux, les pertes, le cout materiel, le profit, l'installation et le prix de vente.
-- **Catalogue produit modifiable**: creation, edition, desactivation et recherche des produits.
-- **Donnees Snipe-IT live**: le module Outils lit l'API Snipe-IT via le backend Sercora.
-- **Backend simple**: API FastAPI avec routes explicites et requetes SQL lisibles.
-- **Deploiement direct**: build Vite servi par nginx, API uvicorn geree par systemd.
+- **En cours**: grise pour l'instant; reserve aux projets gagnes par bon de commande.
+- **En Soumission**: liste les projets avec statut `PENDING`.
+- **Creation**: creation d'un projet, copie d'arborescence NAS, ajout de courriels `.msg` et televersement de fichiers.
 
-## Technologies
+Dans **En Soumission**, chaque projet affiche le nombre de revisions et un bouton **Derniere revision** qui ouvre la derniere matrice disponible.
 
-### Frontend
+### Produits
 
-- React 19
-- TypeScript
-- Vite
-- AG Grid pour la matrice de soumission
-- CSS modulaire par surface fonctionnelle
+Le menu Produits regroupe:
 
-### Backend
+- **Tuiles**
+  - Centura
+  - Olympia
+- **Schluter**
+- **Mapei**
+- **Prosol**
 
-- Python
-- FastAPI
-- SQLAlchemy
-- Pydantic
-- Uvicorn
-- `python-dotenv` pour la configuration locale et serveur
+Le catalogue supporte la recherche, la pagination, les produits actifs/inactifs, l'edition, les fiches techniques, les prix de liste, les coutants et les fournisseurs.
 
-### Donnees
+### Soumissions LEGACY
 
-- PostgreSQL
-- Schema SQL versionne dans `database/schema.sql`
-- Tables principales: `product`, `product_type`, `unit`, `project`, `estimate`, `room`, `estimate_line`, `estimate_quantity`
+Le menu Soumissions a ete renomme **Soumissions LEGACY**. Il donne acces aux anciennes vues par dossiers:
 
-### Infrastructure
+- En cours
+- Envoyees
+- Refuse
+- Template
 
-- nginx pour `sercora.serco.pro` et `api.serco.pro`
-- systemd pour le service `sercora-api`
-- Script de deploiement dans `deploy/deploy.sh`
+Ces vues naviguent dans les repertoires NAS associes.
+
+### Matrice De Soumission
+
+La matrice permet de travailler une soumission par locaux et surfaces:
+
+- locaux avec etage et libelle;
+- surfaces classees;
+- code plan;
+- produits par ligne;
+- quantites par local;
+- pertes en pourcentage et unite;
+- coutant;
+- profit global ou force par ligne;
+- prix vendant;
+- installation unitaire et totale;
+- heures, multiplicateur d'hommes et jours;
+- sous-totaux par local, surface, fourniture et installation;
+- selection de cellules avec sous-total;
+- suppression de lignes selectionnees;
+- changement de produit ou de surface;
+- edition rapide du produit depuis une ligne;
+- sauvegarde d'une nouvelle revision.
+
+Le resume de soumission contient aussi:
+
+- projet, numero, adresse;
+- client;
+- architecte;
+- date des plans;
+- pages de plans;
+- devis;
+- addenda;
+- exclusions cochables;
+- fournisseurs et dates d'expiration;
+- echantillons;
+- taux utilise;
+- profit global;
+- echeancier probable;
+- remise de fin de projet;
+- garantie.
+
+### Outils
+
+Le menu Outils est son propre module et contient:
+
+- **Disponible**: outils Snipe-IT au chantier `Entrepot` ou sans chantier.
+- **Deploye**: outils deployes hors entrepot.
+
+La liste supporte recherche, tri, pagination et images provenant de Snipe-IT via proxy backend.
+
+### Usagers Et Profil
+
+Sercora gere ses propres usagers avec mots de passe et roles:
+
+- admin;
+- execution;
+- estimation;
+- entrepot.
+
+Les admins peuvent creer, modifier et inviter les usagers. La liste affiche la date de creation et la derniere connexion. Chaque usager a une page de profil.
+
+### Configuration
+
+Le menu Configuration est reserve aux admins.
+
+Sous-menus:
+
+- **Courriel**: configuration SMTP, adresse d'expediteur, reply-to forgeable, test d'envoi, invitations et rafraichissements de mot de passe.
+- **Importation**: mises a jour de prix et catalogues fournisseurs.
 
 ## Integrations
 
 ### Snipe-IT
 
-Le module **Outils** integre Snipe-IT en lecture via:
+Sercora lit l'inventaire Snipe-IT via le backend. Les images d'outils sont servies par proxy pour eviter d'exposer le token Snipe-IT au navigateur.
 
-```text
-https://snipe.serco.pro/api/v1/hardware
-```
-
-Le navigateur ne parle jamais directement a Snipe-IT. Il appelle l'API Sercora:
-
-```text
-GET https://api.serco.pro/tools
-```
-
-Le backend relaie ensuite la requete a Snipe-IT avec le jeton API configure dans l'environnement serveur:
+Variables:
 
 ```text
 SNIPEIT_URL=https://snipe.serco.pro
 SNIPEIT_API_TOKEN=...
 ```
 
-Ces valeurs ne doivent pas etre commitees. Elles vivent dans `backend/.env`, ignore par Git.
+### Prosol
 
-## Structure Du Code
+Sercora integre Prosol pour la recherche/import de produits, la synchronisation des fiches techniques et la mise a jour web des prix.
+
+Variables:
 
 ```text
-backend/
-  app/
-    api/              Routes FastAPI par domaine
-    database/         Connexion PostgreSQL
-    schemas/          Modeles Pydantic
-    main.py           Application FastAPI
-
-database/
-  schema.sql          Schema de base
-  migrations/         Migrations SQL
-  seed.sql            Donnees initiales
-
-deploy/
-  deploy.sh           Build frontend, copie web, restart API, reload nginx
-  nginx-*.conf        Configurations nginx
-  sercora-api.service Service systemd
-
-frontend/
-  src/
-    pages/            Pages principales
-    components/       Composants reutilisables
-    utils/            Clients API et calculs
-    styles/           CSS par module
+PROSOL_API_URL=https://shop.api.prosol.ca
+PROSOL_API_TOKEN=...
 ```
 
-## Developpement Local
+### Fournisseurs
 
-### Backend
+Les catalogues fournisseurs sont geres par importation:
+
+- Schluter: liste Excel, escompte configurable.
+- Centura: liste Excel, escompte configurable.
+- Olympia: catalogue PDF, escompte configurable.
+- Prosol: mise a jour web via API.
+
+### NAS
+
+Sercora lit les dossiers de soumissions sur le NAS. Le dossier de travail Sercora est le seul endroit prevu pour l'ecriture.
+
+Racines utilisees:
+
+```text
+/NAS/Soumissions en cours
+/NAS/Soumissions envoyees
+/NAS/@Recycle/Soumissions en cours
+/NAS_SERCORA_RW
+```
+
+### Courriel
+
+La configuration SMTP permet:
+
+- test d'envoi;
+- invitation de creation de compte;
+- rafraichissement de mot de passe;
+- reply-to configurable.
+
+Migadu est le fournisseur SMTP vise, mais le code reste generique.
+
+## Technologies
+
+Frontend:
+
+- React;
+- TypeScript;
+- Vite;
+- AG Grid;
+- CSS par module.
+
+Backend:
+
+- Python;
+- FastAPI;
+- SQLAlchemy;
+- Pydantic;
+- PostgreSQL;
+- Uvicorn;
+- systemd.
+
+Infrastructure:
+
+- nginx;
+- NAS NFS;
+- Snipe-IT;
+- LibreOffice pour certains apercus Office;
+- GitHub branche `codex`.
+
+## Structure
+
+```text
+backend/      API FastAPI, schemas, scripts d'importation
+database/     schema SQL, seed et migrations
+deploy/       systemd, nginx et script de deploiement
+docs/         documentation technique
+frontend/     application React/Vite
+```
+
+## Developpement
+
+Backend:
 
 ```bash
 cd backend
-/home/simon/sercora/backend/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-### Frontend
+Frontend:
 
 ```bash
 cd frontend
 npm run dev -- --host 0.0.0.0
 ```
 
-Pour l'environnement local, `frontend/.env.local` peut definir:
+Build frontend:
 
-```text
-VITE_API_URL=http://localhost:8000
-```
-
-Pour un build production, le deploiement force:
-
-```text
-VITE_API_URL=https://api.serco.pro
+```bash
+cd frontend
+npm run build
 ```
 
 ## Deploiement
 
-Le deploiement live se fait avec:
+Depuis la racine:
 
 ```bash
 ./deploy/deploy.sh
 ```
 
-Le script:
+Le script construit le frontend, copie les fichiers statiques, redemarre l'API et recharge nginx.
 
-- construit le frontend React;
-- copie `frontend/dist/` dans `/var/www/sercora/`;
-- redemarre `sercora-api`;
-- recharge nginx.
+## Liens
 
-## Documentation Complementaire
+- Application: `https://sercora.serco.pro`
+- API: `https://api.serco.pro`
+- GitHub branche codex: `https://github.com/sercora/sercora/tree/codex`
+- Documentation GitHub: `https://github.com/sercora/sercora/tree/codex/docs`
 
+## Documentation
+
+- [Documentation technique](docs/README.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Operations Et Deploiement](docs/OPERATIONS.md)
-- [Reference API](docs/API.md)
+- [Operations](docs/OPERATIONS.md)
+- [API](docs/API.md)
+- [Backend](backend/README.md)
+- [Frontend](frontend/README.md)
+- [Database](database/README.md)
+- [Deploy](deploy/README.md)
 
 ## Securite
 
-- Ne jamais committer `backend/.env`.
-- Ne jamais committer un jeton Snipe-IT.
-- Garder les integrations externes cote backend.
-- Utiliser `VITE_API_URL=https://api.serco.pro` pour les builds publics.
+- Ne pas committer `backend/.env`.
+- Ne pas committer de token API.
+- Garder les integrations sensibles cote backend.
+- Limiter l'ecriture NAS au dossier Sercora prevu.
+- Verifier les migrations avant production.
 
-## Statut
+## Credits
 
-Sercora est une application interne en evolution active. Les modules Produits, Soumissions et Outils sont les surfaces principales actuelles. Les modules Clients et Projets sont presents dans la navigation comme prochains axes fonctionnels.
+Simon Mathieu 2026.

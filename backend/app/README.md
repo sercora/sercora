@@ -1,21 +1,16 @@
-# Application Backend
+# Application FastAPI
 
-Le dossier `backend/app/` contient l'application FastAPI proprement dite.
+`backend/app/` contient l'application FastAPI de Sercora.
 
 ## Point D'entree
 
-`main.py` cree l'objet FastAPI, configure CORS et enregistre les routers:
+```text
+main.py
+```
 
-- produits;
-- projets;
-- soumissions;
-- pieces;
-- lignes de soumission;
-- quantites;
-- matrice;
-- outils Snipe-IT.
+`main.py` cree l'objet FastAPI, configure CORS et enregistre tous les routers.
 
-Il expose aussi:
+Endpoints de base:
 
 ```text
 GET /
@@ -26,50 +21,129 @@ GET /version
 ## Dossiers
 
 ```text
-api/        Routes HTTP par domaine metier
-database/   Connexion PostgreSQL
-models/     Modeles SQLAlchemy historiques ou futurs
-schemas/    Schemas Pydantic d'entree/sortie
+api/        routes HTTP par domaine
+database/   connexion SQLAlchemy
+models/     modeles SQLAlchemy historiques ou futurs
+schemas/    schemas Pydantic
 ```
 
-## API
+## Routers
 
-Les fichiers `api/*.py` sont organises par domaine:
+```text
+clients.py
+products.py
+projects.py
+estimates.py
+rooms.py
+estimate_lines.py
+estimate_quantities.py
+matrix.py
+tools.py
+prosol.py
+auth.py
+email.py
+```
 
-- `products.py`: catalogue produit, types et unites;
-- `matrix.py`: lecture de la matrice de soumission;
-- `estimate_lines.py`: lignes de soumission;
-- `estimate_quantities.py`: quantites par piece;
-- `estimates.py`: soumissions;
-- `projects.py`: projets;
-- `rooms.py`: pieces;
-- `tools.py`: proxy Snipe-IT pour l'inventaire d'outils.
+## Auth Et Usagers
+
+`auth.py` gere:
+
+- login;
+- session courante;
+- profil;
+- liste des usagers;
+- creation/modification;
+- roles;
+- derniere connexion.
+
+Roles:
+
+```text
+admin
+execution
+estimation
+entrepot
+```
+
+## Courriel
+
+`email.py` gere:
+
+- configuration SMTP;
+- reply-to;
+- test d'envoi;
+- invitations;
+- reset de mot de passe;
+- creation de mot de passe via token.
+
+## Projets
+
+`projects.py` gere les projets en soumission:
+
+- creation;
+- copie d'arborescence NAS;
+- `.msg` Outlook;
+- dossier de televersement;
+- clients;
+- addenda;
+- revision 0;
+- derniere revision;
+- nombre de revisions.
+
+## Soumissions Et Matrice
+
+`estimates.py` gere les soumissions, revisions et fichiers NAS.
+
+`matrix.py` gere la lecture de la matrice et la sauvegarde du resume.
+
+`estimate_lines.py`, `estimate_quantities.py` et `rooms.py` gerent les elements editables de la matrice.
+
+## Produits
+
+`products.py` et `prosol.py` gerent:
+
+- catalogue;
+- fournisseurs;
+- imports;
+- escomptes;
+- fiches techniques;
+- couvertures;
+- prix.
+
+## Outils
+
+`tools.py` proxy Snipe-IT:
+
+- liste des outils;
+- scopes disponible/deploye;
+- tri;
+- recherche;
+- pagination;
+- image.
 
 ## Donnees
 
-Les routes utilisent principalement SQLAlchemy avec des requetes SQL explicites. Ce choix garde les operations lisibles et proches du schema PostgreSQL.
+Les routes utilisent principalement:
 
-## Integration Snipe-IT
-
-`api/tools.py` lit:
-
-```text
-SNIPEIT_URL
-SNIPEIT_API_TOKEN
+```python
+from sqlalchemy import text
 ```
 
-Il appelle ensuite:
+Les requetes SQL explicites sont preferees pour garder la logique proche du schema PostgreSQL.
 
-```text
-{SNIPEIT_URL}/api/v1/hardware
-```
+## Ajouter Un Domaine API
 
-La reponse Snipe-IT est normalisee avant d'etre renvoyee au frontend.
+1. Creer `backend/app/api/mon_domaine.py`.
+2. Creer les schemas Pydantic si necessaire.
+3. Enregistrer le router dans `main.py`.
+4. Ajouter les migrations DB.
+5. Ajouter le client API frontend.
+6. Documenter dans `docs/API.md`.
 
-## Regles De Maintenance
+## Regles
 
-- Ajouter un router dans `api/` par domaine metier.
-- Enregistrer le router dans `main.py`.
-- Garder les secrets hors du code.
-- Fermer les sessions DB dans un bloc `finally`.
-- Garder les payloads de reponse stables pour le frontend.
+- Pas de secret dans le code.
+- Pas d'appel direct aux APIs externes depuis le frontend.
+- Les erreurs utilisateur doivent etre des `HTTPException` claires.
+- Les sessions DB doivent etre fermees.
+- Les migrations doivent etre idempotentes quand possible.

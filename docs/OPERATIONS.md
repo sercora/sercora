@@ -1,18 +1,21 @@
 # Operations Et Deploiement
 
-Ce document decrit les operations de base pour lancer, verifier et deployer Sercora.
+Ce document decrit les operations courantes de Sercora en production.
 
-## Services Live
+## Services
 
-- Frontend: `https://sercora.serco.pro`
-- API: `https://api.serco.pro`
-- Service systemd: `sercora-api`
-- Repertoire web: `/var/www/sercora`
-- Repertoire projet: `/home/simon/sercora`
+```text
+Frontend: https://sercora.serco.pro
+API:      https://api.serco.pro
+Repo:     /home/simon/sercora
+Web:      /var/www/sercora
+Service:  sercora-api
+Proxy:    nginx
+```
 
-## Deploiement
+## Deployer
 
-Depuis la racine du repo:
+Depuis la racine du depot:
 
 ```bash
 ./deploy/deploy.sh
@@ -20,8 +23,8 @@ Depuis la racine du repo:
 
 Le script:
 
-1. lance `npm run build` dans `frontend/`;
-2. force `VITE_API_URL=https://api.serco.pro` pour le build public;
+1. construit le frontend avec `npm run build`;
+2. force `VITE_API_URL=https://api.serco.pro`;
 3. copie `frontend/dist/` vers `/var/www/sercora/`;
 4. redemarre `sercora-api`;
 5. recharge nginx.
@@ -31,17 +34,25 @@ Le script:
 ```bash
 curl -i https://sercora.serco.pro/
 curl -i https://api.serco.pro/health
+curl -i "https://api.serco.pro/projects?scope=submission"
+curl -i "https://api.serco.pro/estimates/1/matrix"
 curl -i "https://api.serco.pro/tools?limit=1"
+systemctl is-active sercora-api nginx
 ```
 
-Verifier les services:
+Logs API:
 
 ```bash
-systemctl is-active sercora-api nginx
+journalctl -u sercora-api -n 100 --no-pager
+```
+
+Etat service:
+
+```bash
 systemctl status sercora-api --no-pager -n 40
 ```
 
-## Configuration Snipe-IT
+## Configuration Backend
 
 Le service systemd charge:
 
@@ -49,20 +60,33 @@ Le service systemd charge:
 /home/simon/sercora/backend/.env
 ```
 
-Variables attendues:
+Variables importantes:
 
 ```text
 SNIPEIT_URL=https://snipe.serco.pro
 SNIPEIT_API_TOKEN=...
+PROSOL_API_URL=https://shop.api.prosol.ca
+PROSOL_API_TOKEN=...
+SERCORA_PROJECT_TEMPLATE_ROOT=/NAS/Soumissions en cours/000-Dossier type
+SERCORA_PROJECT_RW_ROOT=/NAS_SERCORA_RW
 ```
 
-Apres modification de `backend/.env`:
+Ne pas committer ce fichier.
+
+## Redemarrer L'API
 
 ```bash
 sudo systemctl restart sercora-api
 ```
 
-## Installer Ou Mettre A Jour Le Service API
+## Recharger nginx
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+## Installer Ou Mettre A Jour systemd
 
 ```bash
 sudo cp deploy/sercora-api.service /etc/systemd/system/sercora-api.service
@@ -71,19 +95,120 @@ sudo systemctl enable sercora-api
 sudo systemctl restart sercora-api
 ```
 
-## Configurations nginx
+## Migrations Base De Donnees
 
-Les fichiers de reference sont:
+Les migrations sont dans:
 
-- `deploy/nginx-sercora.conf`
-- `deploy/nginx-api.conf`
+```text
+database/migrations/
+```
 
-Apres modification d'une configuration nginx:
+Elles doivent etre appliquees dans l'ordre numerique. Plusieurs endpoints ajoutent aussi certains champs avec `ALTER TABLE IF NOT EXISTS` pour eviter une panne lors d'un deploiement progressif.
+
+Verifier le schema avant une operation risquee:
 
 ```bash
-sudo nginx -t
-sudo systemctl reload nginx
+psql postgresql://sercora@localhost:5432/sercora -c "\d project"
 ```
+
+## NAS
+
+Sercora doit pouvoir lire:
+
+```text
+/NAS/Soumissions en cours
+/NAS/Soumissions envoyees
+/NAS/@Recycle/Soumissions en cours
+```
+
+L'ecriture doit rester limitee au dossier Sercora RW:
+
+```text
+/NAS_SERCORA_RW
+```
+
+Verifier:
+
+```bash
+mount | grep NAS
+ls "/NAS/Soumissions en cours"
+ls "/NAS_SERCORA_RW"
+```
+
+## LibreOffice
+
+Les apercus Word/Excel utilisent LibreOffice cote serveur.
+
+Verifier l'installation:
+
+```bash
+which libreoffice
+libreoffice --version
+```
+
+Si un document Office affiche seulement du texte brut ou ne s'affiche pas, verifier les logs API et la disponibilite de LibreOffice.
+
+## SMTP
+
+La configuration SMTP est disponible dans **Configuration > Courriel** pour les admins.
+
+Fonctions:
+
+- serveur SMTP;
+- port;
+- TLS/SSL;
+- usager/mot de passe;
+- expediteur;
+- reply-to;
+- test d'envoi;
+- invitations et reset de mot de passe.
+
+Apres une modification SMTP, utiliser le bouton de test dans l'interface avant d'envoyer des invitations.
+
+## Snipe-IT
+
+Verifier:
+
+```bash
+curl -i "https://api.serco.pro/tools?limit=1"
+```
+
+Si les outils ne chargent pas:
+
+1. verifier `SNIPEIT_URL`;
+2. verifier `SNIPEIT_API_TOKEN`;
+3. redemarrer `sercora-api`;
+4. verifier les logs.
+
+Les images d'outils passent par:
+
+```text
+GET /tools/{tool_id}/image
+```
+
+## Prosol
+
+Verifier que les variables Prosol sont presentes dans `backend/.env`.
+
+Endpoints utiles:
+
+```text
+GET  /prosol/products/search
+POST /prosol/products/import
+POST /prosol/products/sync-technical-sheets
+POST /prosol/products/update-prices
+```
+
+## Imports Fournisseurs
+
+Les imports de prix se font dans **Configuration > Importation**:
+
+- Mise a Jour web Prosol;
+- Televersement liste Schluter;
+- Televersement liste Centura;
+- Televersement du Catalogue PDF Olympia.
+
+Les escomptes fournisseurs doivent etre valides avant d'appliquer un import de prix.
 
 ## Developpement Local
 
@@ -91,7 +216,7 @@ Backend:
 
 ```bash
 cd backend
-/home/simon/sercora/backend/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 Frontend:
@@ -101,66 +226,59 @@ cd frontend
 npm run dev -- --host 0.0.0.0
 ```
 
-Pour que le frontend local appelle l'API locale:
+Frontend local vers API locale:
 
 ```text
 frontend/.env.local
 VITE_API_URL=http://localhost:8000
 ```
 
-## Pieges Connus
+## Problemes Connus
 
-### Le Site Public Appelle `localhost:8000`
+### Le site public appelle localhost
 
-Symptome:
-
-- Produits, Soumissions ou Outils ne chargent pas sur `sercora.serco.pro`.
-
-Cause:
-
-- Le build production a ete fait avec `frontend/.env.local`.
+Symptome: les donnees ne chargent pas sur `sercora.serco.pro`.
 
 Correction:
-
-```bash
-VITE_API_URL=https://api.serco.pro npm run build
-```
-
-ou utiliser:
 
 ```bash
 ./deploy/deploy.sh
 ```
 
-### `/tools` Retourne 503
+### Produits ou projets ne chargent pas apres migration
 
-Cause probable:
-
-- `SNIPEIT_API_TOKEN` absent du contexte systemd.
-
-Correction:
+Verifier les logs:
 
 ```bash
-sudo systemctl cat sercora-api
-sudo systemctl restart sercora-api
-curl -i "https://api.serco.pro/tools?limit=1"
+journalctl -u sercora-api -n 100 --no-pager
 ```
 
-### `/tools` Retourne 404
+Puis verifier la migration SQL associee.
 
-Cause probable:
+### La matrice ouvre la mauvaise revision
 
-- L'API live n'a pas ete redemarree apres l'ajout de `backend/app/api/tools.py`.
+Depuis **Projets > En Soumission**, utiliser **Derniere revision**. Le menu **Soumissions LEGACY** conserve les vues historiques.
 
-Correction:
+### Les fichiers NAS ne s'ouvrent pas
+
+Verifier:
+
+- montage NFS;
+- permissions de lecture;
+- chemin relatif;
+- LibreOffice pour Word/Excel;
+- logs API.
+
+## Git
+
+Branche active de travail:
+
+```text
+codex
+```
+
+Pousser apres deploy si le changement est valide:
 
 ```bash
-sudo systemctl restart sercora-api
+git push origin codex
 ```
-
-## Securite Operationnelle
-
-- Ne jamais afficher ou committer le jeton Snipe-IT.
-- Ne jamais ajouter `backend/.env` au depot.
-- Verifier avec `git status --ignored` que les `.env` restent ignores.
-- Tester `https://api.serco.pro/tools?limit=1` apres tout changement Snipe-IT.

@@ -1,31 +1,59 @@
-# Documentation
+# Documentation Sercora
 
-Le dossier `docs/` regroupe la documentation technique et operationnelle de Sercora.
+Le dossier `docs/` contient la documentation technique et operationnelle de Sercora.
 
 ## Documents
 
-- `API.md`: reference des endpoints exposes par FastAPI.
-- `ARCHITECTURE.md`: vue d'ensemble frontend, backend, base de donnees et integration Snipe-IT.
-- `OPERATIONS.md`: procedures de lancement, deploiement, verification et depannage.
+- `ARCHITECTURE.md`: organisation globale du frontend, backend, base de donnees, NAS et integrations.
+- `API.md`: endpoints FastAPI principaux et payloads utiles.
+- `OPERATIONS.md`: deploiement, verification, services, NAS, SMTP, Snipe-IT et depannage.
 
-## Objectif
+Les README des sous-dossiers completent cette documentation:
 
-Cette documentation complete le `README.md` racine. Le README donne la vision globale du produit; `docs/` detaille les aspects qui changent moins souvent que le code mais qui sont essentiels pour maintenir l'application.
+- `backend/README.md`
+- `backend/app/README.md`
+- `frontend/README.md`
+- `database/README.md`
+- `deploy/README.md`
 
-## Quand Mettre A Jour
+## Utilisation De Cette Documentation
 
-Mettre a jour `docs/` quand:
+Lire dans cet ordre:
 
-- un nouveau module est ajoute;
-- un endpoint API change;
-- le schema PostgreSQL evolue;
-- le deploiement change;
-- une integration externe est ajoutee ou modifiee;
-- un incident revele une procedure utile a documenter.
+1. `README.md` a la racine pour comprendre le produit.
+2. `docs/ARCHITECTURE.md` pour comprendre les blocs techniques.
+3. `docs/API.md` pour integrer ou deboguer le frontend/backend.
+4. `docs/OPERATIONS.md` pour deployer ou diagnostiquer la production.
+
+## Modules Documentes
+
+La documentation couvre:
+
+- clients;
+- projets;
+- produits;
+- tuiles et fournisseurs;
+- soumissions legacy;
+- matrice de soumission;
+- exclusions, addenda, devis et pages de plans;
+- outils Snipe-IT;
+- usagers, roles et profil;
+- configuration SMTP;
+- imports de catalogues;
+- NAS et visualisation de fichiers;
+- creation et revisions de projets.
 
 ## Regles
 
-- Ne pas inclure de secrets.
-- Utiliser des exemples avec des placeholders.
-- Garder les commandes executables telles quelles quand c'est possible.
-- Preferer les chemins reels du projet pour reduire l'ambiguite.
+- Ne jamais documenter de secrets reels.
+- Utiliser des chemins et URLs de production quand ils sont publics.
+- Utiliser des placeholders pour les tokens.
+- Mettre a jour cette documentation avec chaque changement fonctionnel important.
+- Garder les procedures executables telles quelles.
+
+## Liens Publics
+
+- Application: `https://sercora.serco.pro`
+- API: `https://api.serco.pro`
+- GitHub: `https://github.com/sercora/sercora/tree/codex`
+- Documentation GitHub: `https://github.com/sercora/sercora/tree/codex/docs`
