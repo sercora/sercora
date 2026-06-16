@@ -10,7 +10,6 @@ from sqlalchemy import text
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from app.api.prosol import extract_size  # noqa: E402
 from app.database.database import SessionLocal  # noqa: E402
 
 
@@ -105,6 +104,21 @@ def discounted_price(
     )
 
 
+def extract_size_from_name(name):
+
+    match = re.search(
+        r"(\d+(?:[.,]\d+)?\s?(?:lb|lbs|kg|g|ml|l|gal|oz|po|in|mm|cm|m)\b"
+        r"(?:\s?[xX]\s?\d+(?:[.,]\d+)?\s?(?:po|in|mm|cm|m)\b)*)",
+        name,
+        re.IGNORECASE
+    )
+
+    if match:
+        return match.group(1)
+
+    return ""
+
+
 def read_shared_strings(workbook):
 
     if "xl/sharedStrings.xml" not in workbook.namelist():
@@ -168,6 +182,18 @@ def workbook_sheet_path(workbook, sheet_name):
         return target
 
     raise ValueError(f"Sheet not found: {sheet_name}")
+
+
+def first_sheet_name(path: Path):
+
+    with ZipFile(path) as workbook:
+        workbook_root = ET.fromstring(workbook.read("xl/workbook.xml"))
+        sheet = workbook_root.find("m:sheets/m:sheet", NS)
+
+        if sheet is None:
+            raise ValueError("Workbook does not contain any sheets")
+
+        return sheet.attrib["name"]
 
 
 def read_rows(path: Path, sheet_name: str):
@@ -573,7 +599,7 @@ def product_values(
             "PRODUCT GROUP 2 / \nGROUPE PRODUIT 2"
         ) or None,
         "color_name": row_value(row, "COLOR") or None,
-        "size_name": extract_size({}, name) or None,
+        "size_name": extract_size_from_name(name) or None,
         "category_name": row_value(
             row,
             "CATEGORY",
@@ -828,11 +854,14 @@ def upsert_products(
 
 def import_price_list(
     path: Path,
-    sheet_name: str,
+    sheet_name: str | None,
     dry_run: bool,
     supplier_name: str,
     discount_percent
 ):
+
+    if sheet_name is None:
+        sheet_name = first_sheet_name(path)
 
     rows = list(
         pick_lowest_minimum_quantity(

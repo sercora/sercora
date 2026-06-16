@@ -2,6 +2,7 @@ import {
     useCallback,
     useEffect,
     useMemo,
+    useRef,
     useState
 } from "react";
 import type { ChangeEvent } from "react";
@@ -12,7 +13,8 @@ import {
     fetchProductPage,
     fetchProductTypes,
     fetchUnits,
-    updateProduct
+    updateProduct,
+    uploadSchluterPriceList
 } from "../utils/productsApi";
 import type {
     Product,
@@ -293,7 +295,9 @@ function ProductsPage({
     const [isEditorVisible, setIsEditorVisible] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isUpdatingProsolPrices, setIsUpdatingProsolPrices] = useState(false);
+    const [isUploadingSchluter, setIsUploadingSchluter] = useState(false);
     const [statusMessage, setStatusMessage] = useState("");
+    const schluterFileInputRef = useRef<HTMLInputElement | null>(null);
 
 
     useEffect(
@@ -868,6 +872,59 @@ function ProductsPage({
     }
 
 
+    function uploadSchluterFile(
+        event: ChangeEvent<HTMLInputElement>
+    ) {
+
+        const file =
+            event.target.files?.[0];
+
+        if (!file)
+            return;
+
+        setIsUploadingSchluter(true);
+        setStatusMessage("");
+
+        uploadSchluterPriceList(file)
+
+        .then(
+            response => {
+
+                setStatusMessage(
+                    "Liste Schluter importée: " +
+                    response.imported +
+                    " produits, erreurs: " +
+                    response.failed
+                );
+                setCurrentPage(1);
+
+                return loadProducts();
+
+            }
+        )
+
+        .catch(
+            () => {
+
+                setStatusMessage(
+                    "Import de la liste Schluter impossible."
+                );
+
+            }
+        )
+
+        .finally(
+            () => {
+
+                setIsUploadingSchluter(false);
+                event.target.value = "";
+
+            }
+        );
+
+    }
+
+
     return (
 
         <section
@@ -945,14 +1002,40 @@ function ProductsPage({
                         {isEditorVisible ? "Cacher" : "Afficher"}
                     </button>
 
-                    <button
-                        type="button"
-                        className="prosol-price-action"
-                        onClick={refreshProsolPrices}
-                        disabled={isUpdatingProsolPrices}
-                    >
-                        Prix Prosol
-                    </button>
+                    {productMenu === "Prosol" && (
+                        <button
+                            type="button"
+                            className="prosol-price-action"
+                            onClick={refreshProsolPrices}
+                            disabled={isUpdatingProsolPrices}
+                        >
+                            Prix Prosol
+                        </button>
+                    )}
+
+                    {productMenu === "Schluter" && (
+                        <>
+                            <input
+                                ref={schluterFileInputRef}
+                                type="file"
+                                className="price-list-input"
+                                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                onChange={uploadSchluterFile}
+                            />
+
+                            <button
+                                type="button"
+                                className="schluter-upload-action"
+                                onClick={
+                                    () =>
+                                        schluterFileInputRef.current?.click()
+                                }
+                                disabled={isUploadingSchluter}
+                            >
+                                Liste Schluter
+                            </button>
+                        </>
+                    )}
 
                 </div>
 

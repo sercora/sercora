@@ -86,6 +86,15 @@ export type ProductListParams = {
 };
 
 
+export type PriceListImportResponse = {
+    rows: number;
+    imported: number;
+    failed: number;
+    supplier: string;
+    discount_percent: number;
+};
+
+
 function parseResponse(response: Response) {
 
     if (!response.ok)
@@ -133,6 +142,30 @@ export function fetchProductPage(
         API_URL +
         "/products?" +
         searchParams.toString()
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function uploadSchluterPriceList(
+    file: File
+): Promise<PriceListImportResponse> {
+
+    return fetch(
+        API_URL +
+        "/products/schluter/price-list",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": (
+                    file.type ||
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            },
+            body: file
+        }
     )
 
     .then(parseResponse);

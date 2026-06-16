@@ -140,6 +140,20 @@
 }
 
 
+.products-toolbar .schluter-upload-action {
+
+    flex-basis: 118px;
+
+}
+
+
+.products-toolbar .price-list-input {
+
+    display: none;
+
+}
+
+
 .products-toolbar .editor-toggle {
 
     flex-basis: 78px;

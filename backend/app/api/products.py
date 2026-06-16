@@ -1,8 +1,12 @@
-from fastapi import APIRouter, HTTPException, Query
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+
+from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import text
 
 from app.database.database import SessionLocal
 from app.schemas.product import ProductCreate
+from scripts.import_prosol_price_list import import_price_list
 
 router = APIRouter()
 
@@ -421,6 +425,46 @@ def get_products(
 
     finally:
         db.close()
+
+
+@router.post("/products/schluter/price-list")
+async def upload_schluter_price_list(request: Request):
+
+    content = await request.body()
+
+    if not content:
+        raise HTTPException(
+            status_code=400,
+            detail="Price list file is empty"
+        )
+
+    temp_path = None
+
+    try:
+        with NamedTemporaryFile(
+            suffix=".xlsx",
+            delete=False
+        ) as temp_file:
+            temp_file.write(content)
+            temp_path = Path(temp_file.name)
+
+        result = import_price_list(
+            temp_path,
+            None,
+            False,
+            "Schluter",
+            40
+        )
+
+        return {
+            **result,
+            "supplier": "Schluter",
+            "discount_percent": 40
+        }
+
+    finally:
+        if temp_path and temp_path.exists():
+            temp_path.unlink()
 
 
 @router.get("/products/{product_id}")
