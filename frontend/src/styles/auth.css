@@ -36,28 +36,9 @@
     z-index: 0;
     pointer-events: none;
     background:
-        radial-gradient(circle at 50% 41%, rgba(100, 200, 50, 0.22), transparent 22%),
-        linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(124, 255, 68, 0.06), rgba(255, 255, 255, 0));
-    opacity: 0.9;
-}
-
-.login-light-field::before,
-.login-light-field::after {
-    content: "";
-    position: absolute;
-    inset: -20%;
-    background-image:
-        linear-gradient(90deg, transparent 0 47%, rgba(124, 255, 68, 0.13) 48% 49%, transparent 50% 100%),
-        radial-gradient(circle, rgba(124, 255, 68, 0.26) 0 1px, transparent 2px);
-    background-size: 320px 100%, 86px 86px;
-    animation: login-drift 18s linear infinite;
-    opacity: 0.24;
-}
-
-.login-light-field::after {
-    animation-duration: 30s;
-    animation-direction: reverse;
-    opacity: 0.16;
+        radial-gradient(circle at 50% 38%, rgba(100, 200, 50, 0.16), transparent 24%),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.28));
+    opacity: 0.86;
 }
 
 .login-experience {
@@ -101,7 +82,7 @@
     position: relative;
     display: grid;
     justify-items: center;
-    gap: 10px;
+    width: min(560px, 94vw);
     color: #ffffff;
     text-align: center;
     text-shadow: 0 0 28px rgba(100, 200, 50, 0.26);
@@ -118,6 +99,17 @@
     filter: blur(16px);
     transform: translate(-50%, -55%);
     pointer-events: none;
+}
+
+.login-brand-image {
+    position: relative;
+    display: block;
+    width: min(540px, 92vw);
+    aspect-ratio: 3.15 / 1;
+    object-fit: cover;
+    object-position: 50% 42%;
+    filter: drop-shadow(0 0 24px rgba(100, 200, 50, 0.3));
+    mix-blend-mode: screen;
 }
 
 .login-wordmark strong {
@@ -313,16 +305,6 @@
     outline-color: rgba(100, 200, 50, 0.25);
 }
 
-@keyframes login-drift {
-    from {
-        transform: translate3d(0, 0, 0);
-    }
-
-    to {
-        transform: translate3d(120px, -120px, 0);
-    }
-}
-
 @media (max-width: 760px) {
     .login-page {
         padding: 18px;
@@ -348,12 +330,10 @@
         align-items: flex-start;
         gap: 10px;
     }
-}
 
-@media (prefers-reduced-motion: reduce) {
-    .login-light-field::before,
-    .login-light-field::after {
-        animation-duration: 60s;
+    .login-brand-image {
+        width: min(440px, 96vw);
+        aspect-ratio: 2.72 / 1;
     }
 }
 

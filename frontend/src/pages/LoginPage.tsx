@@ -5,6 +5,8 @@ import {
 } from "react";
 import type { FormEvent } from "react";
 
+import sercoraLoginLogo from "../assets/sercora-login-logo.png";
+
 import "../styles/auth.css";
 
 
@@ -16,56 +18,108 @@ type LoginPageProps = {
 };
 
 
-type NodePoint = {
-    x: number;
-    z: number;
-    speed: number;
-    size: number;
-    alpha: number;
-};
-
-
-type LightStreak = {
-    x: number;
-    z: number;
-    speed: number;
+type Viewport = {
+    width: number;
     height: number;
-    alpha: number;
 };
 
 
-const FLOOR_ROWS = 26;
-const FLOOR_COLS = 12;
+type FloorPoint = {
+    x: number;
+    y: number;
+    perspective: number;
+    depth: number;
+};
+
+
+type TileCell = {
+    col: number;
+    row: number;
+    delay: number;
+    tone: number;
+};
+
+
+const TILE_CELLS: TileCell[] = Array.from(
+    {
+        length: 24
+    },
+    (_, index) => {
+        const col = index % 6;
+        const row = Math.floor(index / 6);
+
+        return {
+            col: col - 3,
+            row,
+            delay: (3 - row) * 0.08 + Math.abs(col - 2.5) * 0.035,
+            tone: (row + col) % 2
+        };
+    }
+);
+
+
+function clamp(
+    value: number,
+    min: number,
+    max: number
+) {
+
+    return Math.max(
+        min,
+        Math.min(
+            max,
+            value
+        )
+    );
+
+}
+
+
+function easeOutCubic(
+    value: number
+) {
+
+    const clamped = clamp(
+        value,
+        0,
+        1
+    );
+
+    return 1 - Math.pow(
+        1 - clamped,
+        3
+    );
+
+}
 
 
 function projectFloorPoint(
-    canvas: HTMLCanvasElement,
+    viewport: Viewport,
     x: number,
     z: number
-) {
+): FloorPoint {
 
-    const width = canvas.width;
-    const height = canvas.height;
-    const horizonY = height * 0.34;
-    const depth = Math.max(
+    const {
+        width,
+        height
+    } = viewport;
+    const depth = clamp(
+        z,
         0,
-        Math.min(
-            1,
-            z
-        )
+        1
     );
+    const horizonY = height * 0.35;
     const perspective = Math.pow(
         1 - depth,
-        2.25
+        2.2
     );
     const y = horizonY + perspective * height * 0.78;
-    const centerX = width * 0.5;
     const spread = width * (
-        0.035 + perspective * 0.72
+        0.045 + perspective * 0.69
     );
 
     return {
-        x: centerX + x * spread,
+        x: width * 0.5 + x * spread,
         y,
         perspective,
         depth
@@ -74,46 +128,64 @@ function projectFloorPoint(
 }
 
 
-function drawLoginWallpaper(
-    canvas: HTMLCanvasElement,
+function drawQuad(
     context: CanvasRenderingContext2D,
-    time: number,
-    nodes: NodePoint[],
-    streaks: LightStreak[]
+    points: FloorPoint[]
 ) {
 
-    const width = canvas.width;
-    const height = canvas.height;
-    const tick = time * 0.00008;
+    context.beginPath();
+    context.moveTo(
+        points[0].x,
+        points[0].y
+    );
+    context.lineTo(
+        points[1].x,
+        points[1].y
+    );
+    context.lineTo(
+        points[2].x,
+        points[2].y
+    );
+    context.lineTo(
+        points[3].x,
+        points[3].y
+    );
+    context.closePath();
 
-    context.clearRect(
-        0,
-        0,
+}
+
+
+function drawBackground(
+    context: CanvasRenderingContext2D,
+    viewport: Viewport
+) {
+
+    const {
         width,
         height
-    );
-
-    const backgroundGradient = context.createRadialGradient(
+    } = viewport;
+    const gradient = context.createRadialGradient(
         width * 0.5,
-        height * 0.48,
+        height * 0.43,
         0,
         width * 0.5,
-        height * 0.48,
-        width * 0.82
+        height * 0.43,
+        width * 0.72
     );
-    backgroundGradient.addColorStop(
+    gradient.addColorStop(
         0,
-        "#0f1d0a"
+        "#11220b"
     );
-    backgroundGradient.addColorStop(
-        0.38,
+    gradient.addColorStop(
+        0.42,
         "#050805"
     );
-    backgroundGradient.addColorStop(
+    gradient.addColorStop(
         1,
         "#050505"
     );
-    context.fillStyle = backgroundGradient;
+
+    context.fillStyle = gradient;
     context.fillRect(
         0,
         0,
@@ -121,181 +193,371 @@ function drawLoginWallpaper(
         height
     );
 
+}
+
+
+function drawAdhesive(
+    context: CanvasRenderingContext2D,
+    viewport: Viewport,
+    adhesiveProgress: number
+) {
+
+    const {
+        width,
+        height
+    } = viewport;
+    const adhesiveFar = 0.13 + adhesiveProgress * 0.76;
+    const adhesive = [
+        projectFloorPoint(
+            viewport,
+            -0.92,
+            0.03
+        ),
+        projectFloorPoint(
+            viewport,
+            0.92,
+            0.03
+        ),
+        projectFloorPoint(
+            viewport,
+            0.43,
+            adhesiveFar
+        ),
+        projectFloorPoint(
+            viewport,
+            -0.43,
+            adhesiveFar
+        )
+    ];
+    const gradient = context.createLinearGradient(
+        width * 0.5,
+        height,
+        width * 0.5,
+        height * 0.35
+    );
+    gradient.addColorStop(
+        0,
+        "rgba(226,228,216,0.94)"
+    );
+    gradient.addColorStop(
+        1,
+        "rgba(148,157,141,0.62)"
+    );
+
+    drawQuad(
+        context,
+        adhesive
+    );
+    context.fillStyle = gradient;
+    context.fill();
+
     context.save();
-    context.globalCompositeOperation = "lighter";
+    drawQuad(
+        context,
+        adhesive
+    );
+    context.clip();
 
-    const rowOffset = tick % 1;
-    const colMin = -FLOOR_COLS;
-    const colMax = FLOOR_COLS;
-
-    for (let row = 0; row < FLOOR_ROWS; row += 1) {
-        const zNear = row / FLOOR_ROWS;
-        const zFar = (row + 1) / FLOOR_ROWS;
-        const z0 = Math.max(
-            0,
-            Math.min(
-                1,
-                zNear + rowOffset / FLOOR_ROWS
-            )
+    for (let groove = -12; groove <= 12; groove += 1) {
+        const x = groove / 12;
+        const near = projectFloorPoint(
+            viewport,
+            x,
+            0.035
         );
-        const z1 = Math.max(
-            0,
-            Math.min(
-                1,
-                zFar + rowOffset / FLOOR_ROWS
-            )
-        );
-        const digitalBlend = Math.max(
-            0,
-            (z0 - 0.48) / 0.44
+        const far = projectFloorPoint(
+            viewport,
+            x * 0.44,
+            adhesiveFar
         );
 
-        for (let col = colMin; col < colMax; col += 1) {
-            const x0 = col / FLOOR_COLS;
-            const x1 = (col + 1) / FLOOR_COLS;
-            const p0 = projectFloorPoint(
-                canvas,
-                x0,
-                z0
-            );
-            const p1 = projectFloorPoint(
-                canvas,
-                x1,
-                z0
-            );
-            const p2 = projectFloorPoint(
-                canvas,
-                x1,
-                z1
-            );
-            const p3 = projectFloorPoint(
-                canvas,
-                x0,
-                z1
-            );
-            const isGreen = Math.abs(col + row) % 2 === 0;
+        context.beginPath();
+        context.moveTo(
+            near.x,
+            near.y
+        );
+        context.quadraticCurveTo(
+            width * 0.5 + x * width * 0.2,
+            height * 0.66,
+            far.x,
+            far.y
+        );
+        context.strokeStyle = "rgba(68,73,64,0.48)";
+        context.lineWidth = 3.3;
+        context.stroke();
 
-            context.beginPath();
-            context.moveTo(
-                p0.x,
-                p0.y
-            );
-            context.lineTo(
-                p1.x,
-                p1.y
-            );
-            context.lineTo(
-                p2.x,
-                p2.y
-            );
-            context.lineTo(
-                p3.x,
-                p3.y
-            );
-            context.closePath();
-            context.fillStyle = isGreen ?
-                `rgba(100,200,50,${0.44 * (1 - digitalBlend)})` :
-                `rgba(246,255,241,${0.36 * (1 - digitalBlend)})`;
-            context.fill();
-
-            context.strokeStyle = `rgba(100,255,68,${0.2 + digitalBlend * 0.45})`;
-            context.lineWidth = 1 + digitalBlend * 0.7;
-            context.stroke();
-
-            if (digitalBlend > 0.04) {
-                const midX = (p0.x + p2.x) * 0.5;
-                const midY = (p0.y + p2.y) * 0.5;
-                context.beginPath();
-                context.arc(
-                    midX,
-                    midY,
-                    1.2 + digitalBlend * 1.8,
-                    0,
-                    Math.PI * 2
-                );
-                context.fillStyle = `rgba(124,255,68,${digitalBlend * 0.6})`;
-                context.fill();
-            }
-        }
+        context.beginPath();
+        context.moveTo(
+            near.x + 3,
+            near.y
+        );
+        context.quadraticCurveTo(
+            width * 0.5 + x * width * 0.2 + 2,
+            height * 0.66,
+            far.x + 1,
+            far.y
+        );
+        context.strokeStyle = "rgba(255,255,246,0.34)";
+        context.lineWidth = 1.1;
+        context.stroke();
     }
 
-    nodes.forEach(
-        node => {
-            node.z -= node.speed;
+    context.restore();
 
-            if (node.z < 0.08) {
-                node.z = 0.96;
-                node.x = Math.random() * 1.9 - 0.95;
-                node.alpha = 0.2 + Math.random() * 0.55;
-            }
+}
 
-            const point = projectFloorPoint(
-                canvas,
-                node.x,
-                node.z
+
+function drawTrowel(
+    context: CanvasRenderingContext2D,
+    viewport: Viewport,
+    progress: number
+) {
+
+    const trowelAlpha = clamp(
+        1 - (progress - 0.42) / 0.16,
+        0,
+        1
+    );
+
+    if (trowelAlpha <= 0)
+        return;
+
+    const trowelProgress = easeOutCubic(
+        progress / 0.42
+    );
+    const point = projectFloorPoint(
+        viewport,
+        -0.52 + trowelProgress * 0.98,
+        0.17 + trowelProgress * 0.54
+    );
+    const scale = 0.7 + point.perspective * 0.42;
+
+    context.save();
+    context.translate(
+        point.x,
+        point.y - 22 * scale
+    );
+    context.rotate(-0.12);
+    context.scale(
+        scale,
+        scale
+    );
+    context.globalAlpha = trowelAlpha;
+    context.shadowColor = "rgba(0,0,0,0.42)";
+    context.shadowBlur = 20;
+    context.shadowOffsetY = 8;
+    context.fillStyle = "rgba(174,186,171,0.9)";
+    context.fillRect(
+        -64,
+        -18,
+        128,
+        42
+    );
+    context.fillStyle = "rgba(21,24,21,0.8)";
+    context.fillRect(
+        -42,
+        20,
+        84,
+        13
+    );
+    context.shadowBlur = 0;
+    context.fillStyle = "rgba(100,200,50,0.86)";
+
+    for (let tooth = -52; tooth <= 52; tooth += 13) {
+        context.fillRect(
+            tooth,
+            18,
+            7,
+            15
+        );
+    }
+
+    context.restore();
+
+}
+
+
+function drawTiles(
+    context: CanvasRenderingContext2D,
+    viewport: Viewport,
+    tileProgress: number
+) {
+
+    const {
+        height
+    } = viewport;
+
+    TILE_CELLS.forEach(
+        tile => {
+            const tileReveal = easeOutCubic(
+                (tileProgress - tile.delay) / 0.2
             );
-            const yLift = (1 - point.depth) * height * 0.09;
 
-            context.beginPath();
-            context.arc(
-                point.x,
-                point.y - yLift,
-                node.size * (0.35 + point.perspective),
-                0,
-                Math.PI * 2
+            if (tileReveal <= 0)
+                return;
+
+            const colWidth = 0.28;
+            const rowHeight = 0.16;
+            const x0 = tile.col * colWidth;
+            const x1 = x0 + colWidth * 0.94;
+            const z0 = 0.06 + tile.row * rowHeight;
+            const z1 = z0 + rowHeight * 0.9;
+            const lift = (1 - tileReveal) * height * 0.11;
+            const points = [
+                projectFloorPoint(
+                    viewport,
+                    x0,
+                    z0
+                ),
+                projectFloorPoint(
+                    viewport,
+                    x1,
+                    z0
+                ),
+                projectFloorPoint(
+                    viewport,
+                    x1 * 0.98,
+                    z1
+                ),
+                projectFloorPoint(
+                    viewport,
+                    x0 * 0.98,
+                    z1
+                )
+            ].map(
+                point => ({
+                    ...point,
+                    y: point.y - lift
+                })
             );
-            context.fillStyle = `rgba(124,255,68,${node.alpha * (0.35 + point.depth)})`;
+
+            context.save();
+            context.globalAlpha = tileReveal;
+            context.shadowColor = "rgba(0,0,0,0.48)";
+            context.shadowBlur = 18;
+            context.shadowOffsetY = 10;
+            drawQuad(
+                context,
+                points
+            );
+            context.fillStyle = tile.tone === 0 ?
+                "rgba(246,251,242,0.97)" :
+                "rgba(91,185,46,0.96)";
             context.fill();
-        }
-    );
-
-    streaks.forEach(
-        streak => {
-            streak.z -= streak.speed;
-
-            if (streak.z < 0.1) {
-                streak.z = 0.98;
-                streak.x = Math.random() * 1.6 - 0.8;
-            }
-
-            const point = projectFloorPoint(
-                canvas,
-                streak.x,
-                streak.z
-            );
-            const gradient = context.createLinearGradient(
-                point.x,
-                point.y - streak.height,
-                point.x,
-                point.y
-            );
-            gradient.addColorStop(
-                0,
-                "rgba(124,255,68,0)"
-            );
-            gradient.addColorStop(
-                0.58,
-                `rgba(124,255,68,${streak.alpha})`
-            );
-            gradient.addColorStop(
-                1,
-                "rgba(124,255,68,0)"
-            );
-            context.strokeStyle = gradient;
+            context.shadowBlur = 0;
+            context.strokeStyle = tile.tone === 0 ?
+                "rgba(255,255,255,0.56)" :
+                "rgba(173,255,125,0.34)";
             context.lineWidth = 1.1;
-            context.beginPath();
-            context.moveTo(
-                point.x,
-                point.y - streak.height
-            );
-            context.lineTo(
-                point.x,
-                point.y
-            );
             context.stroke();
+            context.restore();
         }
     );
 
+}
+
+
+function drawLoginWallpaper(
+    context: CanvasRenderingContext2D,
+    viewport: Viewport,
+    time: number
+) {
+
+    const {
+        width,
+        height
+    } = viewport;
+    const cycle = 9200;
+    const progress = (time % cycle) / cycle;
+    const adhesiveProgress = easeOutCubic(
+        progress / 0.38
+    );
+    const tileProgress = easeOutCubic(
+        (progress - 0.34) / 0.54
+    );
+
+    context.clearRect(
+        0,
+        0,
+        width,
+        height
+    );
+    drawBackground(
+        context,
+        viewport
+    );
+
+    const slab = [
+        projectFloorPoint(
+            viewport,
+            -1.08,
+            0.02
+        ),
+        projectFloorPoint(
+            viewport,
+            1.08,
+            0.02
+        ),
+        projectFloorPoint(
+            viewport,
+            0.52,
+            0.96
+        ),
+        projectFloorPoint(
+            viewport,
+            -0.52,
+            0.96
+        )
+    ];
+
+    drawQuad(
+        context,
+        slab
+    );
+    context.fillStyle = "rgba(15,20,14,0.82)";
+    context.fill();
+
+    drawAdhesive(
+        context,
+        viewport,
+        adhesiveProgress
+    );
+    drawTrowel(
+        context,
+        viewport,
+        progress
+    );
+    drawTiles(
+        context,
+        viewport,
+        tileProgress
+    );
+
+    context.save();
+    context.globalCompositeOperation = "lighter";
+    const glow = context.createRadialGradient(
+        width * 0.5,
+        height * 0.78,
+        0,
+        width * 0.5,
+        height * 0.78,
+        width * 0.45
+    );
+    glow.addColorStop(
+        0,
+        "rgba(124,255,68,0.22)"
+    );
+    glow.addColorStop(
+        1,
+        "rgba(124,255,68,0)"
+    );
+    context.fillStyle = glow;
+    context.fillRect(
+        0,
+        0,
+        width,
+        height
+    );
     context.restore();
 
     const vignette = context.createRadialGradient(
@@ -304,7 +566,7 @@ function drawLoginWallpaper(
         width * 0.18,
         width * 0.5,
         height * 0.5,
-        width * 0.72
+        width * 0.75
     );
     vignette.addColorStop(
         0,
@@ -312,7 +574,7 @@ function drawLoginWallpaper(
     );
     vignette.addColorStop(
         1,
-        "rgba(0,0,0,0.72)"
+        "rgba(0,0,0,0.74)"
     );
     context.fillStyle = vignette;
     context.fillRect(
@@ -336,49 +598,37 @@ function LoginWallpaper() {
             if (!canvas)
                 return;
 
-            const context = canvas.getContext("2d");
+            const context = canvas.getContext("2d", {
+                alpha: false
+            });
 
             if (!context)
                 return;
 
             const activeCanvas = canvas;
             const activeContext = context;
-            const nodes: NodePoint[] = Array.from(
-                {
-                    length: 70
-                },
-                () => ({
-                    x: Math.random() * 1.9 - 0.95,
-                    z: Math.random() * 0.85 + 0.1,
-                    speed: 0.00025 + Math.random() * 0.00032,
-                    size: 1 + Math.random() * 2.2,
-                    alpha: 0.2 + Math.random() * 0.55
-                })
-            );
-            const streaks: LightStreak[] = Array.from(
-                {
-                    length: 10
-                },
-                () => ({
-                    x: Math.random() * 1.6 - 0.8,
-                    z: Math.random() * 0.8 + 0.15,
-                    speed: 0.00018 + Math.random() * 0.00018,
-                    height: 80 + Math.random() * 190,
-                    alpha: 0.08 + Math.random() * 0.17
-                })
-            );
+            const viewport: Viewport = {
+                width: window.innerWidth,
+                height: window.innerHeight
+            };
             let frame = 0;
 
             function resize() {
-                activeCanvas.width = window.innerWidth;
-                activeCanvas.height = window.innerHeight;
-                activeCanvas.style.width = window.innerWidth + "px";
-                activeCanvas.style.height = window.innerHeight + "px";
+                const renderScale = Math.min(
+                    window.devicePixelRatio || 1,
+                    1.1
+                );
+                viewport.width = window.innerWidth;
+                viewport.height = window.innerHeight;
+                activeCanvas.width = Math.floor(viewport.width * renderScale);
+                activeCanvas.height = Math.floor(viewport.height * renderScale);
+                activeCanvas.style.width = viewport.width + "px";
+                activeCanvas.style.height = viewport.height + "px";
                 activeContext.setTransform(
-                    1,
+                    renderScale,
                     0,
                     0,
-                    1,
+                    renderScale,
                     0,
                     0
                 );
@@ -388,11 +638,9 @@ function LoginWallpaper() {
                 time: number
             ) {
                 drawLoginWallpaper(
-                    activeCanvas,
                     activeContext,
-                    time,
-                    nodes,
-                    streaks
+                    viewport,
+                    time
                 );
                 frame = requestAnimationFrame(animate);
             }
@@ -431,16 +679,11 @@ function SercoraWordmark() {
     return (
         <div className="login-wordmark">
             <div className="login-wordmark-glow" />
-            <strong>
-                SERCOR<span>A</span>
-            </strong>
-            <small>
-                CARRELAGES
-                <i />
-                ESTIMATION
-                <i />
-                CRM
-            </small>
+            <img
+                src={sercoraLoginLogo}
+                alt="Sercora"
+                className="login-brand-image"
+            />
         </div>
     );
 
@@ -475,7 +718,7 @@ function LoginPage({
             setError(
                 loginError instanceof Error ?
                     loginError.message :
-                    "Connexion refusee"
+                    "Connexion refusée"
             );
 
         } finally {
@@ -505,12 +748,12 @@ function LoginPage({
                     </div>
 
                     <label className="login-field">
-                        <span>Courriel</span>
+                        <span>Usager</span>
                         <div>
-                            <i aria-hidden="true">@</i>
+                            <i aria-hidden="true">U</i>
                             <input
                                 value={username}
-                                type="email"
+                                type="text"
                                 autoComplete="username"
                                 onChange={
                                     event => setUsername(event.target.value)
