@@ -61,6 +61,11 @@ const PROJECT_MENU_ITEMS: ProjectMenuKey[] = [
 ];
 
 
+const DISABLED_PROJECT_MENU_ITEMS: ProjectMenuKey[] = [
+    "En cours"
+];
+
+
 const ESTIMATE_MENU_ITEMS: EstimateMenuKey[] = [
     "En cours",
     "Envoyées",
@@ -111,7 +116,7 @@ function App() {
 
     const [activePage, setActivePage] = useState<PageKey>("Soumissions");
     const [activeProductMenu, setActiveProductMenu] = useState<ProductMenuKey>("Tous");
-    const [activeProjectMenu, setActiveProjectMenu] = useState<ProjectMenuKey>("En cours");
+    const [activeProjectMenu, setActiveProjectMenu] = useState<ProjectMenuKey>("En Soumission");
     const [activeEstimateMenu, setActiveEstimateMenu] = useState<EstimateMenuKey>("En cours");
     const [activeToolsMenu, setActiveToolsMenu] = useState<ToolsMenuKey>("Disponible");
     const [activeConfigurationMenu, setActiveConfigurationMenu] = useState<ConfigurationMenuKey>("Courriel");
@@ -348,7 +353,7 @@ function App() {
                                                 setActiveProductMenu("Tous");
 
                                             if (item === "Projets")
-                                                setActiveProjectMenu("En cours");
+                                                setActiveProjectMenu("En Soumission");
 
                                             if (item === "Soumissions")
                                                 setActiveEstimateMenu("En cours");
@@ -433,28 +438,42 @@ function App() {
                                 {item === "Projets" && (
                                     <div className="nav-submenu">
                                         {PROJECT_MENU_ITEMS.map(
-                                            projectMenuItem => (
-                                                <button
-                                                    key={projectMenuItem}
-                                                    type="button"
-                                                    className={
-                                                        (
-                                                            activePage === "Projets" &&
-                                                            activeProjectMenu === projectMenuItem
-                                                        ) ?
-                                                            "nav-subitem active" :
-                                                            "nav-subitem"
-                                                    }
-                                                    onClick={
-                                                        () => {
-                                                            setActiveProjectMenu(projectMenuItem);
-                                                            setActivePage("Projets");
+                                            projectMenuItem => {
+                                                const isProjectMenuDisabled =
+                                                    DISABLED_PROJECT_MENU_ITEMS.includes(projectMenuItem);
+
+                                                return (
+                                                    <button
+                                                        key={projectMenuItem}
+                                                        type="button"
+                                                        className={
+                                                            (
+                                                                activePage === "Projets" &&
+                                                                activeProjectMenu === projectMenuItem
+                                                            ) ?
+                                                                "nav-subitem active" :
+                                                                "nav-subitem"
                                                         }
-                                                    }
-                                                >
-                                                    {projectMenuItem}
-                                                </button>
-                                            )
+                                                        disabled={isProjectMenuDisabled}
+                                                        title={
+                                                            isProjectMenuDisabled ?
+                                                                "Disponible plus tard pour les projets obtenus par bon de commande." :
+                                                                undefined
+                                                        }
+                                                        onClick={
+                                                            () => {
+                                                                if (isProjectMenuDisabled)
+                                                                    return;
+
+                                                                setActiveProjectMenu(projectMenuItem);
+                                                                setActivePage("Projets");
+                                                            }
+                                                        }
+                                                    >
+                                                        {projectMenuItem}
+                                                    </button>
+                                                );
+                                            }
                                         )}
                                     </div>
                                 )}
