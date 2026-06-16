@@ -117,6 +117,13 @@ export type EstimateRoomInput = {
 };
 
 
+export type EstimateRoomUpdateInput = {
+    phase_name: string;
+    floor_name: string;
+    room_name: string;
+};
+
+
 export type EstimateLineInput = {
     estimate_id: number;
     product_id: number;
@@ -229,6 +236,29 @@ export function createEstimateRoom(
 }
 
 
+export function updateEstimateRoom(
+    roomId: number,
+    room: EstimateRoomUpdateInput
+) {
+
+    return fetch(
+        API_URL +
+        "/rooms/" +
+        roomId,
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(room)
+        }
+    )
+
+    .then(parseResponse);
+
+}
+
+
 export function createEstimateLine(
     line: EstimateLineInput
 ) {
@@ -242,6 +272,24 @@ export function createEstimateLine(
                 "Content-Type": "application/json"
             },
             body: JSON.stringify(line)
+        }
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function deleteEstimateLine(
+    lineId: number
+) {
+
+    return fetch(
+        API_URL +
+        "/estimate-lines/" +
+        lineId,
+        {
+            method: "DELETE"
         }
     )
 

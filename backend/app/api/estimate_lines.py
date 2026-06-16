@@ -231,3 +231,64 @@ def update_estimate_line(
         "id": line_id,
         "message": "Estimate line updated"
     }
+
+
+@router.delete("/estimate-lines/{line_id}")
+def delete_estimate_line(line_id: int):
+
+    db = SessionLocal()
+
+    row = db.execute(
+        text(
+            """
+            SELECT id
+            FROM estimate_line
+            WHERE id = :id
+            """
+        ),
+        {
+            "id": line_id
+        }
+    ).fetchone()
+
+    if row is None:
+
+        db.close()
+
+        raise HTTPException(
+            status_code=404,
+            detail="Estimate line not found"
+        )
+
+    db.execute(
+        text(
+            """
+            DELETE FROM estimate_quantity
+            WHERE estimate_line_id = :id
+            """
+        ),
+        {
+            "id": line_id
+        }
+    )
+
+    db.execute(
+        text(
+            """
+            DELETE FROM estimate_line
+            WHERE id = :id
+            """
+        ),
+        {
+            "id": line_id
+        }
+    )
+
+    db.commit()
+
+    db.close()
+
+    return {
+        "id": line_id,
+        "message": "Estimate line deleted"
+    }

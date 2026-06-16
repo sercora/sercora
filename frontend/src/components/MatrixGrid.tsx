@@ -12,6 +12,7 @@ type MatrixGridProps = {
     rowData: any[];
     columnDefs: any[];
     onCellValueChanged: (params: any) => void;
+    onSelectionChanged?: (params: any) => void;
     zoomScale: number;
     localeText: Record<string, string>;
 };
@@ -24,6 +25,7 @@ const MatrixGrid = forwardRef<any, MatrixGridProps>(
             rowData,
             columnDefs,
             onCellValueChanged,
+            onSelectionChanged,
             zoomScale,
             localeText
         },
@@ -52,6 +54,12 @@ const MatrixGrid = forwardRef<any, MatrixGridProps>(
                     onCellValueChanged={
                         onCellValueChanged
                     }
+
+                    onSelectionChanged={
+                        onSelectionChanged
+                    }
+
+                    rowSelection="multiple"
 
                     groupDefaultExpanded={-1}
 

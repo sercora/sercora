@@ -3,6 +3,7 @@ from sqlalchemy import text
 
 from app.database.database import SessionLocal
 from app.schemas.room import RoomCreate
+from app.schemas.room import RoomUpdate
 
 router = APIRouter()
 
@@ -148,4 +149,49 @@ def create_room(room: RoomCreate):
     return {
         "id": row.id,
         "message": "Room created"
+    }
+
+
+@router.put("/rooms/{room_id}")
+def update_room(
+    room_id: int,
+    room: RoomUpdate
+):
+
+    db = SessionLocal()
+
+    row = db.execute(
+        text(
+            """
+            UPDATE room
+            SET
+                phase_name = :phase_name,
+                floor_name = :floor_name,
+                room_name = :room_name
+            WHERE id = :id
+            RETURNING id
+            """
+        ),
+        {
+            "id": room_id,
+            "phase_name": room.phase_name,
+            "floor_name": room.floor_name,
+            "room_name": room.room_name
+        }
+    ).fetchone()
+
+    db.commit()
+
+    db.close()
+
+    if row is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Room not found"
+        )
+
+    return {
+        "id": room_id,
+        "message": "Room updated"
     }

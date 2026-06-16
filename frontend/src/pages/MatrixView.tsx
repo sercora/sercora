@@ -22,11 +22,13 @@ import {
 import {
     createEstimateLine,
     createEstimateRoom,
+    deleteEstimateLine,
     estimateFileUrl,
     fetchEstimateMatrix,
     fetchEstimateFolders,
     fetchSurfaceTypes,
     updateEstimateMatrixSummary,
+    updateEstimateRoom,
     updateEstimateLine as saveEstimateLine,
     updateEstimateQuantity as saveEstimateQuantity
 } from "../utils/matrixApi";
@@ -281,6 +283,7 @@ function MatrixView({
 
     const [zoom, setZoom] = useState("100");
     const [surfaceTypes, setSurfaceTypes] = useState<SurfaceType[]>([]);
+    const [roomColumns, setRoomColumns] = useState<EstimateRoomColumn[]>([]);
     const [matrixSummary, setMatrixSummary] = useState<EstimateMatrixSummary | null>(null);
     const [summaryForm, setSummaryForm] = useState({
         used_hourly_rate: "",
@@ -308,6 +311,15 @@ function MatrixView({
     const [tileSurfaceProduct, setTileSurfaceProduct] = useState<Product | null>(null);
     const [selectedTileSurfaceIds, setSelectedTileSurfaceIds] = useState<number[]>([]);
     const [tileSurfaceStatus, setTileSurfaceStatus] = useState("");
+    const [selectedLineIds, setSelectedLineIds] = useState<number[]>([]);
+    const [editingRoom, setEditingRoom] = useState<EstimateRoomColumn | null>(null);
+    const [roomEditForm, setRoomEditForm] = useState({
+        phase_name: "",
+        floor_name: "",
+        room_name: ""
+    });
+    const [roomEditStatus, setRoomEditStatus] = useState("");
+    const [isRoomSaving, setIsRoomSaving] = useState(false);
     const [folderPath, setFolderPath] = useState("");
     const [rootName, setRootName] = useState("");
     const [folderItems, setFolderItems] = useState<EstimateFolderItem[]>([]);
@@ -640,6 +652,66 @@ function MatrixView({
         updateEstimateQuantity(
             params,
             field
+        );
+
+    }
+
+
+    function onSelectionChanged(
+        params: any
+    ) {
+
+        const rows =
+            params.api.getSelectedRows();
+
+        setSelectedLineIds(
+            rows.map(
+                (row: any) =>
+                    Number(row.line_id)
+            ).filter(Boolean)
+        );
+
+    }
+
+
+    function deleteSelectedLines() {
+
+        if (!selectedLineIds.length) {
+            setMatrixActionStatus("Sélectionner au moins une ligne.");
+            return;
+        }
+
+        setIsMatrixActionLoading(true);
+        setMatrixActionStatus("");
+
+        Promise.all(
+            selectedLineIds.map(
+                lineId =>
+                    deleteEstimateLine(lineId)
+            )
+        )
+
+        .then(
+            () => {
+                setMatrixActionStatus(
+                    selectedLineIds.length > 1 ?
+                        selectedLineIds.length + " lignes supprimées." :
+                        "Ligne supprimée."
+                );
+                return reloadMatrix();
+            }
+        )
+
+        .catch(
+            () => {
+                setMatrixActionStatus("Suppression des lignes impossible.");
+            }
+        )
+
+        .finally(
+            () => {
+                setIsMatrixActionLoading(false);
+            }
         );
 
     }
@@ -1063,6 +1135,22 @@ function MatrixView({
         return [
 
             {
+                headerName: "",
+                field: "select_line",
+                width: 42,
+                minWidth: 42,
+                maxWidth: 42,
+                pinned: "left",
+                checkboxSelection: true,
+                headerCheckboxSelection: true,
+                sortable: false,
+                filter: false,
+                resizable: false,
+                suppressMovable: true,
+                cellClass: "line-select-cell"
+            },
+
+            {
                 headerName: "FINI",
                 marryChildren: true,
                 children: [
@@ -1289,6 +1377,12 @@ function MatrixView({
             matrix.summary
         );
 
+        setRoomColumns(
+            matrixRoomColumns(
+                matrix
+            )
+        );
+
         syncSummaryForm(
             matrix.summary
         );
@@ -1298,6 +1392,8 @@ function MatrixView({
                 matrix
             )
         );
+
+        setSelectedLineIds([]);
 
     }
 
@@ -1488,6 +1584,74 @@ function MatrixView({
         .finally(
             () => {
                 setIsMatrixActionLoading(false);
+            }
+        );
+
+    }
+
+
+    function openRoomEditor(
+        room: EstimateRoomColumn
+    ) {
+
+        setEditingRoom(room);
+        setRoomEditForm(
+            {
+                phase_name:
+                    room.phase_name || "",
+                floor_name:
+                    room.floor_name || "",
+                room_name:
+                    room.room_name || ""
+            }
+        );
+        setRoomEditStatus("");
+
+    }
+
+
+    function saveRoomEdit() {
+
+        if (!editingRoom)
+            return;
+
+        if (!roomEditForm.room_name.trim()) {
+            setRoomEditStatus("Nom du local requis.");
+            return;
+        }
+
+        setIsRoomSaving(true);
+        setRoomEditStatus("");
+
+        updateEstimateRoom(
+            editingRoom.id,
+            {
+                phase_name:
+                    roomEditForm.phase_name.trim(),
+                floor_name:
+                    roomEditForm.floor_name.trim(),
+                room_name:
+                    roomEditForm.room_name.trim()
+            }
+        )
+
+        .then(
+            () => {
+                setEditingRoom(null);
+                setMatrixActionStatus("Local sauvegardé.");
+                return reloadMatrix();
+            }
+        )
+
+        .catch(
+            () => {
+                setRoomEditStatus("Sauvegarde du local impossible.");
+            }
+        )
+
+        .finally(
+            () => {
+                setIsRoomSaving(false);
             }
         );
 
@@ -1863,19 +2027,23 @@ function MatrixView({
                     >
                         Chercher
                     </button>
-                    <select
-                        value={selectedProductId}
-                        onChange={
-                            event =>
-                                setSelectedProductId(event.target.value)
-                        }
-                    >
-                        <option value="">Sélectionner un produit</option>
+                    <div className="matrix-product-results">
                         {productResults.map(
                             product => (
-                                <option
+                                <button
                                     key={product.id}
-                                    value={product.id}
+                                    type="button"
+                                    className={
+                                        String(product.id) === selectedProductId ?
+                                            "selected" :
+                                            ""
+                                    }
+                                    onClick={
+                                        () =>
+                                            setSelectedProductId(
+                                                String(product.id)
+                                            )
+                                    }
                                 >
                                     {[
                                         product.manufacturer_name,
@@ -1883,10 +2051,13 @@ function MatrixView({
                                         product.size_name,
                                         product.supplier_product_code
                                     ].filter(Boolean).join(" - ")}
-                                </option>
+                                </button>
                             )
                         )}
-                    </select>
+                        {productResults.length === 0 && (
+                            <div>Aucun produit sélectionné.</div>
+                        )}
+                    </div>
                     <button
                         type="button"
                         onClick={addLine}
@@ -1909,6 +2080,17 @@ function MatrixView({
                         }
                     >
                         Éditer produit
+                    </button>
+                    <button
+                        type="button"
+                        className="danger"
+                        onClick={deleteSelectedLines}
+                        disabled={
+                            isMatrixActionLoading ||
+                            !selectedLineIds.length
+                        }
+                    >
+                        Supprimer lignes
                     </button>
                 </div>
 
@@ -1946,6 +2128,19 @@ function MatrixView({
                         disabled={isMatrixActionLoading}
                     >
                         Ajouter local
+                    </button>
+                    <button
+                        type="button"
+                        className="secondary"
+                        onClick={
+                            () => {
+                                if (roomColumns[0])
+                                    openRoomEditor(roomColumns[0]);
+                            }
+                        }
+                        disabled={!roomColumns.length}
+                    >
+                        Modifier locaux
                     </button>
                 </div>
 
@@ -2235,6 +2430,151 @@ function MatrixView({
                             disabled={isMatrixActionLoading}
                         >
                             Ajouter les lignes
+                        </button>
+                    </footer>
+                </section>
+            </div>
+        );
+
+    }
+
+
+    function renderRoomEditor() {
+
+        if (!editingRoom)
+            return null;
+
+        return (
+            <div className="matrix-modal-backdrop">
+                <section className="matrix-product-modal room-editor-modal">
+                    <header>
+                        <h2>Modifier locaux</h2>
+                        <button
+                            type="button"
+                            onClick={
+                                () => {
+                                    setEditingRoom(null);
+                                    setRoomEditStatus("");
+                                }
+                            }
+                        >
+                            Fermer
+                        </button>
+                    </header>
+
+                    <div className="room-editor-content">
+                        <div className="room-editor-list">
+                            {roomColumns.map(
+                                room => (
+                                    <button
+                                        key={room.key}
+                                        type="button"
+                                        className={
+                                            room.id === editingRoom.id ?
+                                                "selected" :
+                                                ""
+                                        }
+                                        onClick={
+                                            () =>
+                                                openRoomEditor(room)
+                                        }
+                                    >
+                                        <strong>{room.room_name}</strong>
+                                        <span>
+                                            {[
+                                                room.phase_name ?
+                                                    "Phase " + room.phase_name :
+                                                    "",
+                                                room.floor_name ?
+                                                    "Étage " + room.floor_name :
+                                                    ""
+                                            ].filter(Boolean).join(" | ") ||
+                                                "Sans phase / étage"}
+                                        </span>
+                                    </button>
+                                )
+                            )}
+                        </div>
+
+                        <div className="room-editor-form">
+                            <label>
+                                Phase
+                                <input
+                                    type="text"
+                                    value={roomEditForm.phase_name}
+                                    onChange={
+                                        event =>
+                                            setRoomEditForm(
+                                                previousForm => ({
+                                                    ...previousForm,
+                                                    phase_name:
+                                                        event.target.value
+                                                })
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label>
+                                Étage
+                                <input
+                                    type="text"
+                                    value={roomEditForm.floor_name}
+                                    onChange={
+                                        event =>
+                                            setRoomEditForm(
+                                                previousForm => ({
+                                                    ...previousForm,
+                                                    floor_name:
+                                                        event.target.value
+                                                })
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label>
+                                Nom du local
+                                <input
+                                    type="text"
+                                    value={roomEditForm.room_name}
+                                    onChange={
+                                        event =>
+                                            setRoomEditForm(
+                                                previousForm => ({
+                                                    ...previousForm,
+                                                    room_name:
+                                                        event.target.value
+                                                })
+                                            )
+                                    }
+                                />
+                            </label>
+                        </div>
+                    </div>
+
+                    <footer>
+                        {roomEditStatus && (
+                            <span>{roomEditStatus}</span>
+                        )}
+                        <button
+                            type="button"
+                            onClick={
+                                () => {
+                                    setEditingRoom(null);
+                                    setRoomEditStatus("");
+                                }
+                            }
+                            disabled={isRoomSaving}
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="button"
+                            onClick={saveRoomEdit}
+                            disabled={isRoomSaving}
+                        >
+                            Sauvegarder
                         </button>
                     </footer>
                 </section>
@@ -2661,6 +3001,8 @@ function MatrixView({
 
             {renderTileSurfaceSelector()}
 
+            {renderRoomEditor()}
+
             {renderProductEditor()}
 
             <ZoomToolbar
@@ -2675,6 +3017,7 @@ function MatrixView({
                 rowData={rowData}
                 columnDefs={columnDefs}
                 onCellValueChanged={onCellValueChanged}
+                onSelectionChanged={onSelectionChanged}
                 zoomScale={ZOOM_LEVELS[zoom] || 1}
                 localeText={GRID_LOCALE_TEXT}
             />

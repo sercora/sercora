@@ -541,11 +541,97 @@
 }
 
 
+.matrix-action-row button.danger {
+
+    border-color: #b94343;
+
+    background-color: #b94343;
+
+    color: #ffffff;
+
+}
+
+
 .matrix-action-row button:disabled {
 
     cursor: default;
 
     opacity: 0.6;
+
+}
+
+
+.matrix-product-results {
+
+    display: flex;
+
+    flex-direction: column;
+
+    flex: 1 1 320px;
+
+    min-width: 240px;
+
+    max-height: 96px;
+
+    border: 1px solid #b9c0ca;
+
+    border-radius: 4px;
+
+    background-color: #ffffff;
+
+    overflow-y: auto;
+
+}
+
+
+.matrix-product-results button,
+.matrix-product-results div {
+
+    flex: 0 0 auto;
+
+    min-height: 28px;
+
+    padding: 5px 8px;
+
+    border: 0;
+
+    border-bottom: 1px solid #e0e4e8;
+
+    border-radius: 0;
+
+    background-color: #ffffff;
+
+    color: #171a1f;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 12px;
+
+    font-weight: 400;
+
+    line-height: 16px;
+
+    text-align: left;
+
+    white-space: normal;
+
+    cursor: pointer;
+
+}
+
+
+.matrix-product-results button:hover {
+
+    background-color: #eef7ed;
+
+}
+
+
+.matrix-product-results button.selected {
+
+    background-color: #d7e8d0;
+
+    font-weight: 700;
 
 }
 
@@ -840,6 +926,141 @@
     width: 16px;
 
     height: 16px;
+
+}
+
+
+.room-editor-modal {
+
+    width: min(760px, 100%);
+
+}
+
+
+.room-editor-content {
+
+    display: grid;
+
+    grid-template-columns: 280px minmax(0, 1fr);
+
+    gap: 14px;
+
+    padding: 14px;
+
+    min-height: 320px;
+
+}
+
+
+.room-editor-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    border: 1px solid #c9ced6;
+
+    border-radius: 4px;
+
+    overflow-y: auto;
+
+}
+
+
+.room-editor-list button {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 2px;
+
+    min-height: 48px;
+
+    padding: 7px 9px;
+
+    border: 0;
+
+    border-bottom: 1px solid #e0e4e8;
+
+    background-color: #ffffff;
+
+    color: #171a1f;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 13px;
+
+    text-align: left;
+
+    cursor: pointer;
+
+}
+
+
+.room-editor-list button.selected {
+
+    background-color: #d7e8d0;
+
+}
+
+
+.room-editor-list span {
+
+    color: #68717a;
+
+    font-size: 12px;
+
+}
+
+
+.room-editor-form {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 12px;
+
+}
+
+
+.room-editor-form label {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 4px;
+
+    color: #3a424c;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+}
+
+
+.room-editor-form input {
+
+    height: 32px;
+
+    padding: 0 8px;
+
+    border: 1px solid #b9c0ca;
+
+    border-radius: 4px;
+
+    background-color: #ffffff;
+
+    color: #171a1f;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 13px;
+
+    font-weight: 400;
 
 }
 

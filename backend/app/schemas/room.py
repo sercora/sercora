@@ -8,6 +8,12 @@ class RoomCreate(BaseModel):
     room_name: str
 
 
+class RoomUpdate(BaseModel):
+    phase_name: str
+    floor_name: str
+    room_name: str
+
+
 class RoomResponse(BaseModel):
     id: int
     estimate_id: int
