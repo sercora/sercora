@@ -64,6 +64,21 @@
 }
 
 
+.estimate-summary-project-row {
+
+    display: grid;
+
+    grid-template-columns: minmax(520px, 640px) minmax(360px, 500px);
+
+    gap: 12px;
+
+    align-items: start;
+
+    width: 100%;
+
+}
+
+
 .estimate-summary-project,
 .estimate-summary-client {
 
@@ -82,11 +97,11 @@
 
     display: grid;
 
-    grid-template-columns: 150px minmax(160px, 190px) 92px minmax(140px, 170px);
+    grid-template-columns: 116px minmax(130px, 170px) 86px minmax(118px, 150px);
 
     gap: 0;
 
-    width: min(640px, 100%);
+    width: 100%;
 
 }
 

@@ -1318,6 +1318,28 @@ function MatrixView({
                         data: row
                     };
 
+                roomFields.forEach(
+                    roomField => {
+                        const roomParams =
+                            {
+                                data: {
+                                    ...row,
+                                    [roomField]:
+                                        row[roomField] || 0
+                                }
+                            };
+
+                        summaryRow[roomField] =
+                            Number(summaryRow[roomField] || 0) +
+                            getMaterialSellTotal(
+                                roomParams,
+                                [
+                                    roomField
+                                ]
+                            );
+                    }
+                );
+
                 const installationTotal =
                     getInstallTotal(
                         params,
@@ -1356,6 +1378,14 @@ function MatrixView({
             ).map(
                 row => ({
                     ...row,
+                    ...Object.fromEntries(
+                        roomFields.map(
+                            roomField => [
+                                roomField,
+                                Number(row[roomField] || 0).toFixed(2)
+                            ]
+                        )
+                    ),
                     material_sell_total:
                         row.material_sell_total.toFixed(2),
                     installation_total:
@@ -1382,7 +1412,16 @@ function MatrixView({
                         Number(row.install_hours || 0),
                     allocated_install_hours:
                         total.allocated_install_hours +
-                        Number(row.allocated_install_hours || 0)
+                        Number(row.allocated_install_hours || 0),
+                    ...Object.fromEntries(
+                        roomFields.map(
+                            roomField => [
+                                roomField,
+                                Number(total[roomField] || 0) +
+                                Number(row[roomField] || 0)
+                            ]
+                        )
+                    )
                 }),
                 {
                     is_summary_row: true,
@@ -1392,7 +1431,15 @@ function MatrixView({
                     material_sell_total: 0,
                     installation_total: 0,
                     install_hours: 0,
-                    allocated_install_hours: 0
+                    allocated_install_hours: 0,
+                    ...Object.fromEntries(
+                        roomFields.map(
+                            roomField => [
+                                roomField,
+                                0
+                            ]
+                        )
+                    )
                 }
             );
 
@@ -1407,7 +1454,15 @@ function MatrixView({
                 install_hours:
                     totalRow.install_hours.toFixed(2),
                 allocated_install_hours:
-                    totalRow.allocated_install_hours.toFixed(2)
+                    totalRow.allocated_install_hours.toFixed(2),
+                ...Object.fromEntries(
+                    roomFields.map(
+                        roomField => [
+                            roomField,
+                            Number(totalRow[roomField] || 0).toFixed(2)
+                        ]
+                    )
+                )
             }
         ];
 
@@ -1854,33 +1909,6 @@ function MatrixView({
                                 "replace-product-cell"
                     },
                     {
-                        field: "link_line",
-                        headerName: "",
-                        width: 52,
-                        minWidth: 48,
-                        maxWidth: 58,
-                        pinned: "left",
-                        sortable: false,
-                        filter: false,
-                        resizable: false,
-                        suppressMovable: true,
-                        cellRenderer: (params: any) =>
-                            params.data?.is_summary_row ?
-                                "" :
-                                "Lier",
-                        cellClass: (params: any) => [
-                            params.data?.is_summary_row ?
-                                "" :
-                                "replace-product-cell",
-                            (
-                                params.data?.installation_is_linked ||
-                                params.data?.quantity_is_linked
-                            ) ?
-                                "linked-line-cell" :
-                                ""
-                        ].filter(Boolean)
-                    },
-                    {
                         field: "unit_name",
                         headerName: "UNITÉ DE MESURE",
                         width: 92,
@@ -2074,6 +2102,32 @@ function MatrixView({
                             ...numericEditableClass,
                             params.data?.installation_is_linked ?
                                 "linked-cell" :
+                                ""
+                        ].filter(Boolean)
+                    },
+                    {
+                        field: "link_line",
+                        headerName: "",
+                        width: 52,
+                        minWidth: 48,
+                        maxWidth: 58,
+                        sortable: false,
+                        filter: false,
+                        resizable: false,
+                        suppressMovable: true,
+                        cellRenderer: (params: any) =>
+                            params.data?.is_summary_row ?
+                                "" :
+                                "Lier",
+                        cellClass: (params: any) => [
+                            params.data?.is_summary_row ?
+                                "" :
+                                "replace-product-cell",
+                            (
+                                params.data?.installation_is_linked ||
+                                params.data?.quantity_is_linked
+                            ) ?
+                                "linked-line-cell" :
                                 ""
                         ].filter(Boolean)
                     },
@@ -4030,87 +4084,89 @@ function MatrixView({
             <section className="estimate-summary-sheet">
                 <div className="estimate-summary-layout">
                     <div className="estimate-summary-left">
-                        <div className="estimate-summary-project">
-                            <div className="summary-label strong">Projet:</div>
-                            <div className="summary-value strong">
-                                {matrixSummary.project.name}
+                        <div className="estimate-summary-project-row">
+                            <div className="estimate-summary-project">
+                                <div className="summary-label strong">Projet:</div>
+                                <div className="summary-value strong">
+                                    {matrixSummary.project.name}
+                                </div>
+                                <div className="summary-label"># de projet:</div>
+                                <div className="summary-value">
+                                    {matrixSummary.project.number || ""}
+                                </div>
+                                <div className="summary-label">adresse:</div>
+                                <div className="summary-value">
+                                    {matrixSummary.project.address}
+                                </div>
+                                <div className="summary-label">Dernière révision:</div>
+                                <div className="summary-value revision-date">
+                                    {formatDate(matrixSummary.estimate.last_revision_at)}
+                                </div>
                             </div>
-                            <div className="summary-label"># de projet:</div>
-                            <div className="summary-value">
-                                {matrixSummary.project.number || ""}
+
+                            <div className="estimate-summary-plan-details">
+                                <label>
+                                    <span>Architecte:</span>
+                                    <input
+                                        type="text"
+                                        value={summaryForm.architect_name}
+                                        onChange={
+                                            event =>
+                                                updateSummaryForm(
+                                                    "architect_name",
+                                                    event.target.value
+                                                )
+                                        }
+                                    />
+                                </label>
+
+                                <label>
+                                    <span>Date plans:</span>
+                                    <input
+                                        type="date"
+                                        value={summaryForm.plan_date}
+                                        onChange={
+                                            event =>
+                                                updateSummaryForm(
+                                                    "plan_date",
+                                                    event.target.value
+                                                )
+                                        }
+                                    />
+                                </label>
+
+                                <label className="wide">
+                                    <span>Pages de plans:</span>
+                                    <textarea
+                                        rows={3}
+                                        placeholder="Page | Nom | Description"
+                                        value={summaryForm.plan_pages}
+                                        onChange={
+                                            event =>
+                                                updateSummaryForm(
+                                                    "plan_pages",
+                                                    event.target.value
+                                                )
+                                        }
+                                    />
+                                </label>
+
+                                <label className="wide">
+                                    <span>Devis:</span>
+                                    <textarea
+                                        rows={3}
+                                        placeholder="Section devis | Pages"
+                                        value={summaryForm.spec_sections}
+                                        onChange={
+                                            event =>
+                                                updateSummaryForm(
+                                                    "spec_sections",
+                                                    event.target.value
+                                                )
+                                        }
+                                    />
+                                </label>
                             </div>
-                            <div className="summary-label">adresse:</div>
-                            <div className="summary-value">
-                                {matrixSummary.project.address}
-                            </div>
-                            <div className="summary-label">Dernière révision:</div>
-                            <div className="summary-value revision-date">
-                                {formatDate(matrixSummary.estimate.last_revision_at)}
-                            </div>
-                        </div>
-
-                        <div className="estimate-summary-plan-details">
-                            <label>
-                                <span>Architecte:</span>
-                                <input
-                                    type="text"
-                                    value={summaryForm.architect_name}
-                                    onChange={
-                                        event =>
-                                            updateSummaryForm(
-                                                "architect_name",
-                                                event.target.value
-                                            )
-                                    }
-                                />
-                            </label>
-
-                            <label>
-                                <span>Date plans:</span>
-                                <input
-                                    type="date"
-                                    value={summaryForm.plan_date}
-                                    onChange={
-                                        event =>
-                                            updateSummaryForm(
-                                                "plan_date",
-                                                event.target.value
-                                            )
-                                    }
-                                />
-                            </label>
-
-                            <label className="wide">
-                                <span>Pages de plans:</span>
-                                <textarea
-                                    rows={3}
-                                    placeholder="Page | Nom | Description"
-                                    value={summaryForm.plan_pages}
-                                    onChange={
-                                        event =>
-                                            updateSummaryForm(
-                                                "plan_pages",
-                                                event.target.value
-                                            )
-                                    }
-                                />
-                            </label>
-
-                            <label className="wide">
-                                <span>Devis:</span>
-                                <textarea
-                                    rows={3}
-                                    placeholder="Section devis | Pages"
-                                    value={summaryForm.spec_sections}
-                                    onChange={
-                                        event =>
-                                            updateSummaryForm(
-                                                "spec_sections",
-                                                event.target.value
-                                            )
-                                    }
-                                />
-                            </label>
                         </div>
 
                         <div className="estimate-summary-client">
@@ -4190,7 +4246,7 @@ function MatrixView({
 
                     <div className="estimate-summary-rates">
                         <div className="rates-grid current-rates">
-                            <div className="rates-label strong">Taux Courants :</div>
+                            <div className="rates-label strong"></div>
                             <div className="rates-value strong">
                                 {matrixSummary.rates.current.date}
                             </div>
