@@ -50,7 +50,7 @@ const EMPTY_SMS_SETTINGS: SmsSettings = {
 type ConfigurationPageProps = {
     token: string;
     currentUser: SercoraUser;
-    configurationMenu: "Courriel" | "VoIP/SMS" | "Importation";
+    configurationMenu: "Courriel" | "VoIP/SMS" | "Mobile-Punch" | "Importation";
 };
 
 

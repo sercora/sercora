@@ -27,7 +27,7 @@ type ProjectMenuKey = "En cours" | "En Soumission" | "Création";
 type ProjectSubmissionMenuKey = "Nouveaux" | "Approuvés" | "Indécis" | "Refusés" | "Envoyés";
 type EstimateMenuKey = "En cours" | "Envoyées" | "Refusé" | "Template";
 type ToolsMenuKey = "Disponible" | "Déployé";
-type ConfigurationMenuKey = "Courriel" | "VoIP/SMS" | "Importation";
+type ConfigurationMenuKey = "Courriel" | "VoIP/SMS" | "Mobile-Punch" | "Importation";
 
 
 const NAV_ITEMS: PageKey[] = [
@@ -93,7 +93,13 @@ const TOOLS_MENU_ITEMS: ToolsMenuKey[] = [
 const CONFIGURATION_MENU_ITEMS: ConfigurationMenuKey[] = [
     "Courriel",
     "VoIP/SMS",
+    "Mobile-Punch",
     "Importation"
+];
+
+
+const DISABLED_CONFIGURATION_MENU_ITEMS: ConfigurationMenuKey[] = [
+    "Mobile-Punch"
 ];
 
 
@@ -626,29 +632,43 @@ function App() {
                                 {item === "Configuration" && currentUser.role === "admin" && (
                                     <div className="nav-submenu">
                                         {CONFIGURATION_MENU_ITEMS.map(
-                                            configurationMenuItem => (
-                                                <button
-                                                    key={configurationMenuItem}
-                                                    type="button"
-                                                    className={
-                                                        (
-                                                            activePage === "Configuration" &&
-                                                            activeConfigurationMenu === configurationMenuItem
-                                                        ) ?
-                                                            "nav-subitem active" :
-                                                            "nav-subitem"
-                                                    }
-                                                    onClick={
-                                                        () => {
-                                                            setActiveConfigurationMenu(configurationMenuItem);
-                                                            setActivePage("Configuration");
-                                                            refreshNavigationView();
+                                            configurationMenuItem => {
+                                                const isConfigurationMenuDisabled =
+                                                    DISABLED_CONFIGURATION_MENU_ITEMS.includes(configurationMenuItem);
+
+                                                return (
+                                                    <button
+                                                        key={configurationMenuItem}
+                                                        type="button"
+                                                        className={
+                                                            (
+                                                                activePage === "Configuration" &&
+                                                                activeConfigurationMenu === configurationMenuItem
+                                                            ) ?
+                                                                "nav-subitem active" :
+                                                                "nav-subitem"
                                                         }
-                                                    }
-                                                >
-                                                    {configurationMenuItem}
-                                                </button>
-                                            )
+                                                        disabled={isConfigurationMenuDisabled}
+                                                        title={
+                                                            isConfigurationMenuDisabled ?
+                                                                "Integration en developpement." :
+                                                                undefined
+                                                        }
+                                                        onClick={
+                                                            () => {
+                                                                if (isConfigurationMenuDisabled)
+                                                                    return;
+
+                                                                setActiveConfigurationMenu(configurationMenuItem);
+                                                                setActivePage("Configuration");
+                                                                refreshNavigationView();
+                                                            }
+                                                        }
+                                                    >
+                                                        {configurationMenuItem}
+                                                    </button>
+                                                );
+                                            }
                                         )}
                                     </div>
                                 )}
