@@ -8,17 +8,22 @@ import {
 import type { ChangeEvent } from "react";
 
 import {
+    applySupplierDiscount,
     createProduct,
     disableProduct,
     fetchProductPage,
+    fetchSupplierDiscounts,
     fetchProductTypes,
     fetchUnits,
+    saveSupplierDiscount,
     updateProduct,
+    uploadOlympiaPriceList,
     uploadSchluterPriceList
 } from "../utils/productsApi";
 import type {
     Product,
     ProductInput,
+    SupplierDiscount,
     ProductType,
     Unit
 } from "../utils/productsApi";
@@ -29,7 +34,7 @@ import {
 import "../styles/products.css";
 
 
-type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura";
+type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura" | "Olympia";
 type PageSize = 10 | 20 | 50 | "all";
 
 
@@ -275,6 +280,10 @@ function matchesProductMenu(
         return searchableText.includes("centura") &&
             (product.product_type_name || "").toLowerCase() === "tuile";
 
+    if (productMenu === "Olympia")
+        return searchableText.includes("olympia") &&
+            (product.product_type_name || "").toLowerCase() === "tuile";
+
     return true;
 
 }
@@ -288,6 +297,8 @@ function ProductsPage({
     const [totalProductCount, setTotalProductCount] = useState(0);
     const [productTypes, setProductTypes] = useState<ProductType[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
+    const [supplierDiscounts, setSupplierDiscounts] = useState<SupplierDiscount[]>([]);
+    const [discountInputs, setDiscountInputs] = useState<Record<string, string>>({});
     const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
     const [form, setForm] = useState<ProductInput>(EMPTY_FORM);
     const [query, setQuery] = useState("");
@@ -299,8 +310,12 @@ function ProductsPage({
     const [isSaving, setIsSaving] = useState(false);
     const [isUpdatingProsolPrices, setIsUpdatingProsolPrices] = useState(false);
     const [isUploadingSchluter, setIsUploadingSchluter] = useState(false);
+    const [isUploadingOlympia, setIsUploadingOlympia] = useState(false);
+    const [isSavingDiscount, setIsSavingDiscount] = useState(false);
+    const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
     const [statusMessage, setStatusMessage] = useState("");
     const schluterFileInputRef = useRef<HTMLInputElement | null>(null);
+    const olympiaFileInputRef = useRef<HTMLInputElement | null>(null);
 
 
     useEffect(
@@ -310,18 +325,21 @@ function ProductsPage({
             Promise.all(
                 [
                     fetchProductTypes(),
-                    fetchUnits()
+                    fetchUnits(),
+                    fetchSupplierDiscounts()
                 ]
             )
 
             .then(
                 ([
                     typeRows,
-                    unitRows
+                    unitRows,
+                    discountRows
                 ]) => {
 
                     setProductTypes(typeRows);
                     setUnits(unitRows);
+                    setSupplierDiscounts(discountRows);
 
                     if (typeRows.length > 0) {
                         setForm(
@@ -350,6 +368,59 @@ function ProductsPage({
 
         []
 
+    );
+
+
+    const discountSupplierName = useMemo(
+        () => {
+            if (
+                productMenu === "Schluter" ||
+                productMenu === "Centura" ||
+                productMenu === "Olympia"
+            )
+                return productMenu;
+
+            return null;
+        },
+        [
+            productMenu
+        ]
+    );
+
+
+    const activeSupplierDiscount = useMemo(
+        () => supplierDiscounts.find(
+            supplierDiscount =>
+                supplierDiscount.supplier_name === discountSupplierName
+        ) || null,
+        [
+            discountSupplierName,
+            supplierDiscounts
+        ]
+    );
+
+
+    const discountInput = useMemo(
+        () => {
+            if (!discountSupplierName)
+                return "";
+
+            if (discountInputs[discountSupplierName] !== undefined)
+                return discountInputs[discountSupplierName];
+
+            if (
+                activeSupplierDiscount?.discount_percent === null ||
+                activeSupplierDiscount?.discount_percent === undefined
+            )
+                return "";
+
+            return String(activeSupplierDiscount.discount_percent);
+        },
+        [
+            activeSupplierDiscount,
+            discountInputs,
+            discountSupplierName
+        ]
     );
 
 
@@ -886,6 +957,129 @@ function ProductsPage({
     }
 
 
+    function saveDiscount() {
+
+        if (!discountSupplierName)
+            return;
+
+        const normalizedDiscount =
+            discountInput.trim().replace(",", ".");
+        const discountPercent =
+            normalizedDiscount ?
+                Number(normalizedDiscount) :
+                null;
+
+        if (
+            discountPercent !== null &&
+            (
+                Number.isNaN(discountPercent) ||
+                discountPercent < 0 ||
+                discountPercent > 100
+            )
+        ) {
+            setStatusMessage(
+                "Rabais invalide."
+            );
+            return;
+        }
+
+        setIsSavingDiscount(true);
+        setStatusMessage("");
+
+        saveSupplierDiscount(
+            discountSupplierName,
+            {
+                discount_percent: discountPercent,
+                active: true
+            }
+        )
+
+        .then(
+            () =>
+                fetchSupplierDiscounts()
+        )
+
+        .then(
+            discountRows => {
+
+                setSupplierDiscounts(discountRows);
+                setStatusMessage(
+                    "Rabais " + discountSupplierName + " sauvegardé."
+                );
+
+            }
+        )
+
+        .catch(
+            () => {
+
+                setStatusMessage(
+                    "Sauvegarde du rabais impossible."
+                );
+
+            }
+        )
+
+        .finally(
+            () => {
+
+                setIsSavingDiscount(false);
+
+            }
+        );
+
+    }
+
+
+    function applyDiscount() {
+
+        if (!discountSupplierName)
+            return;
+
+        setIsApplyingDiscount(true);
+        setStatusMessage("");
+
+        applySupplierDiscount(
+            discountSupplierName
+        )
+
+        .then(
+            response => {
+
+                setStatusMessage(
+                    "Rabais " +
+                    response.supplier +
+                    " appliqué: " +
+                    response.updated +
+                    " produits."
+                );
+
+                return loadProducts();
+
+            }
+        )
+
+        .catch(
+            () => {
+
+                setStatusMessage(
+                    "Application du rabais impossible."
+                );
+
+            }
+        )
+
+        .finally(
+            () => {
+
+                setIsApplyingDiscount(false);
+
+            }
+        );
+
+    }
+
+
     function uploadSchluterFile(
         event: ChangeEvent<HTMLInputElement>
     ) {
@@ -908,7 +1102,12 @@ function ProductsPage({
                     "Liste Schluter importée: " +
                     response.imported +
                     " produits, erreurs: " +
-                    response.failed
+                    response.failed +
+                    (
+                        response.discount_percent !== null ?
+                            ", rabais: " + response.discount_percent + "%" :
+                            ""
+                    )
                 );
                 setCurrentPage(1);
 
@@ -931,6 +1130,64 @@ function ProductsPage({
             () => {
 
                 setIsUploadingSchluter(false);
+                event.target.value = "";
+
+            }
+        );
+
+    }
+
+
+    function uploadOlympiaFile(
+        event: ChangeEvent<HTMLInputElement>
+    ) {
+
+        const file =
+            event.target.files?.[0];
+
+        if (!file)
+            return;
+
+        setIsUploadingOlympia(true);
+        setStatusMessage("");
+
+        uploadOlympiaPriceList(file)
+
+        .then(
+            response => {
+
+                setStatusMessage(
+                    "Liste Olympia importée: " +
+                    response.imported +
+                    " produits, erreurs: " +
+                    response.failed +
+                    (
+                        response.discount_percent !== null ?
+                            ", rabais: " + response.discount_percent + "%" :
+                            ", rabais non configuré"
+                    )
+                );
+                setCurrentPage(1);
+
+                return loadProducts();
+
+            }
+        )
+
+        .catch(
+            () => {
+
+                setStatusMessage(
+                    "Import de la liste Olympia impossible."
+                );
+
+            }
+        )
+
+        .finally(
+            () => {
+
+                setIsUploadingOlympia(false);
                 event.target.value = "";
 
             }
@@ -1049,6 +1306,71 @@ function ProductsPage({
                                 Liste Schluter
                             </button>
                         </>
+                    )}
+
+                    {productMenu === "Olympia" && (
+                        <>
+                            <input
+                                ref={olympiaFileInputRef}
+                                type="file"
+                                className="price-list-input"
+                                accept=".pdf,application/pdf"
+                                onChange={uploadOlympiaFile}
+                            />
+
+                            <button
+                                type="button"
+                                className="schluter-upload-action"
+                                onClick={
+                                    () =>
+                                        olympiaFileInputRef.current?.click()
+                                }
+                                disabled={isUploadingOlympia}
+                            >
+                                Liste Olympia
+                            </button>
+                        </>
+                    )}
+
+                    {discountSupplierName && (
+                        <div className="supplier-discount-controls">
+                            <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                value={discountInput}
+                                placeholder="%"
+                                onChange={
+                                    event =>
+                                        discountSupplierName &&
+                                        setDiscountInputs(
+                                            previousInputs => ({
+                                                ...previousInputs,
+                                                [discountSupplierName]:
+                                                    event.target.value
+                                            })
+                                        )
+                                }
+                            />
+                            <button
+                                type="button"
+                                onClick={saveDiscount}
+                                disabled={isSavingDiscount}
+                            >
+                                Sauver rabais
+                            </button>
+                            <button
+                                type="button"
+                                onClick={applyDiscount}
+                                disabled={
+                                    isApplyingDiscount ||
+                                    !discountInput.trim()
+                                }
+                            >
+                                Appliquer
+                            </button>
+                        </div>
                     )}
 
                 </div>

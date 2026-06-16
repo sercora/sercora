@@ -82,7 +82,27 @@ export type ProductListParams = {
     search: string;
     supplier: string;
     status: "active" | "inactive" | "all";
-    productMenu: "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura";
+    productMenu: "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura" | "Olympia";
+};
+
+
+export type SupplierDiscount = {
+    supplier_name: string;
+    discount_percent: number | null;
+    active: boolean;
+};
+
+
+export type SupplierDiscountInput = {
+    discount_percent: number | null;
+    active: boolean;
+};
+
+
+export type SupplierDiscountApplyResponse = {
+    supplier: string;
+    discount_percent: number;
+    updated: number;
 };
 
 
@@ -165,6 +185,84 @@ export function uploadSchluterPriceList(
                 )
             },
             body: file
+        }
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function uploadOlympiaPriceList(
+    file: File
+): Promise<PriceListImportResponse> {
+
+    return fetch(
+        API_URL +
+        "/products/olympia/price-list",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": (
+                    file.type ||
+                    "application/pdf"
+                )
+            },
+            body: file
+        }
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function fetchSupplierDiscounts(): Promise<SupplierDiscount[]> {
+
+    return fetch(
+        API_URL +
+        "/supplier-discounts"
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function saveSupplierDiscount(
+    supplierName: string,
+    discount: SupplierDiscountInput
+) {
+
+    return fetch(
+        API_URL +
+        "/supplier-discounts/" +
+        encodeURIComponent(supplierName),
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(discount)
+        }
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function applySupplierDiscount(
+    supplierName: string
+): Promise<SupplierDiscountApplyResponse> {
+
+    return fetch(
+        API_URL +
+        "/supplier-discounts/" +
+        encodeURIComponent(supplierName) +
+        "/apply",
+        {
+            method: "POST"
         }
     )
 

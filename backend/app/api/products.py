@@ -2,13 +2,26 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from app.database.database import SessionLocal
 from app.schemas.product import ProductCreate
+from scripts.import_olympia_price_list import import_olympia_price_list
 from scripts.import_prosol_price_list import import_price_list
 
 router = APIRouter()
+
+
+KNOWN_TILE_SUPPLIERS = [
+    "Centura",
+    "Olympia"
+]
+
+
+class SupplierDiscountInput(BaseModel):
+    discount_percent: float | None = Field(default=None, ge=0, le=100)
+    active: bool = True
 
 
 PRODUCT_SELECT_FIELDS = """
@@ -108,6 +121,48 @@ def product_values(product: ProductCreate):
         "msrp_price": product.msrp_price,
         "active": product.active
     }
+
+
+def supplier_menu_filter(
+    supplier_name: str
+):
+
+    return """
+        pt.name = 'Tuile'
+        AND lower(coalesce(supplier_info.supplier_names, ''))
+            LIKE '%""" + supplier_name.lower() + """%'
+    """
+
+
+def supplier_discount_payload(row):
+
+    return {
+        "supplier_name": row.supplier_name,
+        "discount_percent": decimal_value(row.discount_percent),
+        "active": row.active
+    }
+
+
+def supplier_discount_percent(
+    db,
+    supplier_name: str
+):
+
+    row = db.execute(
+        text(
+            """
+            SELECT discount_percent
+            FROM supplier_discount
+            WHERE supplier_name = :supplier_name
+                AND active = TRUE
+            """
+        ),
+        {
+            "supplier_name": supplier_name
+        }
+    ).fetchone()
+
+    return row.discount_percent if row else None
 
 
 def sync_product_supplier(
@@ -259,7 +314,7 @@ def get_products(
     status: str = Query("active", pattern="^(active|inactive|all)$"),
     product_menu: str = Query(
         "Tous",
-        pattern="^(Tous|Mapei|Prosol|Schluter|Tuile|Centura)$"
+        pattern="^(Tous|Mapei|Prosol|Schluter|Tuile|Centura|Olympia)$"
     ),
     paged: bool = False
 ):
@@ -346,13 +401,9 @@ def get_products(
         elif product_menu == "Tuile":
             filters.append("pt.name = 'Tuile'")
         elif product_menu == "Centura":
-            filters.append(
-                """
-                pt.name = 'Tuile'
-                AND lower(coalesce(supplier_info.supplier_names, ''))
-                    LIKE '%centura%'
-                """
-            )
+            filters.append(supplier_menu_filter("Centura"))
+        elif product_menu == "Olympia":
+            filters.append(supplier_menu_filter("Olympia"))
 
         where_clause = (
             "WHERE " + " AND ".join(filters)
@@ -456,23 +507,237 @@ async def upload_schluter_price_list(request: Request):
             temp_file.write(content)
             temp_path = Path(temp_file.name)
 
+        db = SessionLocal()
+
+        try:
+            discount_percent = supplier_discount_percent(
+                db,
+                "Schluter"
+            )
+
+        finally:
+            db.close()
+
         result = import_price_list(
             temp_path,
             None,
             False,
             "Schluter",
-            40
+            discount_percent
         )
 
         return {
             **result,
-            "supplier": "Schluter",
-            "discount_percent": 40
+            "supplier": "Schluter"
         }
 
     finally:
         if temp_path and temp_path.exists():
             temp_path.unlink()
+
+
+@router.post("/products/olympia/price-list")
+async def upload_olympia_price_list(request: Request):
+
+    content = await request.body()
+
+    if not content:
+        raise HTTPException(
+            status_code=400,
+            detail="Price list file is empty"
+        )
+
+    temp_path = None
+
+    try:
+        with NamedTemporaryFile(
+            suffix=".pdf",
+            delete=False
+        ) as temp_file:
+            temp_file.write(content)
+            temp_path = Path(temp_file.name)
+
+        db = SessionLocal()
+
+        try:
+            discount_percent = supplier_discount_percent(
+                db,
+                "Olympia"
+            )
+
+        finally:
+            db.close()
+
+        result = import_olympia_price_list(
+            temp_path,
+            False,
+            discount_percent
+        )
+
+        return {
+            **result,
+            "supplier": "Olympia"
+        }
+
+    finally:
+        if temp_path and temp_path.exists():
+            temp_path.unlink()
+
+
+@router.get("/supplier-discounts")
+def get_supplier_discounts():
+
+    db = SessionLocal()
+
+    try:
+        for supplier_name in [
+            "Schluter",
+            *KNOWN_TILE_SUPPLIERS
+        ]:
+            db.execute(
+                text(
+                    """
+                    INSERT INTO supplier_discount (
+                        supplier_name,
+                        discount_percent,
+                        active
+                    )
+                    VALUES (
+                        :supplier_name,
+                        NULL,
+                        TRUE
+                    )
+                    ON CONFLICT (supplier_name)
+                    DO NOTHING
+                    """
+                ),
+                {
+                    "supplier_name": supplier_name
+                }
+            )
+        db.commit()
+
+        rows = db.execute(
+            text(
+                """
+                SELECT
+                    supplier_name,
+                    discount_percent,
+                    active
+                FROM supplier_discount
+                ORDER BY supplier_name
+                """
+            )
+        )
+
+        return [
+            supplier_discount_payload(row)
+            for row in rows
+        ]
+
+    finally:
+        db.close()
+
+
+@router.put("/supplier-discounts/{supplier_name}")
+def save_supplier_discount(
+    supplier_name: str,
+    discount: SupplierDiscountInput
+):
+
+    db = SessionLocal()
+
+    try:
+        db.execute(
+            text(
+                """
+                INSERT INTO supplier_discount (
+                    supplier_name,
+                    discount_percent,
+                    active,
+                    updated_at
+                )
+                VALUES (
+                    :supplier_name,
+                    :discount_percent,
+                    :active,
+                    CURRENT_TIMESTAMP
+                )
+                ON CONFLICT (supplier_name)
+                DO UPDATE SET
+                    discount_percent = EXCLUDED.discount_percent,
+                    active = EXCLUDED.active,
+                    updated_at = CURRENT_TIMESTAMP
+                """
+            ),
+            {
+                "supplier_name": supplier_name,
+                "discount_percent": discount.discount_percent,
+                "active": discount.active
+            }
+        )
+        db.commit()
+
+        return {
+            "message": "Supplier discount saved"
+        }
+
+    finally:
+        db.close()
+
+
+@router.post("/supplier-discounts/{supplier_name}/apply")
+def apply_supplier_discount(
+    supplier_name: str
+):
+
+    db = SessionLocal()
+
+    try:
+        discount_percent = supplier_discount_percent(
+            db,
+            supplier_name
+        )
+
+        if discount_percent is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Supplier discount is not configured"
+            )
+
+        result = db.execute(
+            text(
+                """
+                UPDATE product p
+                SET
+                    default_purchase_price = ROUND(
+                        p.msrp_price * (1 - (:discount_percent / 100)),
+                        2
+                    ),
+                    price_updated_at = CURRENT_TIMESTAMP
+                FROM product_supplier ps
+                JOIN supplier s
+                    ON s.id = ps.supplier_id
+                WHERE ps.product_id = p.id
+                    AND s.name = :supplier_name
+                    AND p.msrp_price IS NOT NULL
+                """
+            ),
+            {
+                "supplier_name": supplier_name,
+                "discount_percent": discount_percent
+            }
+        )
+        db.commit()
+
+        return {
+            "supplier": supplier_name,
+            "discount_percent": decimal_value(discount_percent),
+            "updated": result.rowcount
+        }
+
+    finally:
+        db.close()
 
 
 @router.get("/products/{product_id}")

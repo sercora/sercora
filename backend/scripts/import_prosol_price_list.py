@@ -57,6 +57,19 @@ def normalized_text(value):
     return str(value or "").strip()
 
 
+def db_text(
+    value,
+    max_length=255
+):
+
+    normalized_value = normalized_text(value)
+
+    if len(normalized_value) <= max_length:
+        return normalized_value
+
+    return normalized_value[:max_length].rstrip()
+
+
 def row_value(
     row,
     *names
@@ -296,6 +309,7 @@ def unit_id_for(db, uom):
         "mcx": "unité",
         "ctn": "unité",
         "feuille": "unité",
+        "ensemble": "unité",
         "lf": "pi lin",
         "linear foot": "pi lin",
         "sf": "pi²",
@@ -357,6 +371,7 @@ def unit_id_from_map(unit_ids, uom):
         "mcx": "unité",
         "ctn": "unité",
         "feuille": "unité",
+        "ensemble": "unité",
         "lf": "pi lin",
         "linear foot": "pi lin",
         "sf": "pi²",
@@ -391,6 +406,28 @@ def load_product_type_ids(db):
             )
         )
     }
+
+
+def load_supplier_discount_percent(
+    db,
+    supplier_name
+):
+
+    row = db.execute(
+        text(
+            """
+            SELECT discount_percent
+            FROM supplier_discount
+            WHERE supplier_name = :supplier_name
+                AND active = TRUE
+            """
+        ),
+        {
+            "supplier_name": supplier_name
+        }
+    ).fetchone()
+
+    return row.discount_percent if row else None
 
 
 def product_type_id_from_map(
@@ -623,26 +660,29 @@ def product_values(
         if value
     ) or code
     product = {
-        "name": name,
-        "manufacturer_name": row_value(
+        "name": db_text(name),
+        "manufacturer_name": db_text(row_value(
             row,
             "MANUFACTURER"
-        ) or supplier_name,
-        "collection_name": row_value(
+        ) or supplier_name),
+        "collection_name": db_text(row_value(
             row,
             "COLLECTION",
             "SÉRIE",
             "PRODUCT GROUP 2 / \nGROUPE PRODUIT 2"
+        )) or None,
+        "color_name": db_text(color_name) or None,
+        "size_name": db_text(
+            size_name or extract_size_from_name(name),
+            100
         ) or None,
-        "color_name": color_name or None,
-        "size_name": size_name or extract_size_from_name(name) or None,
-        "category_name": row_value(
+        "category_name": db_text(row_value(
             row,
             "CATEGORY",
             "CATÉGORIE",
             "PRODUCT GROUP 1 / \nGROUPE PRODUIT 1"
-        ) or None,
-        "manufacturer_sku": code,
+        )) or None,
+        "manufacturer_sku": db_text(code),
         "prosol_sku": (
             code
             if supplier_name == "Prosol"
@@ -660,7 +700,7 @@ def product_values(
         ),
         "active": True
     }
-    if supplier_name == "Centura" and "Tuile" in product_type_ids:
+    if supplier_name in ("Centura", "Olympia") and "Tuile" in product_type_ids:
         product["product_type_id"] = product_type_ids["Tuile"]
     else:
         product["product_type_id"] = product_type_id_from_map(
@@ -922,6 +962,12 @@ def import_price_list(
     failed = 0
 
     try:
+        if discount_percent is None:
+            discount_percent = load_supplier_discount_percent(
+                db,
+                supplier_name
+            )
+
         if not dry_run:
             summary = upsert_products(
                 db,
@@ -942,7 +988,12 @@ def import_price_list(
         return {
             "rows": len(rows),
             "imported": imported,
-            "failed": failed
+            "failed": failed,
+            "discount_percent": (
+                float(discount_percent)
+                if discount_percent is not None
+                else None
+            )
         }
 
     finally:
