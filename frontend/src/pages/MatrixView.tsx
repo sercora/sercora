@@ -1301,7 +1301,7 @@ function MatrixView({
                         {
                             is_summary_row: true,
                             surface_name: surfaceName,
-                            product_name: "Sous-total " + surfaceName,
+                            product_name: surfaceName,
                             material_sell_total: 0,
                             installation_total: 0,
                             install_hours: 0,
@@ -1320,18 +1320,28 @@ function MatrixView({
 
                 roomFields.forEach(
                     roomField => {
-                        const roomParams =
-                            {
-                                data: {
-                                    ...row,
-                                    [roomField]:
-                                        row[roomField] || 0
-                                }
-                            };
+                        const roomParams = {
+                            data: {
+                                ...row,
+                                [roomField]:
+                                    row[roomField] || 0
+                            }
+                        };
 
                         summaryRow[roomField] =
                             Number(summaryRow[roomField] || 0) +
                             getMaterialSellTotal(
+                                roomParams,
+                                [
+                                    roomField
+                                ]
+                            );
+
+                        summaryRow[roomField + "_installation"] =
+                            Number(
+                                summaryRow[roomField + "_installation"] || 0
+                            ) +
+                            getInstallTotal(
                                 roomParams,
                                 [
                                     roomField
@@ -1372,33 +1382,13 @@ function MatrixView({
             }
         );
 
-        const surfaceRows =
+        const surfaceTotals =
             Array.from(
                 bySurface.values()
-            ).map(
-                row => ({
-                    ...row,
-                    ...Object.fromEntries(
-                        roomFields.map(
-                            roomField => [
-                                roomField,
-                                Number(row[roomField] || 0).toFixed(2)
-                            ]
-                        )
-                    ),
-                    material_sell_total:
-                        row.material_sell_total.toFixed(2),
-                    installation_total:
-                        row.installation_total.toFixed(2),
-                    install_hours:
-                        row.install_hours.toFixed(2),
-                    allocated_install_hours:
-                        row.allocated_install_hours.toFixed(2)
-                })
             );
 
         const totalRow =
-            surfaceRows.reduce(
+            surfaceTotals.reduce(
                 (total, row) => ({
                     ...total,
                     material_sell_total:
@@ -1421,6 +1411,19 @@ function MatrixView({
                                 Number(row[roomField] || 0)
                             ]
                         )
+                    ),
+                    ...Object.fromEntries(
+                        roomFields.map(
+                            roomField => [
+                                roomField + "_installation",
+                                Number(
+                                    total[roomField + "_installation"] || 0
+                                ) +
+                                Number(
+                                    row[roomField + "_installation"] || 0
+                                )
+                            ]
+                        )
                     )
                 }),
                 {
@@ -1439,31 +1442,89 @@ function MatrixView({
                                 0
                             ]
                         )
+                    ),
+                    ...Object.fromEntries(
+                        roomFields.map(
+                            roomField => [
+                                roomField + "_installation",
+                                0
+                            ]
+                        )
                     )
                 }
             );
 
-        return [
-            ...surfaceRows,
-            {
-                ...totalRow,
-                material_sell_total:
-                    totalRow.material_sell_total.toFixed(2),
-                installation_total:
-                    totalRow.installation_total.toFixed(2),
-                install_hours:
-                    totalRow.install_hours.toFixed(2),
-                allocated_install_hours:
-                    totalRow.allocated_install_hours.toFixed(2),
-                ...Object.fromEntries(
-                    roomFields.map(
-                        roomField => [
-                            roomField,
-                            Number(totalRow[roomField] || 0).toFixed(2)
-                        ]
+        function summaryPairRows(
+            row: any,
+            isGrandTotal = false
+        ) {
+
+            return [
+                {
+                    is_summary_row: true,
+                    is_grand_total_row: isGrandTotal,
+                    summary_kind: "material",
+                    surface_name: row.surface_name,
+                    product_name:
+                        (
+                            isGrandTotal ?
+                                "TOTAL GÉNÉRAL" :
+                                row.product_name
+                        ) +
+                        " - Fourniture",
+                    material_sell_total:
+                        Number(row.material_sell_total || 0).toFixed(2),
+                    ...Object.fromEntries(
+                        roomFields.map(
+                            roomField => [
+                                roomField,
+                                Number(row[roomField] || 0).toFixed(2)
+                            ]
+                        )
                     )
-                )
-            }
+                },
+                {
+                    is_summary_row: true,
+                    is_grand_total_row: isGrandTotal,
+                    summary_kind: "installation",
+                    surface_name: row.surface_name,
+                    product_name:
+                        (
+                            isGrandTotal ?
+                                "TOTAL GÉNÉRAL" :
+                                row.product_name
+                        ) +
+                        " - Installation",
+                    installation_total:
+                        Number(row.installation_total || 0).toFixed(2),
+                    install_hours:
+                        Number(row.install_hours || 0).toFixed(2),
+                    allocated_install_hours:
+                        Number(row.allocated_install_hours || 0).toFixed(2),
+                    ...Object.fromEntries(
+                        roomFields.map(
+                            roomField => [
+                                roomField,
+                                Number(
+                                    row[roomField + "_installation"] || 0
+                                ).toFixed(2)
+                            ]
+                        )
+                    )
+                }
+            ];
+
+        }
+
+        return [
+            ...surfaceTotals.flatMap(
+                row =>
+                    summaryPairRows(row)
+            ),
+            ...summaryPairRows(
+                totalRow,
+                true
+            )
         ];
 
     }
