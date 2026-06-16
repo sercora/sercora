@@ -1,4 +1,10 @@
+import base64
+import ipaddress
+import re
+import socket
 from pathlib import Path
+from urllib.parse import unquote, urlparse
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -22,6 +28,27 @@ PREVIEW_EXTENSIONS = {
     ".pdf",
     ".msg"
 }
+MSG_IMAGE_MAX_BYTES = 5 * 1024 * 1024
+MSG_REMOTE_IMAGE_TIMEOUT = 5
+IMG_SRC_PATTERN = re.compile(
+    r"(<img\b[^>]*?\bsrc\s*=\s*)([\"'])(.*?)(\2)",
+    re.IGNORECASE
+)
+
+
+class NoRedirectHandler(HTTPRedirectHandler):
+
+    def redirect_request(
+        self,
+        req,
+        fp,
+        code,
+        msg,
+        headers,
+        newurl
+    ):
+
+        return None
 
 
 def estimate_root(
@@ -86,27 +113,206 @@ def folder_item_payload(
     }
 
 
+def decode_msg_value(
+    value
+):
+
+    if not value:
+        return ""
+
+    if isinstance(value, bytes):
+        for encoding in ("utf-8", "cp1252", "latin-1"):
+            try:
+                return value.decode(encoding)
+            except UnicodeDecodeError:
+                pass
+
+        return value.decode("utf-8", errors="replace")
+
+    return str(value)
+
+
+def normalize_msg_content_id(
+    value
+):
+
+    if not value:
+        return ""
+
+    content_id = unquote(str(value).strip().strip("<>"))
+
+    if content_id.lower().startswith("cid:"):
+        content_id = content_id[4:]
+
+    return content_id.strip()
+
+
+def msg_image_data_uri(
+    data,
+    mime_type
+):
+
+    if not data or not mime_type.lower().startswith("image/"):
+        return ""
+
+    if len(data) > MSG_IMAGE_MAX_BYTES:
+        return ""
+
+    return "data:{mime_type};base64,{payload}".format(
+        mime_type=mime_type,
+        payload=base64.b64encode(data).decode("ascii")
+    )
+
+
+def msg_attachment_image_map(
+    attachments
+):
+
+    images = {}
+
+    for attachment in attachments:
+        mime_type = getattr(attachment, "mimetype", None) or ""
+        data_uri = msg_image_data_uri(
+            getattr(attachment, "data", None),
+            mime_type
+        )
+
+        if not data_uri:
+            continue
+
+        for key in (
+            getattr(attachment, "cid", None),
+            getattr(attachment, "contentId", None),
+            getattr(attachment, "longFilename", None),
+            getattr(attachment, "shortFilename", None)
+        ):
+            content_id = normalize_msg_content_id(key)
+
+            if content_id:
+                images[content_id] = data_uri
+
+    return images
+
+
+def host_is_public(
+    hostname: str
+):
+
+    try:
+        addresses = socket.getaddrinfo(
+            hostname,
+            None
+        )
+    except socket.gaierror:
+        return False
+
+    for address in addresses:
+        ip_address = ipaddress.ip_address(address[4][0])
+
+        if (
+            ip_address.is_private
+            or ip_address.is_loopback
+            or ip_address.is_link_local
+            or ip_address.is_multicast
+            or ip_address.is_reserved
+            or ip_address.is_unspecified
+        ):
+            return False
+
+    return True
+
+
+def download_remote_image_data_uri(
+    image_url: str
+):
+
+    parsed_url = urlparse(image_url)
+
+    if parsed_url.scheme not in ("http", "https") or not parsed_url.hostname:
+        return ""
+
+    if not host_is_public(parsed_url.hostname):
+        return ""
+
+    request = Request(
+        image_url,
+        headers={
+            "User-Agent": "Sercora/1.0"
+        }
+    )
+
+    try:
+        opener = build_opener(NoRedirectHandler)
+
+        with opener.open(
+            request,
+            timeout=MSG_REMOTE_IMAGE_TIMEOUT
+        ) as response:
+            mime_type = response.headers.get_content_type()
+
+            if not mime_type.lower().startswith("image/"):
+                return ""
+
+            data = response.read(MSG_IMAGE_MAX_BYTES + 1)
+
+            if len(data) > MSG_IMAGE_MAX_BYTES:
+                return ""
+
+            return msg_image_data_uri(
+                data,
+                mime_type
+            )
+    except Exception:
+        return ""
+
+
+def inline_msg_html_images(
+    message_html,
+    cid_images
+):
+
+    if not message_html:
+        return ""
+
+    remote_images = {}
+
+    def replace_image_src(
+        match
+    ):
+
+        prefix, quote, source, suffix = match.groups()
+        replacement = ""
+
+        if source.lower().startswith("cid:"):
+            replacement = cid_images.get(
+                normalize_msg_content_id(source)
+            )
+        elif source.lower().startswith(("http://", "https://")):
+            replacement = remote_images.get(source)
+
+            if replacement is None:
+                replacement = download_remote_image_data_uri(source)
+                remote_images[source] = replacement
+
+        if not replacement:
+            return match.group(0)
+
+        return "{prefix}{quote}{replacement}{suffix}".format(
+            prefix=prefix,
+            quote=quote,
+            replacement=replacement,
+            suffix=suffix
+        )
+
+    return IMG_SRC_PATTERN.sub(
+        replace_image_src,
+        message_html
+    )
+
+
 def msg_preview_payload(
     target: Path
 ):
-
-    def decode_msg_value(
-        value
-    ):
-
-        if not value:
-            return ""
-
-        if isinstance(value, bytes):
-            for encoding in ("utf-8", "cp1252", "latin-1"):
-                try:
-                    return value.decode(encoding)
-                except UnicodeDecodeError:
-                    pass
-
-            return value.decode("utf-8", errors="replace")
-
-        return str(value)
 
     try:
         import extract_msg
@@ -127,6 +333,11 @@ def msg_preview_payload(
         message_html = decode_msg_value(
             getattr(message, "htmlBody", None)
             or getattr(message, "html_body", None)
+        )
+        cid_images = msg_attachment_image_map(message.attachments)
+        message_html = inline_msg_html_images(
+            message_html,
+            cid_images
         )
         attachments = [
             attachment.longFilename or attachment.shortFilename or "Pièce jointe"
