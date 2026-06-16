@@ -1,10 +1,14 @@
 import base64
+import html
 import ipaddress
+import posixpath
 import re
 import socket
+import zipfile
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener
+from xml.etree import ElementTree as ET
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -25,15 +29,23 @@ NAS_ESTIMATE_ROOTS = {
 
 ESTIMATE_FOLDER_STATUS_PATTERN = "^(in_progress|sent|rejected)$"
 PREVIEW_EXTENSIONS = {
+    ".docx",
     ".pdf",
-    ".msg"
+    ".msg",
+    ".xlsx"
 }
 MSG_IMAGE_MAX_BYTES = 5 * 1024 * 1024
 MSG_REMOTE_IMAGE_TIMEOUT = 5
+OFFICE_PREVIEW_MAX_COLUMNS = 60
+OFFICE_PREVIEW_MAX_ROWS = 300
+OFFICE_PREVIEW_MAX_SHEETS = 12
 IMG_SRC_PATTERN = re.compile(
     r"(<img\b[^>]*?\bsrc\s*=\s*)([\"'])(.*?)(\2)",
     re.IGNORECASE
 )
+WORD_NAMESPACE = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+SPREADSHEET_NAMESPACE = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+RELATIONSHIP_NAMESPACE = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 
 
 class NoRedirectHandler(HTTPRedirectHandler):
@@ -110,6 +122,497 @@ def folder_item_payload(
         "is_dir": entry.is_dir(),
         "size": stat.st_size,
         "modified_at": stat.st_mtime
+    }
+
+
+def office_preview_document(
+    title,
+    content
+):
+
+    escaped_title = html.escape(title)
+
+    return """<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<style>
+body {{
+    margin: 0;
+    padding: 24px;
+    background: #f6f7f8;
+    color: #171a1f;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+}}
+.page {{
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 28px;
+    border: 1px solid #d8dce2;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}}
+h1 {{
+    margin: 0 0 18px;
+    font-size: 18px;
+}}
+h2 {{
+    margin: 22px 0 10px;
+    font-size: 15px;
+}}
+p {{
+    margin: 0 0 10px;
+}}
+table {{
+    width: 100%;
+    margin: 0 0 16px;
+    border-collapse: collapse;
+    table-layout: fixed;
+}}
+th,
+td {{
+    padding: 5px 7px;
+    border: 1px solid #d0d7de;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+}}
+th {{
+    background: #eef1f2;
+    font-weight: 700;
+    text-align: left;
+}}
+.sheet-note {{
+    margin: 8px 0 18px;
+    color: #5c6670;
+    font-size: 12px;
+}}
+</style>
+</head>
+<body>
+<main class="page">
+<h1>{title}</h1>
+{content}
+</main>
+</body>
+</html>""".format(
+        title=escaped_title,
+        content=content
+    )
+
+
+def word_text_from_node(
+    node
+):
+
+    parts = []
+
+    for child in node.iter():
+        if child.tag == WORD_NAMESPACE + "t":
+            parts.append(
+                html.escape(child.text or "")
+            )
+        elif child.tag == WORD_NAMESPACE + "tab":
+            parts.append(" ")
+        elif child.tag == WORD_NAMESPACE + "br":
+            parts.append("<br>")
+
+    return "".join(parts).strip()
+
+
+def word_paragraph_html(
+    node
+):
+
+    paragraph = word_text_from_node(node)
+
+    if not paragraph:
+        return ""
+
+    return "<p>{paragraph}</p>".format(
+        paragraph=paragraph
+    )
+
+
+def word_table_html(
+    node
+):
+
+    rows = []
+
+    for row in node.findall(
+        WORD_NAMESPACE + "tr"
+    ):
+        cells = []
+
+        for cell in row.findall(
+            WORD_NAMESPACE + "tc"
+        ):
+            cell_content = []
+
+            for paragraph in cell.findall(
+                WORD_NAMESPACE + "p"
+            ):
+                paragraph_text = word_text_from_node(paragraph)
+
+                if paragraph_text:
+                    cell_content.append(paragraph_text)
+
+            cells.append(
+                "<td>{content}</td>".format(
+                    content="<br>".join(cell_content) or "&nbsp;"
+                )
+            )
+
+        if cells:
+            rows.append(
+                "<tr>{cells}</tr>".format(
+                    cells="".join(cells)
+                )
+            )
+
+    if not rows:
+        return ""
+
+    return "<table>{rows}</table>".format(
+        rows="".join(rows)
+    )
+
+
+def docx_preview_html(
+    target: Path
+):
+
+    with zipfile.ZipFile(target) as archive:
+        document_xml = archive.read("word/document.xml")
+
+    document = ET.fromstring(document_xml)
+    body = document.find(
+        WORD_NAMESPACE + "body"
+    )
+
+    if body is None:
+        return office_preview_document(
+            target.name,
+            "<p>Document Word vide.</p>"
+        )
+
+    blocks = []
+
+    for child in body:
+        if child.tag == WORD_NAMESPACE + "p":
+            block = word_paragraph_html(child)
+        elif child.tag == WORD_NAMESPACE + "tbl":
+            block = word_table_html(child)
+        else:
+            block = ""
+
+        if block:
+            blocks.append(block)
+
+    return office_preview_document(
+        target.name,
+        "".join(blocks) or "<p>Document Word vide.</p>"
+    )
+
+
+def xlsx_column_index(
+    cell_reference
+):
+
+    letters = re.match(
+        r"[A-Z]+",
+        cell_reference or ""
+    )
+
+    if not letters:
+        return 0
+
+    column = 0
+
+    for character in letters.group(0):
+        column = column * 26 + ord(character) - ord("A") + 1
+
+    return column
+
+
+def xlsx_shared_strings(
+    archive
+):
+
+    try:
+        shared_strings_xml = archive.read("xl/sharedStrings.xml")
+    except KeyError:
+        return []
+
+    shared_strings = []
+    root = ET.fromstring(shared_strings_xml)
+
+    for item in root.findall(
+        SPREADSHEET_NAMESPACE + "si"
+    ):
+        parts = []
+
+        for text_node in item.iter(
+            SPREADSHEET_NAMESPACE + "t"
+        ):
+            parts.append(text_node.text or "")
+
+        shared_strings.append(
+            "".join(parts)
+        )
+
+    return shared_strings
+
+
+def xlsx_workbook_relationships(
+    archive
+):
+
+    relationships = {}
+
+    try:
+        relationships_xml = archive.read("xl/_rels/workbook.xml.rels")
+    except KeyError:
+        return relationships
+
+    root = ET.fromstring(relationships_xml)
+
+    for relationship in root:
+        relationship_id = relationship.attrib.get("Id")
+        target = relationship.attrib.get("Target")
+
+        if relationship_id and target:
+            if target.startswith("/"):
+                sheet_path = target.strip("/")
+            else:
+                sheet_path = posixpath.normpath(
+                    posixpath.join(
+                        "xl",
+                        target
+                    )
+                )
+
+            relationships[relationship_id] = sheet_path
+
+    return relationships
+
+
+def xlsx_workbook_sheets(
+    archive
+):
+
+    workbook_xml = archive.read("xl/workbook.xml")
+    root = ET.fromstring(workbook_xml)
+    relationships = xlsx_workbook_relationships(archive)
+    sheets = []
+
+    sheets_node = root.find(
+        SPREADSHEET_NAMESPACE + "sheets"
+    )
+
+    if sheets_node is None:
+        return sheets
+
+    for sheet in sheets_node.findall(
+        SPREADSHEET_NAMESPACE + "sheet"
+    ):
+        relationship_id = sheet.attrib.get(
+            RELATIONSHIP_NAMESPACE + "id"
+        )
+        sheet_path = relationships.get(relationship_id or "")
+
+        if sheet_path:
+            sheets.append(
+                {
+                    "name": sheet.attrib.get("name") or "Feuille",
+                    "path": sheet_path
+                }
+            )
+
+    return sheets
+
+
+def xlsx_cell_value(
+    cell,
+    shared_strings
+):
+
+    cell_type = cell.attrib.get("t")
+
+    if cell_type == "inlineStr":
+        parts = []
+
+        for text_node in cell.iter(
+            SPREADSHEET_NAMESPACE + "t"
+        ):
+            parts.append(text_node.text or "")
+
+        return "".join(parts)
+
+    value_node = cell.find(
+        SPREADSHEET_NAMESPACE + "v"
+    )
+
+    if value_node is None or value_node.text is None:
+        return ""
+
+    value = value_node.text
+
+    if cell_type == "s":
+        try:
+            return shared_strings[int(value)]
+        except (IndexError, ValueError):
+            return value
+
+    if cell_type == "b":
+        return "TRUE" if value == "1" else "FALSE"
+
+    return value
+
+
+def xlsx_sheet_html(
+    archive,
+    sheet,
+    shared_strings
+):
+
+    sheet_xml = archive.read(sheet["path"])
+    root = ET.fromstring(sheet_xml)
+    rows = []
+    truncated = False
+
+    for row_index, row in enumerate(
+        root.findall(
+            ".//" + SPREADSHEET_NAMESPACE + "row"
+        )
+    ):
+        if row_index >= OFFICE_PREVIEW_MAX_ROWS:
+            truncated = True
+            break
+
+        values = {}
+        max_column = 0
+
+        for cell in row.findall(
+            SPREADSHEET_NAMESPACE + "c"
+        ):
+            column = xlsx_column_index(
+                cell.attrib.get("r", "")
+            )
+
+            if not column or column > OFFICE_PREVIEW_MAX_COLUMNS:
+                continue
+
+            max_column = max(
+                max_column,
+                column
+            )
+            values[column] = xlsx_cell_value(
+                cell,
+                shared_strings
+            )
+
+        if max_column:
+            rows.append(
+                "<tr>{cells}</tr>".format(
+                    cells="".join(
+                        "<td>{value}</td>".format(
+                            value=html.escape(
+                                values.get(column, "")
+                            )
+                        )
+                        for column in range(
+                            1,
+                            max_column + 1
+                        )
+                    )
+                )
+            )
+
+    if not rows:
+        table = "<p>Feuille vide.</p>"
+    else:
+        table = "<table>{rows}</table>".format(
+            rows="".join(rows)
+        )
+
+    note = ""
+
+    if truncated:
+        note = (
+            "<p class=\"sheet-note\">"
+            "Aperçu limité aux {rows} premières lignes."
+            "</p>"
+        ).format(
+            rows=OFFICE_PREVIEW_MAX_ROWS
+        )
+
+    return "<h2>{name}</h2>{note}{table}".format(
+        name=html.escape(sheet["name"]),
+        note=note,
+        table=table
+    )
+
+
+def xlsx_preview_html(
+    target: Path
+):
+
+    with zipfile.ZipFile(target) as archive:
+        shared_strings = xlsx_shared_strings(archive)
+        sheets = xlsx_workbook_sheets(archive)
+        blocks = []
+
+        for index, sheet in enumerate(sheets):
+            if index >= OFFICE_PREVIEW_MAX_SHEETS:
+                blocks.append(
+                    "<p class=\"sheet-note\">"
+                    "Aperçu limité aux {sheets} premières feuilles."
+                    "</p>".format(
+                        sheets=OFFICE_PREVIEW_MAX_SHEETS
+                    )
+                )
+                break
+
+            blocks.append(
+                xlsx_sheet_html(
+                    archive,
+                    sheet,
+                    shared_strings
+                )
+            )
+
+    return office_preview_document(
+        target.name,
+        "".join(blocks) or "<p>Classeur Excel vide.</p>"
+    )
+
+
+def office_preview_payload(
+    target: Path
+):
+
+    try:
+        if target.suffix.lower() == ".docx":
+            preview_html = docx_preview_html(target)
+            office_format = "word"
+        else:
+            preview_html = xlsx_preview_html(target)
+            office_format = "excel"
+    except (KeyError, zipfile.BadZipFile, ET.ParseError) as error:
+        raise HTTPException(
+            status_code=422,
+            detail="Office file could not be read"
+        ) from error
+
+    return {
+        "type": "office",
+        "name": target.name,
+        "format": office_format,
+        "html": preview_html
     }
 
 
@@ -464,6 +967,9 @@ def get_estimate_file_preview(
             filename=target.name,
             content_disposition_type="inline"
         )
+
+    if extension in (".docx", ".xlsx"):
+        return office_preview_payload(target)
 
     return msg_preview_payload(target)
 

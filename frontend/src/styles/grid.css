@@ -2316,6 +2316,21 @@
 }
 
 
+.office-preview-frame {
+
+    display: block;
+
+    width: 100%;
+
+    min-height: 620px;
+
+    border: 0;
+
+    background-color: #f6f7f8;
+
+}
+
+
 .estimate-folder-empty,
 .estimate-folder-error {
 

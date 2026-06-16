@@ -29,6 +29,12 @@ export type EstimateFilePreview =
         name: string;
     } |
     {
+        type: "office";
+        name: string;
+        format: "word" | "excel";
+        html: string;
+    } |
+    {
         type: "msg";
         name: string;
         subject: string;

@@ -5580,7 +5580,7 @@ function MatrixView({
         fileName: string
     ) {
 
-        return /\.(pdf|msg)$/i.test(fileName);
+        return /\.(pdf|msg|docx|xlsx)$/i.test(fileName);
 
     }
 
@@ -5621,7 +5621,7 @@ function MatrixView({
         .catch(
             () => {
                 setPreviewError(
-                    "Impossible de lire ce courriel .msg."
+                    "Impossible de lire ce fichier."
                 );
             }
         )
@@ -5642,7 +5642,7 @@ function MatrixView({
         if (!filePreview && !previewError && !isPreviewLoading)
             return (
                 <aside className="estimate-file-preview empty">
-                    Sélectionner un PDF ou un courriel .msg.
+                    Sélectionner un PDF, Word, Excel ou courriel .msg.
                 </aside>
             );
 
@@ -5705,6 +5705,15 @@ function MatrixView({
                             folderStatus,
                             previewPath
                         )}
+                    />
+                )}
+
+                {filePreview?.type === "office" && (
+                    <iframe
+                        className="office-preview-frame"
+                        title={filePreview.name}
+                        sandbox=""
+                        srcDoc={filePreview.html}
                     />
                 )}
 
