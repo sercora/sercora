@@ -368,6 +368,7 @@ function MatrixView({
     const [selectedTileSurfaceIds, setSelectedTileSurfaceIds] = useState<number[]>([]);
     const [tileSurfaceStatus, setTileSurfaceStatus] = useState("");
     const [selectedLineIds, setSelectedLineIds] = useState<number[]>([]);
+    const [summaryDayManpower, setSummaryDayManpower] = useState(1);
     const [rangeSubtotal, setRangeSubtotal] = useState<{
         count: number;
         sum: number;
@@ -617,14 +618,15 @@ function MatrixView({
         [
             rowData,
             roomColumns,
-            matrixSummary
+            matrixSummary,
+            summaryDayManpower
         ]
     );
 
 
-    function formatMoney(value: number) {
+    function formatMoney(value: any) {
 
-        return Number(value || 0).toFixed(2);
+        return Number(value || 0).toFixed(2) + " $";
 
     }
 
@@ -760,11 +762,23 @@ function MatrixView({
         params: any
     ) {
 
-        if (params.data?.is_summary_row)
-            return;
-
         const field =
             params.column.getColId();
+
+        if (params.data?.is_summary_row) {
+            if (
+                params.data.summary_kind === "days" &&
+                field === "manpower_multiplier"
+            )
+                setSummaryDayManpower(
+                    Math.max(
+                        1,
+                        parseNumber(params.newValue)
+                    )
+                );
+
+            return;
+        }
 
         if (
             params.newValue === params.oldValue
@@ -1897,12 +1911,12 @@ function MatrixView({
                         label :
                         "TOTAL MATÉRIEL " + label,
                     material_sell_total:
-                        Number(row.material_sell_total || 0).toFixed(2),
+                        formatMoney(row.material_sell_total),
                     ...Object.fromEntries(
                         roomFields.map(
                             roomField => [
                                 roomField,
-                                Number(row[roomField] || 0).toFixed(2)
+                                formatMoney(row[roomField])
                             ]
                         )
                     )
@@ -1920,7 +1934,7 @@ function MatrixView({
                         label :
                         "TOTAL INSTALLATION " + label,
                     installation_total:
-                        Number(row.installation_total || 0).toFixed(2),
+                        formatMoney(row.installation_total),
                     install_hours:
                         Number(row.install_hours || 0).toFixed(2),
                     allocated_install_hours:
@@ -1929,7 +1943,7 @@ function MatrixView({
                         roomFields.map(
                             roomField => [
                                 roomField,
-                                (
+                                formatMoney(
                                     isGrandTotal ?
                                         Number(row[roomField] || 0) +
                                         Number(
@@ -1942,7 +1956,7 @@ function MatrixView({
                                                     "_installation"
                                             ] || 0
                                         )
-                                ).toFixed(2)
+                                )
                             ]
                         )
                     )
@@ -1954,9 +1968,9 @@ function MatrixView({
                         ...installationRow,
                         summary_kind: "local_total",
                         material_sell_total:
-                            Number(row.material_sell_total || 0).toFixed(2),
+                            formatMoney(row.material_sell_total),
                         installation_total:
-                            Number(row.installation_total || 0).toFixed(2)
+                            formatMoney(row.installation_total)
                     }
                 ];
 
@@ -2013,36 +2027,59 @@ function MatrixView({
 
         }
 
-        function daysRow(
-            row: any
+        function combinedDaysRow(
+            rows: any[]
         ) {
 
-            const effectiveManpowerMultiplier =
-                Number(row.allocated_install_hours || 0) ?
-                    Number(row.install_hours || 0) /
-                        Number(row.allocated_install_hours || 0) :
+            const sourceRows =
+                rows.filter(
+                    row =>
+                        [
+                            "CM",
+                            "CP"
+                        ].includes(row.surface_group)
+                );
+            const rowsToUse =
+                sourceRows.length ?
+                    sourceRows :
+                    rows;
+            const manpower =
+                Math.max(
+                    1,
+                    Number(summaryDayManpower || 1)
+                );
+            const installationTotal =
+                rowsToUse.reduce(
+                    (total, row) =>
+                        total + Number(row.installation_total || 0),
+                    0
+                );
+            const installHours =
+                hourlyRate ?
+                    installationTotal / hourlyRate :
                     0;
 
             return {
                 is_summary_row: true,
                 summary_kind: "days",
                 surface_name:
-                    row.surface_name,
+                    "TOTAL",
                 surface_group:
-                    row.surface_group,
+                    "TOTAL",
                 product_name:
-                    "Nbr de jour_" + row.surface_group,
+                    "Nbr de jour CM+CP",
                 manpower_multiplier:
-                    effectiveManpowerMultiplier.toFixed(2),
+                    manpower.toFixed(2),
                 install_hours:
                     (
-                        Number(row.install_hours || 0) /
+                        installHours /
                         WORK_HOURS_PER_DAY
                     ).toFixed(2),
                 allocated_install_hours:
                     (
-                        Number(row.allocated_install_hours || 0) /
-                        WORK_HOURS_PER_DAY
+                        installHours /
+                        WORK_HOURS_PER_DAY /
+                        manpower
                     ).toFixed(2),
                 ...Object.fromEntries(
                     roomFields.map(
@@ -2050,16 +2087,20 @@ function MatrixView({
                             roomField,
                             (
                                 hourlyRate ?
-                                    (
-                                        Number(
-                                            row[
-                                                roomField +
-                                                    "_installation"
-                                            ] || 0
-                                        ) /
-                                        hourlyRate /
-                                        WORK_HOURS_PER_DAY
-                                    ) :
+                                    rowsToUse.reduce(
+                                        (total, row) =>
+                                            total +
+                                            Number(
+                                                row[
+                                                    roomField +
+                                                        "_installation"
+                                                ] || 0
+                                            ),
+                                        0
+                                    ) /
+                                    hourlyRate /
+                                    WORK_HOURS_PER_DAY /
+                                    manpower :
                                     0
                             ).toFixed(2)
                         ]
@@ -2113,12 +2154,11 @@ function MatrixView({
                 totalRow,
                 true
             ),
-            ...orderedSurfaceTotals.flatMap(
-                row => [
-                    hoursRow(row),
-                    daysRow(row)
-                ]
-            )
+            ...orderedSurfaceTotals.map(
+                row =>
+                    hoursRow(row)
+            ),
+            combinedDaysRow(orderedSurfaceTotals)
         ];
 
     }
@@ -2691,7 +2731,9 @@ function MatrixView({
                         cellClass: calculatedClass,
                         valueGetter:
                             (params: any) =>
-                                getUnitProfit(params).toFixed(2)
+                                formatMoney(
+                                    getUnitProfit(params)
+                                )
                     },
                     {
                         colId: "profit_total",
@@ -2705,10 +2747,12 @@ function MatrixView({
                                     params,
                                     "profit_total",
                                     () =>
-                                        getProfit(
-                                            params,
-                                            roomFields
-                                        ).toFixed(2)
+                                        formatMoney(
+                                            getProfit(
+                                                params,
+                                                roomFields
+                                            )
+                                        )
                                 )
                     },
                     {
@@ -2719,7 +2763,9 @@ function MatrixView({
                         cellClass: calculatedClass,
                         valueGetter:
                             (params: any) =>
-                                getUnitSellPrice(params).toFixed(2)
+                                formatMoney(
+                                    getUnitSellPrice(params)
+                                )
                     },
                     {
                         colId: "material_sell_total",
@@ -2737,10 +2783,12 @@ function MatrixView({
                                     params,
                                     "material_sell_total",
                                     () =>
-                                        getMaterialSellTotal(
-                                            params,
-                                            roomFields
-                                        ).toFixed(2)
+                                        formatMoney(
+                                            getMaterialSellTotal(
+                                                params,
+                                                roomFields
+                                            )
+                                        )
                                 )
                     }
                 ]
@@ -2811,10 +2859,12 @@ function MatrixView({
                                     params,
                                     "installation_total",
                                     () =>
-                                        getInstallTotal(
-                                            params,
-                                            roomFields
-                                        ).toFixed(2)
+                                        formatMoney(
+                                            getInstallTotal(
+                                                params,
+                                                roomFields
+                                            )
+                                        )
                                 )
                     },
                     {
@@ -2823,7 +2873,8 @@ function MatrixView({
                         width: 78,
                         minWidth: 70,
                         editable: (params: any) =>
-                            !params.data?.is_summary_row,
+                            !params.data?.is_summary_row ||
+                            params.data?.summary_kind === "days",
                         valueParser: (params: any) =>
                             parseNumber(params.newValue),
                         cellClass: numericEditableClass
