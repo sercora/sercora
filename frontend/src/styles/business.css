@@ -419,6 +419,67 @@
 }
 
 
+.business-form-grid.compact {
+
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+
+    margin-top: 0;
+
+}
+
+
+.project-edit-modal {
+
+    width: min(760px, 100%);
+
+}
+
+
+.project-edit-modal header span {
+
+    color: #4f5c67;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+}
+
+
+.business-edit-section {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 10px;
+
+    padding: 12px;
+
+    border: 1px solid #d0d7de;
+
+    background-color: #f8fafb;
+
+}
+
+
+.business-checkbox-grid {
+
+    display: grid;
+
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+
+    gap: 8px 12px;
+
+    max-height: 150px;
+
+    overflow: auto;
+
+}
+
+
 .business-upload-grid {
 
     display: grid;
@@ -567,6 +628,14 @@
 
 
     .business-upload-grid {
+
+        grid-template-columns: 1fr;
+
+    }
+
+
+    .business-form-grid.compact,
+    .business-checkbox-grid {
 
         grid-template-columns: 1fr;
 

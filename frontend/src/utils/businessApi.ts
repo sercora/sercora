@@ -43,6 +43,9 @@ export type ProjectSummary = {
     architect_name: string | null;
     probable_schedule: string | null;
     client_names: string;
+    client_ids: number[];
+    revision_zero_estimate_id: number | null;
+    addenda: string | null;
     created_at: string | null;
 };
 
@@ -77,6 +80,35 @@ export type ProjectCreateResponse = {
     folder_path: string;
     msg_file_count?: number;
     upload_file_count?: number;
+    revision_zero_estimate_id?: number;
+    revision_zero_created?: boolean;
+};
+
+
+export type ProjectCurrentEditInput = {
+    bid_due_date: string | null;
+    client_ids: number[];
+    msgFiles: File[];
+    addenda: {
+        name: string;
+        date: string;
+        plans: boolean;
+        specs: boolean;
+        description: string;
+    };
+};
+
+
+export type ProjectCurrentEditResponse = {
+    id: number;
+    message: string;
+    folder_name: string;
+    folder_status: string;
+    folder_message: string;
+    msg_file_count: number;
+    addenda_count: number;
+    revision_zero_estimate_id: number;
+    revision_zero_created: boolean;
 };
 
 
@@ -281,6 +313,64 @@ export function createProjectWithFiles(
         API_URL + "/projects/with-files",
         {
             method: "POST",
+            body: formData
+        }
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function updateProjectCurrent(
+    projectId: number,
+    input: ProjectCurrentEditInput
+): Promise<ProjectCurrentEditResponse> {
+
+    const formData = new FormData();
+
+    appendProjectFormValue(formData, "bid_due_date", input.bid_due_date);
+
+    input.client_ids.forEach(
+        clientId =>
+            appendProjectFormValue(
+                formData,
+                "client_ids",
+                clientId
+            )
+    );
+
+    appendProjectFormValue(formData, "addenda_name", input.addenda.name);
+    appendProjectFormValue(formData, "addenda_date", input.addenda.date);
+    appendProjectFormValue(
+        formData,
+        "addenda_plans",
+        input.addenda.plans ? "true" : "false"
+    );
+    appendProjectFormValue(
+        formData,
+        "addenda_specs",
+        input.addenda.specs ? "true" : "false"
+    );
+    appendProjectFormValue(
+        formData,
+        "addenda_description",
+        input.addenda.description
+    );
+
+    input.msgFiles.forEach(
+        file =>
+            formData.append(
+                "msg_files",
+                file,
+                file.name
+            )
+    );
+
+    return fetch(
+        API_URL + "/projects/" + projectId + "/current-edit",
+        {
+            method: "PUT",
             body: formData
         }
     )

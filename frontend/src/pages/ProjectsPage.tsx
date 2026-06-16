@@ -8,7 +8,8 @@ import type { FormEvent } from "react";
 import {
     createProjectWithFiles,
     fetchClients,
-    fetchProjects
+    fetchProjects,
+    updateProjectCurrent
 } from "../utils/businessApi";
 import type {
     Client,
@@ -50,6 +51,15 @@ type DirectoryFile = File & {
 };
 
 
+const EMPTY_ADDENDA = {
+    name: "",
+    date: "",
+    plans: false,
+    specs: false,
+    description: ""
+};
+
+
 function nullableValue(
     value: string
 ) {
@@ -73,15 +83,23 @@ function ProjectsPage({
 }: ProjectsPageProps) {
 
     const msgInputRef = useRef<HTMLInputElement | null>(null);
+    const editMsgInputRef = useRef<HTMLInputElement | null>(null);
     const folderInputRef = useRef<HTMLInputElement | null>(null);
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
     const [form, setForm] = useState<ProjectInput>(EMPTY_PROJECT);
     const [msgFiles, setMsgFiles] = useState<File[]>([]);
+    const [editMsgFiles, setEditMsgFiles] = useState<File[]>([]);
     const [folderFiles, setFolderFiles] = useState<File[]>([]);
+    const [editingProject, setEditingProject] = useState<ProjectSummary | null>(null);
+    const [editBidDueDate, setEditBidDueDate] = useState("");
+    const [editClientIds, setEditClientIds] = useState<number[]>([]);
+    const [editAddenda, setEditAddenda] = useState(EMPTY_ADDENDA);
     const [isMsgDragActive, setIsMsgDragActive] = useState(false);
+    const [isEditMsgDragActive, setIsEditMsgDragActive] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isEditSaving, setIsEditSaving] = useState(false);
     const [status, setStatus] = useState("");
     const [error, setError] = useState("");
 
@@ -147,6 +165,129 @@ function ProjectsPage({
                 ]
             );
         }
+
+    }
+
+
+    function addEditMsgFiles(
+        files: FileList | File[]
+    ) {
+
+        const nextFiles = Array.from(files);
+        const validFiles = nextFiles.filter(
+            file =>
+                file.name.toLowerCase().endsWith(".msg")
+        );
+
+        if (validFiles.length !== nextFiles.length) {
+            setError("Seuls les fichiers .msg sont acceptés dans cette zone.");
+        }
+
+        if (validFiles.length > 0) {
+            setEditMsgFiles(
+                currentFiles => [
+                    ...currentFiles,
+                    ...validFiles
+                ]
+            );
+        }
+
+    }
+
+
+    function openProjectEditor(
+        project: ProjectSummary
+    ) {
+
+        setEditingProject(project);
+        setEditBidDueDate(project.bid_due_date || "");
+        setEditClientIds(project.client_ids || []);
+        setEditMsgFiles([]);
+        setEditAddenda(EMPTY_ADDENDA);
+        setStatus("");
+        setError("");
+
+        if (editMsgInputRef.current)
+            editMsgInputRef.current.value = "";
+
+    }
+
+
+    function toggleEditClient(
+        clientId: number
+    ) {
+
+        setEditClientIds(
+            currentIds =>
+                currentIds.includes(clientId) ?
+                    currentIds.filter(
+                        currentId =>
+                            currentId !== clientId
+                    ) :
+                    [
+                        ...currentIds,
+                        clientId
+                    ]
+        );
+
+    }
+
+
+    function saveProjectEdit(
+        event: FormEvent<HTMLFormElement>
+    ) {
+
+        event.preventDefault();
+
+        if (!editingProject)
+            return;
+
+        setIsEditSaving(true);
+        setError("");
+        setStatus("");
+
+        updateProjectCurrent(
+            editingProject.id,
+            {
+                bid_due_date: editBidDueDate || null,
+                client_ids: editClientIds,
+                msgFiles: editMsgFiles,
+                addenda: editAddenda
+            }
+        )
+            .then(
+                response => {
+                    setStatus(
+                        "Projet modifié. Révision 0 " +
+                        (
+                            response.revision_zero_created ?
+                                "créée" :
+                                "déjà existante"
+                        ) +
+                        `. ${response.msg_file_count} courriel(s) ajouté(s).`
+                    );
+                    setEditingProject(null);
+                    setEditMsgFiles([]);
+                    setEditAddenda(EMPTY_ADDENDA);
+
+                    if (editMsgInputRef.current)
+                        editMsgInputRef.current.value = "";
+
+                    loadProjects();
+                }
+            )
+            .catch(
+                error =>
+                    setError(
+                        error instanceof Error ?
+                            error.message :
+                            "Impossible de modifier le projet."
+                    )
+            )
+            .finally(
+                () =>
+                    setIsEditSaving(false)
+            );
 
     }
 
@@ -605,16 +746,17 @@ function ProjectsPage({
                             <th>Dépôt</th>
                             <th>Échéancier</th>
                             <th>Statut</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {isLoading ? (
                             <tr>
-                                <td colSpan={7}>Chargement...</td>
+                                <td colSpan={8}>Chargement...</td>
                             </tr>
                         ) : projects.length === 0 ? (
                             <tr>
-                                <td colSpan={7}>Aucun projet en cours.</td>
+                                <td colSpan={8}>Aucun projet en cours.</td>
                             </tr>
                         ) : (
                             projects.map(
@@ -631,6 +773,18 @@ function ProjectsPage({
                                             {project.end_date || "-"}
                                         </td>
                                         <td>{project.status || "-"}</td>
+                                        <td>
+                                            <button
+                                                type="button"
+                                                className="business-table-action"
+                                                onClick={
+                                                    () =>
+                                                        openProjectEditor(project)
+                                                }
+                                            >
+                                                Modifier
+                                            </button>
+                                        </td>
                                     </tr>
                                 )
                             )
@@ -638,6 +792,253 @@ function ProjectsPage({
                     </tbody>
                 </table>
             </div>
+
+            {editingProject && (
+                <div className="business-modal-backdrop">
+                    <form
+                        className="business-modal project-edit-modal"
+                        onSubmit={saveProjectEdit}
+                    >
+                        <header>
+                            <div>
+                                <span>Projet en cours</span>
+                                <h2>Modifier</h2>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={
+                                    () =>
+                                        setEditingProject(null)
+                                }
+                            >
+                                Annuler
+                            </button>
+                        </header>
+
+                        <div className="business-form-grid compact">
+                            <label className="business-field wide">
+                                <span>Projet</span>
+                                <input
+                                    value={editingProject.project_name}
+                                    disabled
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Date dépôt</span>
+                                <input
+                                    type="date"
+                                    value={editBidDueDate}
+                                    onChange={
+                                        event =>
+                                            setEditBidDueDate(event.target.value)
+                                    }
+                                />
+                            </label>
+                        </div>
+
+                        <section className="business-edit-section">
+                            <div className="business-section-heading">
+                                <div>
+                                    <span>Clients</span>
+                                    <h2>Ajouter au projet</h2>
+                                </div>
+                            </div>
+                            <div className="business-checkbox-grid">
+                                {clients.map(
+                                    client => (
+                                        <label
+                                            key={client.id}
+                                            className="business-checkbox"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={editClientIds.includes(client.id)}
+                                                onChange={
+                                                    () =>
+                                                        toggleEditClient(client.id)
+                                                }
+                                            />
+                                            <span>{client.name}</span>
+                                        </label>
+                                    )
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="business-edit-section">
+                            <div className="business-section-heading">
+                                <div>
+                                    <span>Addenda</span>
+                                    <h2>Ajouter une entrée</h2>
+                                </div>
+                            </div>
+                            <div className="business-form-grid compact">
+                                <label className="business-field">
+                                    <span>Nom</span>
+                                    <input
+                                        value={editAddenda.name}
+                                        onChange={
+                                            event =>
+                                                setEditAddenda(
+                                                    {
+                                                        ...editAddenda,
+                                                        name: event.target.value
+                                                    }
+                                                )
+                                        }
+                                    />
+                                </label>
+
+                                <label className="business-field">
+                                    <span>Date</span>
+                                    <input
+                                        type="date"
+                                        value={editAddenda.date}
+                                        onChange={
+                                            event =>
+                                                setEditAddenda(
+                                                    {
+                                                        ...editAddenda,
+                                                        date: event.target.value
+                                                    }
+                                                )
+                                        }
+                                    />
+                                </label>
+
+                                <label className="business-checkbox">
+                                    <input
+                                        type="checkbox"
+                                        checked={editAddenda.plans}
+                                        onChange={
+                                            event =>
+                                                setEditAddenda(
+                                                    {
+                                                        ...editAddenda,
+                                                        plans: event.target.checked
+                                                    }
+                                                )
+                                        }
+                                    />
+                                    <span>Plans</span>
+                                </label>
+
+                                <label className="business-checkbox">
+                                    <input
+                                        type="checkbox"
+                                        checked={editAddenda.specs}
+                                        onChange={
+                                            event =>
+                                                setEditAddenda(
+                                                    {
+                                                        ...editAddenda,
+                                                        specs: event.target.checked
+                                                    }
+                                                )
+                                        }
+                                    />
+                                    <span>Devis</span>
+                                </label>
+
+                                <label className="business-field wide">
+                                    <span>Incidences</span>
+                                    <input
+                                        value={editAddenda.description}
+                                        onChange={
+                                            event =>
+                                                setEditAddenda(
+                                                    {
+                                                        ...editAddenda,
+                                                        description: event.target.value
+                                                    }
+                                                )
+                                        }
+                                    />
+                                </label>
+                            </div>
+                        </section>
+
+                        <section
+                            className={
+                                "business-dropzone" +
+                                (isEditMsgDragActive ? " dragging" : "")
+                            }
+                            onDragOver={
+                                event => {
+                                    event.preventDefault();
+                                    setIsEditMsgDragActive(true);
+                                }
+                            }
+                            onDragLeave={
+                                () =>
+                                    setIsEditMsgDragActive(false)
+                            }
+                            onDrop={
+                                event => {
+                                    event.preventDefault();
+                                    setIsEditMsgDragActive(false);
+                                    addEditMsgFiles(event.dataTransfer.files);
+                                }
+                            }
+                        >
+                            <div>
+                                <span>Courriels clients</span>
+                                <h3>Glisser des .msg</h3>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={
+                                    () =>
+                                        editMsgInputRef.current?.click()
+                                }
+                            >
+                                Parcourir .msg
+                            </button>
+                            <input
+                                ref={editMsgInputRef}
+                                className="business-hidden-input"
+                                type="file"
+                                accept=".msg"
+                                multiple
+                                onChange={
+                                    event =>
+                                        addEditMsgFiles(event.target.files || [])
+                                }
+                            />
+                            {editMsgFiles.length > 0 && (
+                                <ul className="business-file-list">
+                                    {editMsgFiles.map(
+                                        (file, index) => (
+                                            <li key={`${file.name}-${index}`}>
+                                                {file.name}
+                                            </li>
+                                        )
+                                    )}
+                                </ul>
+                            )}
+                        </section>
+
+                        <footer>
+                            <button
+                                type="button"
+                                onClick={
+                                    () =>
+                                        setEditingProject(null)
+                                }
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isEditSaving}
+                            >
+                                Sauvegarder
+                            </button>
+                        </footer>
+                    </form>
+                </div>
+            )}
         </section>
     );
 

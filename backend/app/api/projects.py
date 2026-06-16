@@ -1,5 +1,6 @@
 import os
 import re
+import json
 from datetime import date
 from pathlib import Path
 
@@ -38,6 +39,14 @@ def ensure_project_columns(
             """
             ALTER TABLE project
             ADD COLUMN IF NOT EXISTS bid_due_date DATE
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE project
+            ADD COLUMN IF NOT EXISTS addenda TEXT
             """
         )
     )
@@ -157,14 +166,100 @@ def project_folder_name(
     project: ProjectCreate
 ):
 
-    due_date = project.bid_due_date
+    return project_folder_name_from_values(
+        project.project_name,
+        project.bid_due_date
+    )
+
+
+def project_folder_name_from_values(
+    project_name: str,
+    due_date: date | None
+):
+
     date_part = (
         due_date.strftime("%Y %m %d")
         if due_date
         else "0000 00 00"
     )
 
-    return f"{date_part}, {safe_name(project.project_name, 'Projet')}"
+    return f"{date_part}, {safe_name(project_name, 'Projet')}"
+
+
+def project_create_from_row(
+    row,
+    bid_due_date: date | None
+):
+
+    return ProjectCreate(
+        project_number=row.project_number,
+        project_name=row.project_name,
+        status=row.status or "PENDING",
+        address_line1=row.address_line1,
+        address_line2=row.address_line2,
+        city=row.city,
+        province=row.province,
+        postal_code=row.postal_code,
+        bid_due_date=bid_due_date,
+        start_date=row.start_date,
+        end_date=row.end_date,
+        architect_name=row.architect_name,
+        probable_schedule=row.probable_schedule,
+        warranty_years=row.warranty_years or 1,
+        tile_holdback_percent=float(row.tile_holdback_percent or 10)
+    )
+
+
+def parse_addenda_rows(
+    value: str | None
+):
+
+    if not value:
+        return []
+
+    try:
+        rows = json.loads(value)
+    except json.JSONDecodeError:
+        return [
+            {
+                "name": "",
+                "date": "",
+                "plans": False,
+                "specs": False,
+                "description": value
+            }
+        ]
+
+    if not isinstance(rows, list):
+        return []
+
+    parsed_rows = []
+
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+
+        parsed_rows.append(
+            {
+                "name": str(row.get("name") or ""),
+                "date": str(row.get("date") or ""),
+                "plans": bool(row.get("plans")),
+                "specs": bool(row.get("specs")),
+                "description": str(row.get("description") or "")
+            }
+        )
+
+    return parsed_rows
+
+
+def serialize_addenda_rows(
+    rows
+):
+
+    return json.dumps(
+        rows,
+        ensure_ascii=False
+    )
 
 
 def resolve_template_path(
@@ -249,6 +344,106 @@ def create_project_folder(
         "folder_status": "created",
         "folder_message": "Arborescence creee depuis le dossier modele"
     }
+
+
+def ensure_project_folder_for_update(
+    project_row,
+    bid_due_date: date | None
+):
+
+    old_name = project_folder_name_from_values(
+        project_row.project_name,
+        project_row.bid_due_date
+    )
+    new_name = project_folder_name_from_values(
+        project_row.project_name,
+        bid_due_date
+    )
+    old_path = PROJECT_RW_ROOT / old_name
+    new_path = PROJECT_RW_ROOT / new_name
+
+    if old_path.exists() and old_path != new_path:
+        if new_path.exists():
+            return {
+                "folder_name": new_name,
+                "folder_path": str(new_path),
+                "folder_status": "exists",
+                "folder_message": "Dossier projet existant conserve"
+            }
+
+        old_path.rename(new_path)
+
+        return {
+            "folder_name": new_name,
+            "folder_path": str(new_path),
+            "folder_status": "renamed",
+            "folder_message": "Dossier projet renomme selon la date de depot"
+        }
+
+    if new_path.exists():
+        return {
+            "folder_name": new_name,
+            "folder_path": str(new_path),
+            "folder_status": "exists",
+            "folder_message": "Dossier projet existant conserve"
+        }
+
+    project = project_create_from_row(
+        project_row,
+        bid_due_date
+    )
+
+    return create_project_folder(project)
+
+
+def ensure_revision_zero(
+    db,
+    project_id: int
+):
+
+    existing_row = db.execute(
+        text(
+            """
+            SELECT id
+            FROM estimate
+            WHERE project_id = :project_id
+                AND revision_number = 0
+            ORDER BY id
+            LIMIT 1
+            """
+        ),
+        {
+            "project_id": project_id
+        }
+    ).fetchone()
+
+    if existing_row:
+        return existing_row.id, False
+
+    row = db.execute(
+        text(
+            """
+            INSERT INTO estimate (
+                project_id,
+                revision_number,
+                estimate_type,
+                description
+            )
+            VALUES (
+                :project_id,
+                0,
+                'Soumission',
+                'Revision initiale'
+            )
+            RETURNING id
+            """
+        ),
+        {
+            "project_id": project_id
+        }
+    ).fetchone()
+
+    return row.id, True
 
 
 async def save_upload_file(
@@ -481,7 +676,21 @@ def get_projects(
                     STRING_AGG(c.name, ', ' ORDER BY c.name)
                         FILTER (WHERE c.id IS NOT NULL),
                     ''
-                ) AS client_names
+                ) AS client_names,
+                COALESCE(
+                    ARRAY_AGG(c.id ORDER BY c.name)
+                        FILTER (WHERE c.id IS NOT NULL),
+                    ARRAY[]::BIGINT[]
+                ) AS client_ids,
+                (
+                    SELECT e.id
+                    FROM estimate e
+                    WHERE e.project_id = p.id
+                        AND e.revision_number = 0
+                    ORDER BY e.id
+                    LIMIT 1
+                ) AS revision_zero_estimate_id,
+                p.addenda
             FROM project p
             LEFT JOIN project_client pc
                 ON pc.project_id = p.id
@@ -503,6 +712,7 @@ def get_projects(
                 p.postal_code,
                 p.architect_name,
                 p.probable_schedule,
+                p.addenda,
                 p.created_at
             ORDER BY
                 p.bid_due_date NULLS LAST,
@@ -532,6 +742,12 @@ def get_projects(
                 "architect_name": row["architect_name"],
                 "probable_schedule": row["probable_schedule"],
                 "client_names": row["client_names"],
+                "client_ids": [
+                    int(client_id)
+                    for client_id in row["client_ids"]
+                ],
+                "revision_zero_estimate_id": row["revision_zero_estimate_id"],
+                "addenda": row["addenda"],
                 "created_at": row["created_at"]
             }
         )
@@ -618,12 +834,19 @@ def create_project(project: ProjectCreate):
             db,
             project
         )
+        revision_zero_estimate_id, revision_created = ensure_revision_zero(
+            db,
+            project_id
+        )
+        db.commit()
     finally:
         db.close()
 
     return {
         "id": project_id,
         "message": "Project created",
+        "revision_zero_estimate_id": revision_zero_estimate_id,
+        "revision_zero_created": revision_created,
         **folder_result
     }
 
@@ -696,6 +919,11 @@ async def create_project_with_files(
             db,
             project
         )
+        revision_zero_estimate_id, revision_created = ensure_revision_zero(
+            db,
+            project_id
+        )
+        db.commit()
     finally:
         db.close()
 
@@ -704,5 +932,168 @@ async def create_project_with_files(
         "message": "Project created",
         "msg_file_count": msg_file_count,
         "upload_file_count": upload_file_count,
+        "revision_zero_estimate_id": revision_zero_estimate_id,
+        "revision_zero_created": revision_created,
         **folder_result
     }
+
+
+@router.put("/projects/{project_id}/current-edit")
+async def update_current_project(
+    project_id: int,
+    bid_due_date: str | None = Form(None),
+    client_ids: list[int] | None = Form(None),
+    addenda_name: str | None = Form(None),
+    addenda_date: str | None = Form(None),
+    addenda_plans: bool = Form(False),
+    addenda_specs: bool = Form(False),
+    addenda_description: str | None = Form(None),
+    msg_files: list[UploadFile] | None = File(None)
+):
+
+    next_bid_due_date = parse_optional_date(bid_due_date)
+
+    db = SessionLocal()
+
+    try:
+        ensure_project_columns(db)
+
+        project_row = db.execute(
+            text(
+                """
+                SELECT
+                    id,
+                    project_number,
+                    project_name,
+                    status,
+                    start_date,
+                    end_date,
+                    bid_due_date,
+                    address_line1,
+                    address_line2,
+                    city,
+                    province,
+                    postal_code,
+                    architect_name,
+                    probable_schedule,
+                    warranty_years,
+                    tile_holdback_percent,
+                    addenda
+                FROM project
+                WHERE id = :project_id
+                """
+            ),
+            {
+                "project_id": project_id
+            }
+        ).fetchone()
+
+        if project_row is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Projet introuvable"
+            )
+
+        folder_result = ensure_project_folder_for_update(
+            project_row,
+            next_bid_due_date
+        )
+        msg_file_count = await save_msg_uploads(
+            Path(folder_result["folder_path"]),
+            msg_files
+        )
+
+        addenda_rows = parse_addenda_rows(
+            project_row.addenda
+        )
+        addenda_has_content = any(
+            [
+                clean_optional_text(addenda_name),
+                addenda_date,
+                addenda_plans,
+                addenda_specs,
+                clean_optional_text(addenda_description)
+            ]
+        )
+
+        next_addenda = project_row.addenda
+
+        if addenda_has_content:
+            addenda_rows.append(
+                {
+                    "name": clean_optional_text(addenda_name) or "",
+                    "date": addenda_date or "",
+                    "plans": addenda_plans,
+                    "specs": addenda_specs,
+                    "description": clean_optional_text(addenda_description) or ""
+                }
+            )
+            next_addenda = serialize_addenda_rows(
+                addenda_rows
+            )
+
+        db.execute(
+            text(
+                """
+                UPDATE project
+                SET
+                    bid_due_date = :bid_due_date,
+                    addenda = :addenda
+                WHERE id = :project_id
+                """
+            ),
+            {
+                "project_id": project_id,
+                "bid_due_date": next_bid_due_date,
+                "addenda": next_addenda
+            }
+        )
+
+        for client_id in client_ids or []:
+            db.execute(
+                text(
+                    """
+                    INSERT INTO project_client (
+                        project_id,
+                        client_id
+                    )
+                    SELECT
+                        :project_id,
+                        :client_id
+                    WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM project_client
+                        WHERE project_id = :project_id
+                            AND client_id = :client_id
+                    )
+                    """
+                ),
+                {
+                    "project_id": project_id,
+                    "client_id": client_id
+                }
+            )
+
+        revision_zero_estimate_id, revision_created = ensure_revision_zero(
+            db,
+            project_id
+        )
+
+        db.commit()
+
+        return {
+            "id": project_id,
+            "message": "Projet modifie",
+            "folder_name": folder_result["folder_name"],
+            "folder_status": folder_result["folder_status"],
+            "folder_message": folder_result["folder_message"],
+            "msg_file_count": msg_file_count,
+            "addenda_count": len(addenda_rows),
+            "revision_zero_estimate_id": revision_zero_estimate_id,
+            "revision_zero_created": revision_created
+        }
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
