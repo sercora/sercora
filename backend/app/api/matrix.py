@@ -420,6 +420,8 @@ def get_matrix(estimate_id: int):
 
                 l.quantity_link_multiplier,
 
+                l.manpower_multiplier,
+
                 r.id AS room_id,
 
                 r.phase_name,
@@ -528,6 +530,9 @@ def get_matrix(estimate_id: int):
 
                 "quantity_link_multiplier":
                     float(row.quantity_link_multiplier or 1),
+
+                "manpower_multiplier":
+                    float(row.manpower_multiplier or 1),
 
                 "quantities": {}
 

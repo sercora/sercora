@@ -27,6 +27,7 @@ class EstimateLineUpdate(BaseModel):
     installation_link_multiplier: float = 1
     quantity_link_source_line_ids: list[int] = Field(default_factory=list)
     quantity_link_multiplier: float = 1
+    manpower_multiplier: float = 1
 
 
 class EstimateLinePositionUpdate(BaseModel):

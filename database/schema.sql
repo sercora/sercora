@@ -243,6 +243,8 @@ CREATE TABLE estimate_line (
 
     quantity_link_multiplier NUMERIC(12,4) DEFAULT 1,
 
+    manpower_multiplier NUMERIC(8,2) DEFAULT 1,
+
     sort_order INTEGER DEFAULT 0,
 
     notes TEXT

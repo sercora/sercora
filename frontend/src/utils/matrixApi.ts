@@ -171,6 +171,7 @@ export type EstimateLineUpdateInput = {
     installation_link_multiplier?: number;
     quantity_link_source_line_ids?: number[];
     quantity_link_multiplier?: number;
+    manpower_multiplier?: number;
 };
 
 

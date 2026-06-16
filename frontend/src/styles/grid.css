@@ -2292,6 +2292,44 @@ Couleurs fournisseurs
 }
 
 
+.sercora-grid .ag-row-pinned {
+
+    background-color: #e7edf5 !important;
+
+    font-weight: 700;
+
+}
+
+
+.sercora-grid .ag-row-pinned .ag-cell {
+
+    border-top: 1px solid #7d8794;
+
+    background-color: #e7edf5 !important;
+
+}
+
+
+.sercora-grid .ag-row-pinned:last-child .ag-cell {
+
+    background-color: #ccd8e6 !important;
+
+    color: #111827;
+
+}
+
+
+.sercora-grid .summary-label-cell {
+
+    color: #1f2d3d;
+
+    font-weight: 700;
+
+    text-decoration: none;
+
+}
+
+
 /*
 --------------------------------------------------
 Alignement numerique

@@ -9,12 +9,14 @@ import MatrixGrid from "../components/MatrixGrid";
 import ZoomToolbar from "../components/ZoomToolbar";
 
 import {
-    getInstallationSellTotal,
+    getAllocatedInstallHours,
+    getInstallHours,
+    getInstallTotal,
     getLossQuantity,
+    getMaterialSellTotal,
     getProfit,
     getQtyTotal,
     getQtyWithLoss,
-    getSellPrice,
     getUnitProfit,
     getUnitSellPrice
 } from "../utils/matrixCalculations";
@@ -65,7 +67,8 @@ const LINE_EDITABLE_FIELDS = [
     "loss_percent",
     "purchase_price",
     "profit_percent",
-    "installation_cost"
+    "installation_cost",
+    "manpower_multiplier"
 ];
 
 const ZOOM_LEVELS: Record<string, number> = {
@@ -284,6 +287,7 @@ function MatrixView({
     const [columnDefs, setColumnDefs] = useState<any[]>([]);
 
     const [rowData, setRowData] = useState<any[]>([]);
+    const [pinnedBottomRows, setPinnedBottomRows] = useState<any[]>([]);
 
     const [zoom, setZoom] = useState("100");
     const [surfaceTypes, setSurfaceTypes] = useState<SurfaceType[]>([]);
@@ -505,6 +509,32 @@ function MatrixView({
     }
 
 
+    useEffect(
+        () => {
+            if (!matrixSummary) {
+                setPinnedBottomRows([]);
+                return;
+            }
+
+            setPinnedBottomRows(
+                buildPinnedSummaryRows(
+                    rowData,
+                    roomColumns.map(
+                        room =>
+                            room.key
+                    ),
+                    matrixSummary
+                )
+            );
+        },
+        [
+            rowData,
+            roomColumns,
+            matrixSummary
+        ]
+    );
+
+
     function formatMoney(value: number) {
 
         return Number(value || 0).toFixed(2);
@@ -642,6 +672,9 @@ function MatrixView({
     function onCellValueChanged(
         params: any
     ) {
+
+        if (params.data?.is_summary_row)
+            return;
 
         const field =
             params.column.getColId();
@@ -1145,6 +1178,8 @@ function MatrixView({
                 linkedLineIds(row.quantity_link_source_line_ids),
             quantity_link_multiplier:
                 parseNumber(row.quantity_link_multiplier || 1),
+            manpower_multiplier:
+                parseNumber(row.manpower_multiplier || 1),
             ...overrides
         };
 
@@ -1234,6 +1269,147 @@ function MatrixView({
         );
 
         return nextRows;
+
+    }
+
+
+    function buildPinnedSummaryRows(
+        rows: any[],
+        roomFields: string[],
+        summary: EstimateMatrixSummary
+    ) {
+
+        const hourlyRate =
+            Number(
+                summary.rates.used_hourly_rate ||
+                summary.rates.current.civil ||
+                summary.rates.current.day ||
+                0
+            );
+
+        const bySurface =
+            new Map<string, any>();
+
+        rows.forEach(
+            row => {
+                const surfaceName =
+                    row.surface_name || "Sans surface";
+
+                if (!bySurface.has(surfaceName)) {
+                    bySurface.set(
+                        surfaceName,
+                        {
+                            is_summary_row: true,
+                            surface_name: surfaceName,
+                            product_name: "Sous-total " + surfaceName,
+                            material_sell_total: 0,
+                            installation_total: 0,
+                            install_hours: 0,
+                            allocated_install_hours: 0
+                        }
+                    );
+                }
+
+                const summaryRow =
+                    bySurface.get(surfaceName);
+
+                const params =
+                    {
+                        data: row
+                    };
+
+                const installationTotal =
+                    getInstallTotal(
+                        params,
+                        roomFields
+                    );
+
+                summaryRow.material_sell_total +=
+                    getMaterialSellTotal(
+                        params,
+                        roomFields
+                    );
+
+                summaryRow.installation_total +=
+                    installationTotal;
+
+                if (hourlyRate)
+                    summaryRow.install_hours +=
+                        installationTotal / hourlyRate;
+
+                const manpowerMultiplier =
+                    Number(row.manpower_multiplier || 1);
+
+                if (hourlyRate)
+                    summaryRow.allocated_install_hours +=
+                        installationTotal /
+                        hourlyRate /
+                        (
+                            manpowerMultiplier || 1
+                        );
+            }
+        );
+
+        const surfaceRows =
+            Array.from(
+                bySurface.values()
+            ).map(
+                row => ({
+                    ...row,
+                    material_sell_total:
+                        row.material_sell_total.toFixed(2),
+                    installation_total:
+                        row.installation_total.toFixed(2),
+                    install_hours:
+                        row.install_hours.toFixed(2),
+                    allocated_install_hours:
+                        row.allocated_install_hours.toFixed(2)
+                })
+            );
+
+        const totalRow =
+            surfaceRows.reduce(
+                (total, row) => ({
+                    ...total,
+                    material_sell_total:
+                        total.material_sell_total +
+                        Number(row.material_sell_total || 0),
+                    installation_total:
+                        total.installation_total +
+                        Number(row.installation_total || 0),
+                    install_hours:
+                        total.install_hours +
+                        Number(row.install_hours || 0),
+                    allocated_install_hours:
+                        total.allocated_install_hours +
+                        Number(row.allocated_install_hours || 0)
+                }),
+                {
+                    is_summary_row: true,
+                    is_grand_total_row: true,
+                    surface_name: "TOTAL",
+                    product_name: "TOTAL GÉNÉRAL",
+                    material_sell_total: 0,
+                    installation_total: 0,
+                    install_hours: 0,
+                    allocated_install_hours: 0
+                }
+            );
+
+        return [
+            ...surfaceRows,
+            {
+                ...totalRow,
+                material_sell_total:
+                    totalRow.material_sell_total.toFixed(2),
+                installation_total:
+                    totalRow.installation_total.toFixed(2),
+                install_hours:
+                    totalRow.install_hours.toFixed(2),
+                allocated_install_hours:
+                    totalRow.allocated_install_hours.toFixed(2)
+            }
+        ];
 
     }
 
@@ -1372,7 +1548,10 @@ function MatrixView({
                         linkedLineIds(line.quantity_link_source_line_ids),
 
                     quantity_link_multiplier:
-                        line.quantity_link_multiplier ?? 1
+                        line.quantity_link_multiplier ?? 1,
+
+                    manpower_multiplier:
+                        line.manpower_multiplier ?? 1
 
                 };
 
@@ -1429,6 +1608,24 @@ function MatrixView({
                 matrix
             );
 
+        const hourlyRate =
+            Number(
+                matrix.summary.rates.used_hourly_rate ||
+                matrix.summary.rates.current.civil ||
+                matrix.summary.rates.current.day ||
+                0
+            );
+
+        const summaryValue =
+            (
+                params: any,
+                field: string,
+                fallback: () => any
+            ) =>
+                params.data?.is_summary_row ?
+                    params.data[field] ?? "" :
+                    fallback();
+
         const flatRoomColumns = matrixRoomColumns(
             matrix
         ).map(
@@ -1454,6 +1651,7 @@ function MatrixView({
                 minWidth: 72,
 
                 editable: (params: any) =>
+                    !params.data?.is_summary_row &&
                     !params.data?.quantity_is_linked,
 
                 valueParser: (params: any) =>
@@ -1574,7 +1772,8 @@ function MatrixView({
                 minWidth: 42,
                 maxWidth: 42,
                 pinned: "left",
-                checkboxSelection: true,
+                checkboxSelection: (params: any) =>
+                    !params.data?.is_summary_row,
                 headerCheckboxSelection: true,
                 sortable: false,
                 filter: false,
@@ -1590,7 +1789,8 @@ function MatrixView({
                 minWidth: 48,
                 maxWidth: 64,
                 pinned: "left",
-                editable: true,
+                editable: (params: any) =>
+                    !params.data?.is_summary_row,
                 valueParser: (params: any) =>
                     parseNumber(params.newValue),
                 cellClass: [
@@ -1610,7 +1810,8 @@ function MatrixView({
                         width: 120,
                         minWidth: 96,
                         pinned: "left",
-                        editable: true,
+                        editable: (params: any) =>
+                            !params.data?.is_summary_row,
                         cellEditor: "agSelectCellEditor",
                         cellEditorParams: {
                             values: surfaceNames
@@ -1624,8 +1825,12 @@ function MatrixView({
                         minWidth: 220,
                         pinned: "left",
                         cellClass: (params: any) => [
-                            getSupplierClass(params),
-                            "product-link-cell"
+                            params.data?.is_summary_row ?
+                                "summary-label-cell" :
+                                getSupplierClass(params),
+                            params.data?.is_summary_row ?
+                                "" :
+                                "product-link-cell"
                         ].filter(Boolean)
                     },
                     {
@@ -1639,8 +1844,14 @@ function MatrixView({
                         filter: false,
                         resizable: false,
                         suppressMovable: true,
-                        cellRenderer: () => "Changer",
-                        cellClass: "replace-product-cell"
+                        cellRenderer: (params: any) =>
+                            params.data?.is_summary_row ?
+                                "" :
+                                "Changer",
+                        cellClass: (params: any) =>
+                            params.data?.is_summary_row ?
+                                "" :
+                                "replace-product-cell"
                     },
                     {
                         field: "link_line",
@@ -1653,9 +1864,14 @@ function MatrixView({
                         filter: false,
                         resizable: false,
                         suppressMovable: true,
-                        cellRenderer: () => "Lier",
+                        cellRenderer: (params: any) =>
+                            params.data?.is_summary_row ?
+                                "" :
+                                "Lier",
                         cellClass: (params: any) => [
-                            "replace-product-cell",
+                            params.data?.is_summary_row ?
+                                "" :
+                                "replace-product-cell",
                             (
                                 params.data?.installation_is_linked ||
                                 params.data?.quantity_is_linked
@@ -1700,9 +1916,14 @@ function MatrixView({
                         cellClass: calculatedClass,
                         valueGetter:
                             (params: any) =>
-                                getQtyTotal(
+                                summaryValue(
                                     params,
-                                    roomFields
+                                    "quantity_total",
+                                    () =>
+                                        getQtyTotal(
+                                            params,
+                                            roomFields
+                                        )
                                 )
                     },
                     {
@@ -1710,7 +1931,8 @@ function MatrixView({
                         headerName: "PERTE EN %",
                         width: 86,
                         minWidth: 74,
-                        editable: true,
+                        editable: (params: any) =>
+                            !params.data?.is_summary_row,
                         valueParser: (params: any) =>
                             parseNumber(params.newValue),
                         cellClass: numericEditableClass
@@ -1722,10 +1944,15 @@ function MatrixView({
                         cellClass: calculatedClass,
                         valueGetter:
                             (params: any) =>
-                                getLossQuantity(
+                                summaryValue(
                                     params,
-                                    roomFields
-                                ).toFixed(2)
+                                    "loss_quantity",
+                                    () =>
+                                        getLossQuantity(
+                                            params,
+                                            roomFields
+                                        ).toFixed(2)
+                                )
                     },
                     {
                         headerName: "QUANTITÉ AVEC PERTE",
@@ -1734,17 +1961,23 @@ function MatrixView({
                         cellClass: calculatedClass,
                         valueGetter:
                             (params: any) =>
-                                getQtyWithLoss(
+                                summaryValue(
                                     params,
-                                    roomFields
-                                ).toFixed(2)
+                                    "quantity_with_loss",
+                                    () =>
+                                        getQtyWithLoss(
+                                            params,
+                                            roomFields
+                                        ).toFixed(2)
+                                )
                     },
                     {
                         field: "purchase_price",
                         headerName: "COUTANT",
                         width: 86,
                         minWidth: 76,
-                        editable: true,
+                        editable: (params: any) =>
+                            !params.data?.is_summary_row,
                         valueParser: (params: any) =>
                             parseNumber(params.newValue),
                         valueFormatter: (params: any) =>
@@ -1756,7 +1989,8 @@ function MatrixView({
                         headerName: "PROFIT %",
                         width: 78,
                         minWidth: 70,
-                        editable: true,
+                        editable: (params: any) =>
+                            !params.data?.is_summary_row,
                         valueParser: (params: any) =>
                             parseNumber(params.newValue),
                         cellClass: numericEditableClass
@@ -1777,10 +2011,15 @@ function MatrixView({
                         cellClass: calculatedClass,
                         valueGetter:
                             (params: any) =>
-                                getProfit(
+                                summaryValue(
                                     params,
-                                    roomFields
-                                ).toFixed(2)
+                                    "profit_total",
+                                    () =>
+                                        getProfit(
+                                            params,
+                                            roomFields
+                                        ).toFixed(2)
+                                )
                     },
                     {
                         headerName: "VENDANT UNITAIRE",
@@ -1802,10 +2041,15 @@ function MatrixView({
                         ],
                         valueGetter:
                             (params: any) =>
-                                getSellPrice(
+                                summaryValue(
                                     params,
-                                    roomFields
-                                ).toFixed(2)
+                                    "material_sell_total",
+                                    () =>
+                                        getMaterialSellTotal(
+                                            params,
+                                            roomFields
+                                        ).toFixed(2)
+                                )
                     }
                 ]
             },
@@ -1820,6 +2064,7 @@ function MatrixView({
                         width: 86,
                         minWidth: 78,
                         editable: (params: any) =>
+                            !params.data?.is_summary_row &&
                             !params.data?.installation_is_linked,
                         valueParser: (params: any) =>
                             parseNumber(params.newValue),
@@ -1843,10 +2088,66 @@ function MatrixView({
                         ],
                         valueGetter:
                             (params: any) =>
-                                getInstallationSellTotal(
+                                summaryValue(
                                     params,
-                                    roomFields
-                                ).toFixed(2)
+                                    "installation_total",
+                                    () =>
+                                        getInstallTotal(
+                                            params,
+                                            roomFields
+                                        ).toFixed(2)
+                                )
+                    },
+                    {
+                        field: "manpower_multiplier",
+                        headerName: "HOMMES",
+                        width: 78,
+                        minWidth: 70,
+                        editable: (params: any) =>
+                            !params.data?.is_summary_row,
+                        valueParser: (params: any) =>
+                            parseNumber(params.newValue),
+                        cellClass: numericEditableClass
+                    },
+                    {
+                        headerName: "HEURES",
+                        width: 82,
+                        minWidth: 74,
+                        cellClass: calculatedClass,
+                        valueGetter:
+                            (params: any) =>
+                                summaryValue(
+                                    params,
+                                    "install_hours",
+                                    () =>
+                                        getInstallHours(
+                                            params,
+                                            roomFields,
+                                            hourlyRate
+                                        ).toFixed(2)
+                                )
+                    },
+                    {
+                        headerName: "HRS ALLOUÉES",
+                        width: 98,
+                        minWidth: 88,
+                        cellClass: [
+                            "calculated-cell",
+                            "numeric-cell",
+                            "total-cell"
+                        ],
+                        valueGetter:
+                            (params: any) =>
+                                summaryValue(
+                                    params,
+                                    "allocated_install_hours",
+                                    () =>
+                                        getAllocatedInstallHours(
+                                            params,
+                                            roomFields,
+                                            hourlyRate
+                                        ).toFixed(2)
+                                )
                     }
                 ]
             }
@@ -1882,7 +2183,7 @@ function MatrixView({
             matrix.summary
         );
 
-        setRowData(
+        const rows =
             applyLinkedRows(
                 buildMatrixRows(
                     matrix
@@ -1890,6 +2191,19 @@ function MatrixView({
                 matrixRoomColumns(
                     matrix
                 )
+            );
+
+        setRowData(
+            rows
+        );
+
+        setPinnedBottomRows(
+            buildPinnedSummaryRows(
+                rows,
+                matrixRoomKeys(
+                    matrix
+                ),
+                matrix.summary
             )
         );
 
@@ -4251,6 +4565,7 @@ function MatrixView({
             <MatrixGrid
                 ref={gridRef}
                 rowData={rowData}
+                pinnedBottomRowData={pinnedBottomRows}
                 columnDefs={columnDefs}
                 onCellValueChanged={onCellValueChanged}
                 onCellClicked={onCellClicked}

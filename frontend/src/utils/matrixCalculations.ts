@@ -204,6 +204,82 @@ export function getInstallationSellTotal(
 }
 
 
+export function getInstallHours(
+    params: any,
+    rooms: string[],
+    hourlyRate: number
+) {
+
+    if (!hourlyRate)
+        return 0;
+
+    return (
+        getInstallTotal(
+            params,
+            rooms
+        )
+
+        /
+
+        hourlyRate
+    );
+
+}
+
+
+export function getAllocatedInstallHours(
+    params: any,
+    rooms: string[],
+    hourlyRate: number
+) {
+
+    const multiplier =
+        Number(params.data?.manpower_multiplier || 1);
+
+    if (!multiplier)
+        return getInstallHours(
+            params,
+            rooms,
+            hourlyRate
+        );
+
+    return (
+        getInstallHours(
+            params,
+            rooms,
+            hourlyRate
+        )
+
+        /
+
+        multiplier
+    );
+
+}
+
+
+export function getMaterialSellTotal(
+    params: any,
+    rooms: string[]
+) {
+
+    return (
+        getMaterialCost(
+            params,
+            rooms
+        )
+
+        +
+
+        getProfit(
+            params,
+            rooms
+        )
+    );
+
+}
+
+
 export function getSellPrice(
     params: any,
     rooms: string[]

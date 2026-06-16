@@ -542,7 +542,8 @@ def update_estimate_line(
                 installation_link_source_line_id = :installation_link_source_line_id,
                 installation_link_multiplier = :installation_link_multiplier,
                 quantity_link_source_line_ids = CAST(:quantity_link_source_line_ids AS JSONB),
-                quantity_link_multiplier = :quantity_link_multiplier
+                quantity_link_multiplier = :quantity_link_multiplier,
+                manpower_multiplier = :manpower_multiplier
             WHERE
                 id = :id
             RETURNING id
@@ -562,7 +563,9 @@ def update_estimate_line(
             "quantity_link_source_line_ids":
                 json.dumps(line.quantity_link_source_line_ids),
             "quantity_link_multiplier":
-                line.quantity_link_multiplier
+                line.quantity_link_multiplier,
+            "manpower_multiplier":
+                line.manpower_multiplier
         }
     ).fetchone()
 

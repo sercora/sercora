@@ -10,6 +10,7 @@ import "ag-grid-community/styles/ag-theme-alpine.css";
 
 type MatrixGridProps = {
     rowData: any[];
+    pinnedBottomRowData?: any[];
     columnDefs: any[];
     onCellValueChanged: (params: any) => void;
     onCellClicked?: (params: any) => void;
@@ -24,6 +25,7 @@ const MatrixGrid = forwardRef<any, MatrixGridProps>(
     function MatrixGrid(
         {
             rowData,
+            pinnedBottomRowData = [],
             columnDefs,
             onCellValueChanged,
             onCellClicked,
@@ -50,6 +52,8 @@ const MatrixGrid = forwardRef<any, MatrixGridProps>(
                     ref={gridRef}
 
                     rowData={rowData}
+
+                    pinnedBottomRowData={pinnedBottomRowData}
 
                     columnDefs={columnDefs}
 
