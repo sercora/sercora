@@ -5580,7 +5580,7 @@ function MatrixView({
         fileName: string
     ) {
 
-        return /\.(pdf|msg|docx|xlsx)$/i.test(fileName);
+        return /\.(pdf|msg|doc|docx|xls|xlsm|xlsx)$/i.test(fileName);
 
     }
 
@@ -5595,7 +5595,7 @@ function MatrixView({
         setPreviewPath(item.relative_path);
         setPreviewError("");
 
-        if (/\.pdf$/i.test(item.name)) {
+        if (/\.(pdf|doc|docx|xls|xlsm|xlsx)$/i.test(item.name)) {
             setFilePreview(
                 {
                     type: "pdf",
@@ -5705,15 +5705,6 @@ function MatrixView({
                             folderStatus,
                             previewPath
                         )}
-                    />
-                )}
-
-                {filePreview?.type === "office" && (
-                    <iframe
-                        className="office-preview-frame"
-                        title={filePreview.name}
-                        sandbox=""
-                        srcDoc={filePreview.html}
                     />
                 )}
 
