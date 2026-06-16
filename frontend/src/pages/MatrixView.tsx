@@ -5429,21 +5429,22 @@ function MatrixView({
                                 <div className="summary-value"></div>
                             </div>
 
-                            <div className="estimate-summary-plan-details">
-                                <label>
-                                    <span>Architecte:</span>
-                                    <input
-                                        type="text"
-                                        value={summaryForm.architect_name}
-                                        onChange={
-                                            event =>
-                                                updateSummaryForm(
-                                                    "architect_name",
-                                                    event.target.value
-                                                )
-                                        }
-                                    />
-                                </label>
+                            <div className="estimate-summary-detail-columns">
+                                <div className="estimate-summary-plan-details">
+                                    <label>
+                                        <span>Architecte:</span>
+                                        <input
+                                            type="text"
+                                            value={summaryForm.architect_name}
+                                            onChange={
+                                                event =>
+                                                    updateSummaryForm(
+                                                        "architect_name",
+                                                        event.target.value
+                                                    )
+                                            }
+                                        />
+                                    </label>
 
                                 <label>
                                     <span>Date plans:</span>
@@ -5634,6 +5635,8 @@ function MatrixView({
                                     >
                                         Ajouter
                                     </button>
+                                </div>
+
                                 </div>
 
                                 <div className="exclusions-block">
