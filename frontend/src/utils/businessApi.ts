@@ -68,12 +68,39 @@ export type ProjectInput = {
 };
 
 
+export type ProjectCreateResponse = {
+    id: number;
+    message: string;
+    folder_status: string;
+    folder_message: string;
+    folder_name: string;
+    folder_path: string;
+    msg_file_count?: number;
+    upload_file_count?: number;
+};
+
+
 function parseResponse(
     response: Response
 ) {
 
-    if (!response.ok)
-        throw new Error("Request failed");
+    if (!response.ok) {
+        return response.text()
+            .then(
+                text => {
+                    let message = text || "Request failed";
+
+                    try {
+                        const payload = JSON.parse(text);
+                        message = payload.detail || message;
+                    } catch {
+                        message = text || "Request failed";
+                    }
+
+                    throw new Error(message);
+                }
+            );
+    }
 
     return response.json();
 
@@ -166,7 +193,7 @@ export function fetchProjects(
 
 export function createProject(
     project: ProjectInput
-) {
+): Promise<ProjectCreateResponse> {
 
     return fetch(
         API_URL + "/projects",
@@ -176,6 +203,85 @@ export function createProject(
                 "Content-Type": "application/json"
             },
             body: JSON.stringify(project)
+        }
+    )
+
+    .then(parseResponse);
+
+}
+
+
+function appendProjectFormValue(
+    formData: FormData,
+    key: string,
+    value: string | number | null
+) {
+
+    if (value === null || value === "")
+        return;
+
+    formData.append(
+        key,
+        String(value)
+    );
+
+}
+
+
+export function createProjectWithFiles(
+    project: ProjectInput,
+    msgFiles: File[],
+    folderFiles: File[]
+): Promise<ProjectCreateResponse> {
+
+    const formData = new FormData();
+
+    appendProjectFormValue(formData, "project_number", project.project_number);
+    appendProjectFormValue(formData, "project_name", project.project_name);
+    appendProjectFormValue(formData, "status", project.status);
+    appendProjectFormValue(formData, "client_id", project.client_id);
+    appendProjectFormValue(formData, "address_line1", project.address_line1);
+    appendProjectFormValue(formData, "address_line2", project.address_line2);
+    appendProjectFormValue(formData, "city", project.city);
+    appendProjectFormValue(formData, "province", project.province);
+    appendProjectFormValue(formData, "postal_code", project.postal_code);
+    appendProjectFormValue(formData, "bid_due_date", project.bid_due_date);
+    appendProjectFormValue(formData, "start_date", project.start_date);
+    appendProjectFormValue(formData, "end_date", project.end_date);
+    appendProjectFormValue(formData, "architect_name", project.architect_name);
+    appendProjectFormValue(formData, "probable_schedule", project.probable_schedule);
+    appendProjectFormValue(formData, "source_template_path", project.source_template_path);
+    appendProjectFormValue(formData, "warranty_years", project.warranty_years);
+    appendProjectFormValue(
+        formData,
+        "tile_holdback_percent",
+        project.tile_holdback_percent
+    );
+
+    msgFiles.forEach(
+        file =>
+            formData.append(
+                "msg_files",
+                file,
+                file.name
+            )
+    );
+
+    folderFiles.forEach(
+        file =>
+            formData.append(
+                "folder_files",
+                file,
+                (file as File & { webkitRelativePath?: string }).webkitRelativePath ||
+                    file.name
+            )
+    );
+
+    return fetch(
+        API_URL + "/projects/with-files",
+        {
+            method: "POST",
+            body: formData
         }
     )
 

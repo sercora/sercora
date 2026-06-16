@@ -419,6 +419,137 @@
 }
 
 
+.business-upload-grid {
+
+    display: grid;
+
+    grid-template-columns: repeat(2, minmax(240px, 1fr));
+
+    gap: 12px;
+
+    margin-top: 14px;
+
+}
+
+
+.business-dropzone,
+.business-upload-panel {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 10px;
+
+    min-height: 170px;
+
+    padding: 14px;
+
+    border: 1px solid #c9d1d9;
+
+    background-color: #f8fafb;
+
+}
+
+
+.business-dropzone {
+
+    border-style: dashed;
+
+}
+
+
+.business-dropzone.dragging {
+
+    border-color: #2f6f52;
+
+    background-color: #eef8f1;
+
+}
+
+
+.business-dropzone span,
+.business-upload-panel span {
+
+    color: #424b54;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+}
+
+
+.business-dropzone h3,
+.business-upload-panel h3 {
+
+    margin: 2px 0 0;
+
+    color: #171a1f;
+
+    font-size: 16px;
+
+}
+
+
+.business-hidden-input {
+
+    display: none;
+
+}
+
+
+.business-upload-count {
+
+    color: #4f5c67;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+}
+
+
+.business-file-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 4px;
+
+    max-height: 116px;
+
+    margin: 0;
+
+    padding: 8px 10px;
+
+    overflow: auto;
+
+    border: 1px solid #d0d7de;
+
+    background-color: #ffffff;
+
+    color: #29323b;
+
+    font-size: 12px;
+
+}
+
+
+.business-file-list li {
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+}
+
+
 @media (max-width: 900px) {
 
     .business-form-grid {
@@ -431,6 +562,13 @@
     .business-field.wide {
 
         grid-column: auto;
+
+    }
+
+
+    .business-upload-grid {
+
+        grid-template-columns: 1fr;
 
     }
 

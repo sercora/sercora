@@ -1,11 +1,12 @@
 import {
     useEffect,
+    useRef,
     useState
 } from "react";
 import type { FormEvent } from "react";
 
 import {
-    createProject,
+    createProjectWithFiles,
     fetchClients,
     fetchProjects
 } from "../utils/businessApi";
@@ -44,6 +45,11 @@ const EMPTY_PROJECT: ProjectInput = {
 };
 
 
+type DirectoryFile = File & {
+    webkitRelativePath?: string;
+};
+
+
 function nullableValue(
     value: string
 ) {
@@ -53,13 +59,27 @@ function nullableValue(
 }
 
 
+function fileDisplayName(
+    file: File
+) {
+
+    return (file as DirectoryFile).webkitRelativePath || file.name;
+
+}
+
+
 function ProjectsPage({
     projectMenu
 }: ProjectsPageProps) {
 
+    const msgInputRef = useRef<HTMLInputElement | null>(null);
+    const folderInputRef = useRef<HTMLInputElement | null>(null);
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
     const [form, setForm] = useState<ProjectInput>(EMPTY_PROJECT);
+    const [msgFiles, setMsgFiles] = useState<File[]>([]);
+    const [folderFiles, setFolderFiles] = useState<File[]>([]);
+    const [isMsgDragActive, setIsMsgDragActive] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [status, setStatus] = useState("");
@@ -105,6 +125,44 @@ function ProjectsPage({
     }
 
 
+    function addMsgFiles(
+        files: FileList | File[]
+    ) {
+
+        const nextFiles = Array.from(files);
+        const validFiles = nextFiles.filter(
+            file =>
+                file.name.toLowerCase().endsWith(".msg")
+        );
+
+        if (validFiles.length !== nextFiles.length) {
+            setError("Seuls les fichiers .msg sont acceptés dans cette zone.");
+        }
+
+        if (validFiles.length > 0) {
+            setMsgFiles(
+                currentFiles => [
+                    ...currentFiles,
+                    ...validFiles
+                ]
+            );
+        }
+
+    }
+
+
+    function browseUploadFolder() {
+
+        if (!folderInputRef.current)
+            return;
+
+        folderInputRef.current.setAttribute("webkitdirectory", "");
+        folderInputRef.current.setAttribute("directory", "");
+        folderInputRef.current.click();
+
+    }
+
+
     function saveProject(
         event: FormEvent<HTMLFormElement>
     ) {
@@ -114,7 +172,7 @@ function ProjectsPage({
         setError("");
         setStatus("");
 
-        createProject(
+        createProjectWithFiles(
             {
                 ...form,
                 project_number: nullableValue(form.project_number || ""),
@@ -127,22 +185,37 @@ function ProjectsPage({
                 architect_name: nullableValue(form.architect_name || ""),
                 probable_schedule: nullableValue(form.probable_schedule || ""),
                 source_template_path: nullableValue(form.source_template_path || "")
-            }
+            },
+            msgFiles,
+            folderFiles
         )
             .then(
                 response => {
                     setStatus(
-                        response.folder_status === "not_created" ?
-                            "Projet créé. Arborescence NAS en attente du montage RW." :
-                            "Projet créé."
+                        `Projet créé dans ${response.folder_name}. ` +
+                        `${response.msg_file_count || 0} courriel(s), ` +
+                        `${response.upload_file_count || 0} fichier(s) téléversé(s).`
                     );
                     setForm(EMPTY_PROJECT);
+                    setMsgFiles([]);
+                    setFolderFiles([]);
+
+                    if (msgInputRef.current)
+                        msgInputRef.current.value = "";
+
+                    if (folderInputRef.current)
+                        folderInputRef.current.value = "";
+
                     loadProjects();
                 }
             )
             .catch(
-                () =>
-                    setError("Impossible de créer le projet.")
+                error =>
+                    setError(
+                        error instanceof Error ?
+                            error.message :
+                            "Impossible de créer le projet."
+                    )
             )
             .finally(
                 () =>
@@ -383,23 +456,117 @@ function ProjectsPage({
                                 }
                             />
                         </label>
+                    </div>
 
-                        <label className="business-field wide">
-                            <span>Arborescence modèle</span>
+                    <div className="business-upload-grid">
+                        <div
+                            className={
+                                "business-dropzone" +
+                                (isMsgDragActive ? " dragging" : "")
+                            }
+                            onDragOver={
+                                event => {
+                                    event.preventDefault();
+                                    setIsMsgDragActive(true);
+                                }
+                            }
+                            onDragLeave={
+                                () =>
+                                    setIsMsgDragActive(false)
+                            }
+                            onDrop={
+                                event => {
+                                    event.preventDefault();
+                                    setIsMsgDragActive(false);
+                                    addMsgFiles(event.dataTransfer.files);
+                                }
+                            }
+                        >
+                            <div>
+                                <span>Courriel Outlook</span>
+                                <h3>Glisser un .msg</h3>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={
+                                    () =>
+                                        msgInputRef.current?.click()
+                                }
+                            >
+                                Parcourir .msg
+                            </button>
                             <input
-                                value={form.source_template_path || ""}
-                                placeholder="/NAS/Soumissions en cours/Sercora/Template"
+                                ref={msgInputRef}
+                                className="business-hidden-input"
+                                type="file"
+                                accept=".msg"
+                                multiple
                                 onChange={
                                     event =>
-                                        setForm(
-                                            {
-                                                ...form,
-                                                source_template_path: event.target.value
-                                            }
+                                        addMsgFiles(event.target.files || [])
+                                }
+                            />
+                            {msgFiles.length > 0 && (
+                                <ul className="business-file-list">
+                                    {msgFiles.slice(0, 6).map(
+                                        (file, index) => (
+                                            <li key={`${file.name}-${index}`}>
+                                                {file.name}
+                                            </li>
+                                        )
+                                    )}
+                                    {msgFiles.length > 6 && (
+                                        <li>
+                                            +{msgFiles.length - 6} autre(s)
+                                        </li>
+                                    )}
+                                </ul>
+                            )}
+                        </div>
+
+                        <div className="business-upload-panel">
+                            <div>
+                                <span>Dossier à téléverser</span>
+                                <h3>Fichiers projet</h3>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={browseUploadFolder}
+                            >
+                                Parcourir dossier
+                            </button>
+                            <input
+                                ref={folderInputRef}
+                                className="business-hidden-input"
+                                type="file"
+                                multiple
+                                onChange={
+                                    event =>
+                                        setFolderFiles(
+                                            Array.from(event.target.files || [])
                                         )
                                 }
                             />
-                        </label>
+                            <div className="business-upload-count">
+                                {folderFiles.length} fichier(s) sélectionné(s)
+                            </div>
+                            {folderFiles.length > 0 && (
+                                <ul className="business-file-list">
+                                    {folderFiles.slice(0, 6).map(
+                                        (file, index) => (
+                                            <li key={`${fileDisplayName(file)}-${index}`}>
+                                                {fileDisplayName(file)}
+                                            </li>
+                                        )
+                                    )}
+                                    {folderFiles.length > 6 && (
+                                        <li>
+                                            +{folderFiles.length - 6} autre(s)
+                                        </li>
+                                    )}
+                                </ul>
+                            )}
+                        </div>
                     </div>
                 </form>
             </section>
