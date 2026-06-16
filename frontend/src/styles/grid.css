@@ -2038,7 +2038,9 @@
 
     min-height: 520px;
 
-    width: 100%;
+    width: calc(100% - 32px);
+
+    margin: 0 16px;
 
     font-family: Calibri, Arial, sans-serif;
 
@@ -2325,6 +2327,29 @@ Couleurs fournisseurs
     background-color: #e7edf5 !important;
 
     font-weight: 700;
+
+}
+
+
+.sercora-grid .surface-group-start .ag-cell {
+
+    border-top: 3px solid #000000 !important;
+
+}
+
+
+.sercora-grid .matrix-summary-row .ag-cell {
+
+    background-color: #e7edf5 !important;
+
+}
+
+
+.sercora-grid .matrix-grand-total-row .ag-cell {
+
+    background-color: #ccd8e6 !important;
+
+    color: #111827;
 
 }
 

@@ -797,6 +797,35 @@ function MatrixView({
     }
 
 
+    function getMatrixRowClass(
+        params: any
+    ) {
+
+        if (params.data?.is_summary_row)
+            return params.data?.is_grand_total_row ?
+                "matrix-grand-total-row" :
+                "matrix-summary-row";
+
+        const rowIndex =
+            Number(params.node?.rowIndex || 0);
+
+        if (rowIndex <= 0)
+            return "surface-group-start";
+
+        const previousRow =
+            rowData[rowIndex - 1];
+
+        if (
+            previousRow &&
+            previousRow.surface_name !== params.data?.surface_name
+        )
+            return "surface-group-start";
+
+        return "";
+
+    }
+
+
     function onCellClicked(
         params: any
     ) {
@@ -4684,6 +4713,7 @@ function MatrixView({
                 rowData={rowData}
                 pinnedBottomRowData={pinnedBottomRows}
                 columnDefs={columnDefs}
+                getRowClass={getMatrixRowClass}
                 onCellValueChanged={onCellValueChanged}
                 onCellClicked={onCellClicked}
                 onSelectionChanged={onSelectionChanged}

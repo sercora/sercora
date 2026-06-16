@@ -12,6 +12,7 @@ type MatrixGridProps = {
     rowData: any[];
     pinnedBottomRowData?: any[];
     columnDefs: any[];
+    getRowClass?: (params: any) => string | string[];
     onCellValueChanged: (params: any) => void;
     onCellClicked?: (params: any) => void;
     onSelectionChanged?: (params: any) => void;
@@ -27,6 +28,7 @@ const MatrixGrid = forwardRef<any, MatrixGridProps>(
             rowData,
             pinnedBottomRowData = [],
             columnDefs,
+            getRowClass,
             onCellValueChanged,
             onCellClicked,
             onSelectionChanged,
@@ -56,6 +58,8 @@ const MatrixGrid = forwardRef<any, MatrixGridProps>(
                     pinnedBottomRowData={pinnedBottomRowData}
 
                     columnDefs={columnDefs}
+
+                    getRowClass={getRowClass}
 
                     onCellValueChanged={
                         onCellValueChanged
