@@ -2354,13 +2354,6 @@ function MatrixView({
                 headerName: room.room_name,
 
                 headerTooltip: [
-                    room.phase_name ?
-                        "Phase: " +
-                            labelWithCode(
-                                room.phase_label,
-                                room.phase_name
-                            ) :
-                        "",
                     room.floor_name ?
                         "Étage: " +
                             labelWithCode(
@@ -2392,10 +2385,6 @@ function MatrixView({
                 headerClass: [
                     "takeoff-room-header",
                     paletteClass(
-                        "phase",
-                        room.phase_name
-                    ),
-                    paletteClass(
                         "floor",
                         room.floor_name
                     )
@@ -2411,31 +2400,11 @@ function MatrixView({
             matrix
         ).forEach(
             room => {
-                const phaseName =
-                    room.phase_name?.trim() || "";
-
                 const floorName =
                     room.floor_name?.trim() || "";
 
-                if (!roomGroups.has(phaseName))
+                if (!roomGroups.has(floorName))
                     roomGroups.set(
-                        phaseName,
-                        {
-                            label:
-                                room.phase_label?.trim() || "",
-                            floors:
-                                new Map()
-                        }
-                    );
-
-                const phaseGroup =
-                    roomGroups.get(phaseName);
-
-                if (!phaseGroup)
-                    return;
-
-                if (!phaseGroup.floors.has(floorName))
-                    phaseGroup.floors.set(
                         floorName,
                         {
                             label:
@@ -2445,7 +2414,7 @@ function MatrixView({
                         }
                     );
 
-                phaseGroup.floors.get(floorName)?.columns.push(
+                roomGroups.get(floorName)?.columns.push(
                     flatRoomColumns.find(
                         column =>
                             column.field === room.key
@@ -2458,78 +2427,40 @@ function MatrixView({
             roomGroups.entries()
         ).map(
             ([
-                phaseName,
-                phaseGroup
+                floorName,
+                floorGroup
             ]) => {
-                const floorChildren =
-                    Array.from<[string, any]>(
-                        phaseGroup.floors.entries() as Iterable<[string, any]>
-                    ).map(
-                        ([
-                            floorName,
-                            floorGroup
-                        ]) => {
-                            const visibleColumns =
-                                floorGroup.columns.filter(Boolean);
+                const visibleColumns =
+                    floorGroup.columns.filter(Boolean);
 
-                            if (!floorName)
-                                return visibleColumns;
-
-                            return {
-                                headerName:
-                                    labelWithCode(
-                                        floorGroup.label,
-                                        floorName
-                                    ),
-                                headerTooltip:
-                                    "Étage: " +
-                                        labelWithCode(
-                                            floorGroup.label,
-                                            floorName
-                                        ),
-                                headerClass:
-                                    [
-                                        "takeoff-floor-header",
-                                        paletteClass(
-                                            "floor",
-                                            floorName
-                                        )
-                                    ],
-                                marryChildren:
-                                    true,
-                                children:
-                                    visibleColumns
-                            };
-                        }
-                    ).flat();
-
-                if (!phaseName)
-                    return floorChildren;
+                if (!floorName)
+                    return visibleColumns;
 
                 return {
                     headerName:
-                        labelWithCode(
-                            phaseGroup.label,
-                            phaseName
-                        ),
-                    headerTooltip:
-                        "Phase: " +
+                        "Étage " +
                             labelWithCode(
-                                phaseGroup.label,
-                                phaseName
+                                floorGroup.label,
+                                floorName
+                            ),
+                    headerTooltip:
+                        "Étage: " +
+                            labelWithCode(
+                                floorGroup.label,
+                                floorName
                             ),
                     headerClass:
                         [
-                            "takeoff-phase-header",
+                            "takeoff-floor-header",
                             paletteClass(
-                                "phase",
-                                phaseName
+                                "floor",
+                                floorName
                             )
                         ],
                     marryChildren:
                         true,
                     children:
-                        floorChildren
+                        visibleColumns
                 };
             }
         ).flat();
@@ -2653,7 +2584,7 @@ function MatrixView({
 
             {
                 headerName: "TAKE OFF",
-                headerTooltip: "Quantités par phase, étage et local",
+                headerTooltip: "Quantités par étage et local",
                 headerClass: "takeoff-root-header",
                 marryChildren: true,
                 children: groupedRoomColumns
