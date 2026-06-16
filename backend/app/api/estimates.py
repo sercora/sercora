@@ -167,6 +167,13 @@ def office_preview_pdf_response(
         env.update(
             {
                 "HOME": str(temp_dir),
+                "PATH": (
+                    "/usr/local/sbin:/usr/local/bin:"
+                    "/usr/sbin:/usr/bin:/sbin:/bin:"
+                    "{existing_path}"
+                ).format(
+                    existing_path=env.get("PATH", "")
+                ),
                 "XDG_RUNTIME_DIR": str(temp_dir),
                 "TMPDIR": str(temp_dir)
             }
