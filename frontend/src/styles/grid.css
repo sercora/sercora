@@ -14,7 +14,16 @@
 
     overflow-y: auto;
 
-    overflow-x: hidden;
+    overflow-x: auto;
+
+}
+
+
+.matrix-page::after {
+
+    content: "";
+
+    flex: 0 0 180px;
 
 }
 
@@ -2025,9 +2034,11 @@
 
     --sercora-zoom: 1;
 
-    flex: 1 1 auto;
+    flex: 0 0 72vh;
 
-    min-height: 0;
+    min-height: 520px;
+
+    width: 100%;
 
     font-family: Calibri, Arial, sans-serif;
 
@@ -2043,6 +2054,8 @@
     border: 0;
 
     border-radius: 0;
+
+    min-width: max-content;
 
 }
 
