@@ -259,6 +259,24 @@ export function updateEstimateRoom(
 }
 
 
+export function deleteEstimateRoom(
+    roomId: number
+) {
+
+    return fetch(
+        API_URL +
+        "/rooms/" +
+        roomId,
+        {
+            method: "DELETE"
+        }
+    )
+
+    .then(parseResponse);
+
+}
+
+
 export function createEstimateLine(
     line: EstimateLineInput
 ) {

@@ -195,3 +195,64 @@ def update_room(
         "id": room_id,
         "message": "Room updated"
     }
+
+
+@router.delete("/rooms/{room_id}")
+def delete_room(room_id: int):
+
+    db = SessionLocal()
+
+    row = db.execute(
+        text(
+            """
+            SELECT id
+            FROM room
+            WHERE id = :id
+            """
+        ),
+        {
+            "id": room_id
+        }
+    ).fetchone()
+
+    if row is None:
+
+        db.close()
+
+        raise HTTPException(
+            status_code=404,
+            detail="Room not found"
+        )
+
+    db.execute(
+        text(
+            """
+            DELETE FROM estimate_quantity
+            WHERE room_id = :id
+            """
+        ),
+        {
+            "id": room_id
+        }
+    )
+
+    db.execute(
+        text(
+            """
+            DELETE FROM room
+            WHERE id = :id
+            """
+        ),
+        {
+            "id": room_id
+        }
+    )
+
+    db.commit()
+
+    db.close()
+
+    return {
+        "id": room_id,
+        "message": "Room deleted"
+    }

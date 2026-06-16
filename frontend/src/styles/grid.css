@@ -768,6 +768,17 @@
 }
 
 
+.matrix-product-modal footer button.danger {
+
+    border-color: #b94343;
+
+    background-color: #b94343;
+
+    color: #ffffff;
+
+}
+
+
 .matrix-product-modal button:disabled {
 
     cursor: default;

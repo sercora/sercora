@@ -23,6 +23,7 @@ import {
     createEstimateLine,
     createEstimateRoom,
     deleteEstimateLine,
+    deleteEstimateRoom,
     estimateFileUrl,
     fetchEstimateMatrix,
     fetchEstimateFolders,
@@ -1658,6 +1659,65 @@ function MatrixView({
     }
 
 
+    function deleteRoomEdit() {
+
+        if (!editingRoom)
+            return;
+
+        const shouldDelete =
+            window.confirm(
+                "Supprimer le local \"" +
+                editingRoom.room_name +
+                "\" et toutes ses quantités?"
+            );
+
+        if (!shouldDelete)
+            return;
+
+        setIsRoomSaving(true);
+        setRoomEditStatus("");
+
+        const deletedRoomId =
+            editingRoom.id;
+
+        deleteEstimateRoom(
+            deletedRoomId
+        )
+
+        .then(
+            () => {
+                const nextRoom =
+                    roomColumns.find(
+                        room =>
+                            room.id !== deletedRoomId
+                    ) || null;
+
+                if (nextRoom)
+                    openRoomEditor(nextRoom);
+                else
+                    setEditingRoom(null);
+
+                setMatrixActionStatus("Local supprimé.");
+
+                return reloadMatrix();
+            }
+        )
+
+        .catch(
+            () => {
+                setRoomEditStatus("Suppression du local impossible.");
+            }
+        )
+
+        .finally(
+            () => {
+                setIsRoomSaving(false);
+            }
+        );
+
+    }
+
+
     function loadUnitsIfNeeded() {
 
         if (units.length)
@@ -2557,6 +2617,14 @@ function MatrixView({
                         {roomEditStatus && (
                             <span>{roomEditStatus}</span>
                         )}
+                        <button
+                            type="button"
+                            className="danger"
+                            onClick={deleteRoomEdit}
+                            disabled={isRoomSaving}
+                        >
+                            Supprimer
+                        </button>
                         <button
                             type="button"
                             onClick={
