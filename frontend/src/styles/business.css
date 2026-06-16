@@ -514,6 +514,39 @@
 }
 
 
+.project-calendar-items button.project-calendar-item.new {
+
+    border-color: #8db7e8;
+
+    background-color: #e3f0ff;
+
+    color: #123f70;
+
+}
+
+
+.project-calendar-items button.project-calendar-item.approved {
+
+    border-color: #9fc59a;
+
+    background-color: #e7f3e4;
+
+    color: #1f5c28;
+
+}
+
+
+.project-calendar-items button.project-calendar-item.undecided {
+
+    border-color: #d8c261;
+
+    background-color: #fff5bf;
+
+    color: #5a4700;
+
+}
+
+
 .project-calendar-items button:disabled {
 
     border-color: #c6ccd4;
@@ -601,6 +634,23 @@
     font-weight: 700;
 
     cursor: pointer;
+
+}
+
+
+.business-empty-panel {
+
+    margin: 10px;
+
+    padding: 18px;
+
+    border: 1px solid #ccd4dd;
+
+    background-color: #ffffff;
+
+    color: #4d5966;
+
+    font-size: 14px;
 
 }
 

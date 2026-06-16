@@ -24,7 +24,7 @@ import "./App.css";
 type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura" | "Olympia";
 type ProjectMenuKey = "En cours" | "En Soumission" | "Création";
-type ProjectSubmissionMenuKey = "Nouveaux" | "Approuvés" | "Indécis" | "Refusés";
+type ProjectSubmissionMenuKey = "Nouveaux" | "Approuvés" | "Indécis" | "Refusés" | "Envoyés";
 type EstimateMenuKey = "En cours" | "Envoyées" | "Refusé" | "Template";
 type ToolsMenuKey = "Disponible" | "Déployé";
 type ConfigurationMenuKey = "Courriel" | "Importation";
@@ -71,7 +71,8 @@ const PROJECT_SUBMISSION_MENU_ITEMS: ProjectSubmissionMenuKey[] = [
     "Nouveaux",
     "Approuvés",
     "Indécis",
-    "Refusés"
+    "Refusés",
+    "Envoyés"
 ];
 
 

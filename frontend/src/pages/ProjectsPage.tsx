@@ -97,12 +97,12 @@ const MONTH_LABEL_FORMATTER = new Intl.DateTimeFormat(
 
 
 type ProjectViewMode = "Liste" | "Calendrier";
-type ProjectSubmissionMenuKey = "Nouveaux" | "Approuvés" | "Indécis" | "Refusés";
+type ProjectSubmissionMenuKey = "Nouveaux" | "Approuvés" | "Indécis" | "Refusés" | "Envoyés";
 type ProjectSubmissionApiState = "new" | "approved" | "undecided" | "refused";
 
 
 const PROJECT_SUBMISSION_API_STATE: Record<
-    ProjectSubmissionMenuKey,
+    Exclude<ProjectSubmissionMenuKey, "Envoyés">,
     ProjectSubmissionApiState
 > = {
     Nouveaux: "new",
@@ -110,6 +110,13 @@ const PROJECT_SUBMISSION_API_STATE: Record<
     Indécis: "undecided",
     Refusés: "refused"
 };
+
+
+const PROJECT_CALENDAR_API_STATES: ProjectSubmissionApiState[] = [
+    "new",
+    "approved",
+    "undecided"
+];
 
 
 const PROJECT_SUBMISSION_LABELS: Record<string, string> = {
@@ -136,6 +143,18 @@ function submissionStateLabel(
 ) {
 
     return PROJECT_SUBMISSION_LABELS[state || "NEW"] || "Nouveau";
+
+}
+
+
+function submissionMenuApiState(
+    menu: ProjectSubmissionMenuKey
+) {
+
+    if (menu === "Envoyés")
+        return null;
+
+    return PROJECT_SUBMISSION_API_STATE[menu];
 
 }
 
@@ -318,6 +337,7 @@ function ProjectsPage({
     const folderInputRef = useRef<HTMLInputElement | null>(null);
     const calendarInitializedRef = useRef(false);
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
+    const [calendarProjects, setCalendarProjects] = useState<ProjectSummary[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
     const [form, setForm] = useState<ProjectInput>(EMPTY_PROJECT);
     const [msgFiles, setMsgFiles] = useState<File[]>([]);
@@ -358,7 +378,7 @@ function ProjectsPage({
         () => {
             const groupedProjects = new Map<string, ProjectSummary[]>();
 
-            projects.forEach(
+            calendarProjects.forEach(
                 project => {
                     if (!project.bid_due_date)
                         return;
@@ -377,30 +397,30 @@ function ProjectsPage({
             return groupedProjects;
         },
         [
-            projects
+            calendarProjects
         ]
     );
 
     const calendarMonthProjects = useMemo(
         () =>
-            projects.filter(
+            calendarProjects.filter(
                 project =>
                     project.bid_due_date?.startsWith(calendarMonth)
             ),
         [
             calendarMonth,
-            projects
+            calendarProjects
         ]
     );
 
     const undatedProjects = useMemo(
         () =>
-            projects.filter(
+            calendarProjects.filter(
                 project =>
                     !project.bid_due_date
             ),
         [
-            projects
+            calendarProjects
         ]
     );
 
@@ -462,11 +482,19 @@ function ProjectsPage({
         setIsLoading(true);
         setError("");
 
+        const submissionApiState = submissionMenuApiState(projectSubmissionState);
+
+        if (submissionApiState === null) {
+            setProjects([]);
+            setIsLoading(false);
+            return;
+        }
+
         fetchProjects(
             projectMenu === "En Soumission" ?
                 "submission" :
                 "current",
-            PROJECT_SUBMISSION_API_STATE[projectSubmissionState]
+            submissionApiState || "new"
         )
             .then(setProjects)
             .catch(
@@ -476,6 +504,47 @@ function ProjectsPage({
             .finally(
                 () =>
                     setIsLoading(false)
+            );
+
+    }
+
+
+    function loadCalendarProjects() {
+
+        if (projectMenu !== "En Soumission" || projectSubmissionState === "Envoyés") {
+            setCalendarProjects([]);
+            return;
+        }
+
+        Promise.all(
+            PROJECT_CALENDAR_API_STATES.map(
+                submissionState =>
+                    fetchProjects(
+                        "submission",
+                        submissionState
+                    )
+            )
+        )
+            .then(
+                projectGroups => {
+                    const uniqueProjects = new Map<number, ProjectSummary>();
+
+                    projectGroups.flat().forEach(
+                        project =>
+                            uniqueProjects.set(
+                                project.id,
+                                project
+                            )
+                    );
+
+                    setCalendarProjects(
+                        Array.from(uniqueProjects.values())
+                    );
+                }
+            )
+            .catch(
+                () =>
+                    setError("Impossible de charger le calendrier des soumissions.")
             );
 
     }
@@ -498,6 +567,7 @@ function ProjectsPage({
                 () => {
                     setStatus("Etat du projet enregistré.");
                     loadProjects();
+                    loadCalendarProjects();
                 }
             )
             .catch(
@@ -1188,6 +1258,7 @@ function ProjectsPage({
         () => {
             calendarInitializedRef.current = false;
             loadProjects();
+            loadCalendarProjects();
             loadClients();
         },
         [
@@ -1205,7 +1276,7 @@ function ProjectsPage({
             if (calendarInitializedRef.current)
                 return;
 
-            const firstDatedProject = projects.find(
+            const firstDatedProject = calendarProjects.find(
                 project =>
                     project.bid_due_date
             );
@@ -1223,13 +1294,30 @@ function ProjectsPage({
         },
         [
             projectMenu,
-            projects
+            calendarProjects
         ]
     );
 
 
     if (folderProject)
         return renderProjectFolderPage();
+
+
+    if (projectMenu === "En Soumission" && projectSubmissionState === "Envoyés") {
+        return (
+            <section className="business-page">
+                <div className="business-toolbar">
+                    <div className="business-summary">
+                        <strong>0</strong>
+                        <span>soumissions envoyées</span>
+                    </div>
+                </div>
+                <div className="business-empty-panel">
+                    L'état des soumissions envoyées sera affiché ici lorsque la fonction d'envoi sera disponible.
+                </div>
+            </section>
+        );
+    }
 
 
     if (projectMenu === "Création") {
@@ -1592,7 +1680,7 @@ function ProjectsPage({
                                     Object.keys(PROJECT_SUBMISSION_STATE_VALUES).find(
                                         state =>
                                             PROJECT_SUBMISSION_STATE_VALUES[state] ===
-                                            PROJECT_SUBMISSION_API_STATE[projectSubmissionState]
+                                            submissionMenuApiState(projectSubmissionState)
                                     ) || "NEW"
                                 ).toLowerCase()
                             ) :
@@ -1722,6 +1810,16 @@ function ProjectsPage({
                                                     <button
                                                         key={project.id}
                                                         type="button"
+                                                        className={
+                                                            "project-calendar-item " +
+                                                            (
+                                                                project.submission_state === "APPROVED" ?
+                                                                    "approved" :
+                                                                    project.submission_state === "UNDECIDED" ?
+                                                                        "undecided" :
+                                                                        "new"
+                                                            )
+                                                        }
                                                         disabled={!project.latest_estimate_id}
                                                         onClick={
                                                             () => {
