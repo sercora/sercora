@@ -1,8 +1,14 @@
 import os
 import re
 import json
-from datetime import date
+from datetime import date, timedelta
+from html import unescape
+from html.parser import HTMLParser
+from http.cookiejar import CookieJar
 from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import HTTPCookieProcessor, Request, build_opener
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel
@@ -29,6 +35,8 @@ PROJECT_TEMPLATE_PARENT = Path("/NAS/Soumissions en cours")
 PROJECT_INVITATION_DIR = Path("Soumission") / "Invitations a soumissionner"
 UPLOAD_CHUNK_SIZE = 1024 * 1024
 UPLOAD_MAX_BYTES = 500 * 1024 * 1024
+BSDQ_BABILLARD_ROOT = "https://tes.bsdq.org/babillard/controller/Babillard"
+BSDQ_SEARCH_TIMEOUT = 20
 SUBMISSION_STATES = {
     "new": "NEW",
     "approved": "APPROVED",
@@ -40,6 +48,69 @@ SUBMISSION_STATES = {
 class ProjectSubmissionStateUpdate(BaseModel):
     submission_state: str
     user_id: int | None = None
+
+
+class BsdqResultParser(HTMLParser):
+
+    def __init__(self):
+        super().__init__()
+        self.rows = []
+        self._in_record_table = False
+        self._in_row = False
+        self._in_cell = False
+        self._current_row = []
+        self._current_cell = []
+
+    def handle_starttag(self, tag, attrs):
+
+        attrs_dict = dict(attrs)
+
+        if tag == "table" and "record_table" in attrs_dict.get("class", ""):
+            self._in_record_table = True
+            return
+
+        if not self._in_record_table:
+            return
+
+        if tag == "tr":
+            self._in_row = True
+            self._current_row = []
+            return
+
+        if tag == "td" and self._in_row:
+            self._in_cell = True
+            self._current_cell = []
+
+    def handle_endtag(self, tag):
+
+        if not self._in_record_table:
+            return
+
+        if tag == "td" and self._in_cell:
+            self._current_row.append(
+                clean_html_text(
+                    " ".join(self._current_cell)
+                )
+            )
+            self._current_cell = []
+            self._in_cell = False
+            return
+
+        if tag == "tr" and self._in_row:
+            if len(self._current_row) >= 4:
+                self.rows.append(self._current_row[:4])
+
+            self._current_row = []
+            self._in_row = False
+            return
+
+        if tag == "table":
+            self._in_record_table = False
+
+    def handle_data(self, data):
+
+        if self._in_cell:
+            self._current_cell.append(data)
 
 
 def ensure_project_columns(
@@ -128,6 +199,147 @@ def clean_optional_text(
 ):
 
     return (value or "").strip() or None
+
+
+def clean_html_text(
+    value
+):
+
+    return re.sub(
+        r"\s+",
+        " ",
+        unescape(str(value or ""))
+    ).strip()
+
+
+def bsdq_date_value(
+    value
+):
+
+    parsed_date = parse_optional_date(value)
+
+    return (
+        parsed_date.strftime("%Y/%m/%d")
+        if parsed_date
+        else ""
+    )
+
+
+def parse_bsdq_due_text(
+    value
+):
+
+    text_value = clean_html_text(value)
+    match = re.search(
+        r"(?P<date>\d{4}/\d{2}/\d{2})(?:\s+(?P<time>\d{2}:\d{2}))?",
+        text_value
+    )
+
+    if not match:
+        return {
+            "due_date": None,
+            "due_time": None
+        }
+
+    return {
+        "due_date": match.group("date").replace("/", "-"),
+        "due_time": match.group("time")
+    }
+
+
+def parse_bsdq_results(
+    html
+):
+
+    parser = BsdqResultParser()
+    parser.feed(html)
+    results = []
+
+    for row in parser.rows:
+        due_parts = parse_bsdq_due_text(row[2])
+        results.append(
+            {
+                "bsdq_project_number": row[0],
+                "description": row[1],
+                "due_at_text": row[2],
+                "due_date": due_parts["due_date"],
+                "due_time": due_parts["due_time"],
+                "city": row[3],
+                "is_open": True
+            }
+        )
+
+    return results
+
+
+def fetch_bsdq_projects(
+    description: str | None,
+    city: str | None,
+    bsdq_project_number: str | None,
+    seao_number: str | None,
+    date_from: date | None,
+    date_to: date | None
+):
+
+    cookie_jar = CookieJar()
+    opener = build_opener(
+        HTTPCookieProcessor(cookie_jar)
+    )
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (X11; Linux x86_64) "
+            "AppleWebKit/537.36 Chrome/120 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    }
+    find_url = f"{BSDQ_BABILLARD_ROOT}/U2401/find?language=fr"
+    search_url = f"{BSDQ_BABILLARD_ROOT}/U2401/getrecords"
+
+    opener.open(
+        Request(
+            find_url,
+            headers=headers
+        ),
+        timeout=BSDQ_SEARCH_TIMEOUT
+    ).read()
+
+    form_values = {
+        "session_id": "",
+        "returntomapping": "babillard",
+        "popupcheck": "0",
+        "sNoProjet": clean_html_text(bsdq_project_number)[:12],
+        "dtClotureBsdqDu": bsdq_date_value(date_from),
+        "dtClotureBsdqAu": bsdq_date_value(date_to),
+        "sDescrProjet": clean_html_text(description)[:60],
+        "sNoSeao": clean_html_text(seao_number)[:10],
+        "lProjetOuvert": "1",
+        "iTypeRecherche": "1",
+        "sVille": clean_html_text(city)[:60]
+    }
+    data = urlencode(form_values).encode("utf-8")
+    post_headers = {
+        **headers,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Length": str(len(data)),
+        "Origin": "https://tes.bsdq.org",
+        "Referer": find_url
+    }
+    response = opener.open(
+        Request(
+            search_url,
+            data=data,
+            headers=post_headers
+        ),
+        timeout=BSDQ_SEARCH_TIMEOUT
+    )
+    body = response.read()
+
+    return parse_bsdq_results(
+        body.decode(
+            "iso-8859-1",
+            errors="replace"
+        )
+    )
 
 
 def project_address(
@@ -1007,6 +1219,61 @@ def get_projects(
     db.close()
 
     return projects
+
+
+@router.get("/projects/bsdq/search")
+def search_bsdq_projects(
+    description: str | None = Query(None, max_length=120),
+    city: str | None = Query(None, max_length=80),
+    bsdq_project_number: str | None = Query(None, max_length=20),
+    seao_number: str | None = Query(None, max_length=20),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None)
+):
+
+    has_query = any(
+        clean_optional_text(value)
+        for value in (
+            description,
+            city,
+            bsdq_project_number,
+            seao_number
+        )
+    )
+
+    if not has_query:
+        raise HTTPException(
+            status_code=422,
+            detail="Entrez au moins un critere de recherche BSDQ."
+        )
+
+    parsed_date_from = parse_optional_date(date_from) or date.today()
+    parsed_date_to = parse_optional_date(date_to) or (
+        parsed_date_from + timedelta(days=180)
+    )
+
+    try:
+        results = fetch_bsdq_projects(
+            description,
+            city,
+            bsdq_project_number,
+            seao_number,
+            parsed_date_from,
+            parsed_date_to
+        )
+    except (HTTPError, URLError, TimeoutError, OSError) as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Recherche BSDQ indisponible: {error}"
+        ) from error
+
+    return {
+        "source": "BSDQ Babillard public",
+        "official_api": False,
+        "date_from": parsed_date_from,
+        "date_to": parsed_date_to,
+        "rows": results[:50]
+    }
 
 
 @router.put("/projects/{project_id}/submission-state")

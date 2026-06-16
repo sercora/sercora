@@ -133,6 +133,26 @@ export type ProjectCurrentEditResponse = {
 };
 
 
+export type BsdqProjectSearchResult = {
+    bsdq_project_number: string;
+    description: string;
+    due_at_text: string;
+    due_date: string | null;
+    due_time: string | null;
+    city: string;
+    is_open: boolean;
+};
+
+
+export type BsdqProjectSearchResponse = {
+    source: string;
+    official_api: boolean;
+    date_from: string;
+    date_to: string;
+    rows: BsdqProjectSearchResult[];
+};
+
+
 function parseResponse(
     response: Response
 ) {
@@ -271,6 +291,40 @@ export function updateProjectSubmissionState(
                 }
             )
         }
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function searchBsdqProjects(
+    input: {
+        description?: string | null;
+        city?: string | null;
+        bsdq_project_number?: string | null;
+        seao_number?: string | null;
+        date_from?: string | null;
+        date_to?: string | null;
+    }
+): Promise<BsdqProjectSearchResponse> {
+
+    const params = new URLSearchParams();
+
+    Object.entries(input).forEach(
+        ([key, value]) => {
+            if (value)
+                params.set(
+                    key,
+                    value
+                );
+        }
+    );
+
+    return fetch(
+        API_URL +
+        "/projects/bsdq/search?" +
+        params.toString()
     )
 
     .then(parseResponse);

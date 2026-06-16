@@ -10,6 +10,7 @@ import {
     createProjectWithFiles,
     fetchClients,
     fetchProjects,
+    searchBsdqProjects,
     updateProjectCurrent,
     updateProjectSubmissionState
 } from "../utils/businessApi";
@@ -20,6 +21,7 @@ import {
     projectFileUrl
 } from "../utils/matrixApi";
 import type {
+    BsdqProjectSearchResult,
     Client,
     ProjectInput,
     ProjectSummary
@@ -240,6 +242,31 @@ function addMonths(
 }
 
 
+function addDays(
+    dateKey: string,
+    offset: number
+) {
+
+    const [
+        year,
+        month,
+        day
+    ] = dateKey.split("-").map(Number);
+    const date = new Date(
+        year,
+        month - 1,
+        day
+    );
+
+    date.setDate(
+        date.getDate() + offset
+    );
+
+    return formatDateKey(date);
+
+}
+
+
 function calendarDates(
     monthKey: string
 ) {
@@ -360,6 +387,9 @@ function ProjectsPage({
     const [editClientIds, setEditClientIds] = useState<number[]>([]);
     const [editInvitationClientId, setEditInvitationClientId] = useState<number | null>(null);
     const [editAddenda, setEditAddenda] = useState(EMPTY_ADDENDA);
+    const [bsdqResults, setBsdqResults] = useState<BsdqProjectSearchResult[]>([]);
+    const [bsdqSearchError, setBsdqSearchError] = useState("");
+    const [isBsdqSearching, setIsBsdqSearching] = useState(false);
     const [isMsgDragActive, setIsMsgDragActive] = useState(false);
     const [isEditMsgDragActive, setIsEditMsgDragActive] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -664,11 +694,68 @@ function ProjectsPage({
         setEditInvitationClientId(project.client_ids?.[0] || null);
         setEditMsgFiles([]);
         setEditAddenda(EMPTY_ADDENDA);
+        setBsdqResults([]);
+        setBsdqSearchError("");
         setStatus("");
         setError("");
 
         if (editMsgInputRef.current)
             editMsgInputRef.current.value = "";
+
+    }
+
+
+    function searchBsdqForEditingProject() {
+
+        if (!editingProject)
+            return;
+
+        setIsBsdqSearching(true);
+        setBsdqSearchError("");
+        setBsdqResults([]);
+
+        const dateFrom =
+            editBidDueDate ?
+                addDays(
+                    editBidDueDate,
+                    -30
+                ) :
+                formatDateKey(new Date());
+        const dateTo =
+            editBidDueDate ?
+                addDays(
+                    editBidDueDate,
+                    60
+                ) :
+                addDays(
+                    formatDateKey(new Date()),
+                    180
+                );
+
+        searchBsdqProjects(
+            {
+                description: editingProject.project_name,
+                city: editingProject.city,
+                date_from: dateFrom,
+                date_to: dateTo
+            }
+        )
+            .then(
+                response =>
+                    setBsdqResults(response.rows)
+            )
+            .catch(
+                error =>
+                    setBsdqSearchError(
+                        error instanceof Error ?
+                            error.message :
+                            "Recherche BSDQ impossible."
+                    )
+            )
+            .finally(
+                () =>
+                    setIsBsdqSearching(false)
+            );
 
     }
 
@@ -2046,6 +2133,69 @@ function ProjectsPage({
                                 />
                             </label>
                         </div>
+
+                        <section className="business-edit-section">
+                            <div className="business-section-heading">
+                                <div>
+                                    <span>BSDQ</span>
+                                    <h2>Babillard de projets</h2>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={searchBsdqForEditingProject}
+                                    disabled={isBsdqSearching}
+                                >
+                                    {isBsdqSearching ? "Recherche..." : "Rechercher"}
+                                </button>
+                            </div>
+
+                            {bsdqSearchError && (
+                                <div className="business-error">
+                                    {bsdqSearchError}
+                                </div>
+                            )}
+
+                            {!bsdqSearchError && bsdqResults.length === 0 && !isBsdqSearching && (
+                                <div className="business-muted-panel">
+                                    Recherche le projet ouvert au babillard BSDQ pour valider le numéro et la date de tombée.
+                                </div>
+                            )}
+
+                            {bsdqResults.length > 0 && (
+                                <div className="business-compact-list">
+                                    {bsdqResults.map(
+                                        result => (
+                                            <div
+                                                key={`${result.bsdq_project_number}-${result.due_at_text}-${result.city}`}
+                                                className="business-compact-item"
+                                            >
+                                                <div>
+                                                    <strong>{result.bsdq_project_number}</strong>
+                                                    <span>{result.description}</span>
+                                                    <small>
+                                                        {result.city || "-"}
+                                                        {" | Tombée: "}
+                                                        {result.due_at_text || "Non indiquée"}
+                                                    </small>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    disabled={!result.due_date}
+                                                    onClick={
+                                                        () => {
+                                                            if (result.due_date)
+                                                                setEditBidDueDate(result.due_date);
+                                                        }
+                                                    }
+                                                >
+                                                    Utiliser date
+                                                </button>
+                                            </div>
+                                        )
+                                    )}
+                                </div>
+                            )}
+                        </section>
 
                         <section className="business-edit-section">
                             <div className="business-section-heading">
