@@ -545,6 +545,32 @@ function MatrixView({
     }
 
 
+    function getSampleSupplierClass(
+        supplierNames: string | null
+    ) {
+
+        const supplier =
+            String(
+                supplierNames || ""
+            ).toLowerCase();
+
+        if (supplier.includes("olympia"))
+            return "sample-olympia";
+
+        if (supplier.includes("mapei"))
+            return "sample-mapei";
+
+        if (supplier.includes("schluter"))
+            return "sample-schluter";
+
+        if (supplier.includes("centura"))
+            return "sample-centura";
+
+        return "";
+
+    }
+
+
     function updateEstimateQuantity(
         params: any,
         room: string
@@ -2514,17 +2540,6 @@ function MatrixView({
                     >
                         Éditer produit
                     </button>
-                    <button
-                        type="button"
-                        className="danger"
-                        onClick={deleteSelectedLines}
-                        disabled={
-                            isMatrixActionLoading ||
-                            !selectedLineIds.length
-                        }
-                    >
-                        Supprimer lignes
-                    </button>
                 </div>
 
                 <div className="matrix-action-row room-row">
@@ -3283,6 +3298,11 @@ function MatrixView({
                                                     tile.supplier_product_code,
                                                     index
                                                 ].filter(Boolean).join("-")}
+                                                className={
+                                                    getSampleSupplierClass(
+                                                        tile.supplier_names
+                                                    )
+                                                }
                                             >
                                                 {[
                                                     tile.supplier_names,
@@ -3642,6 +3662,8 @@ function MatrixView({
             <ZoomToolbar
                 zoom={zoom}
                 contextLabel={"Soumissions " + estimateMenu.toLowerCase()}
+                selectedLineCount={selectedLineIds.length}
+                onDeleteSelectedLines={deleteSelectedLines}
                 onFitToScreen={fitToScreen}
                 onZoomChange={applyZoom}
             />

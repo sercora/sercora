@@ -36,10 +36,10 @@ const NAV_ITEMS: PageKey[] = [
 
 
 const PRODUCT_MENU_ITEMS: ProductMenuKey[] = [
-    "Mapei",
-    "Prosol",
+    "Tuile",
     "Schluter",
-    "Tuile"
+    "Mapei",
+    "Prosol"
 ];
 
 
@@ -352,7 +352,11 @@ function App() {
                                                             }
                                                         }
                                                     >
-                                                        {productMenuItem}
+                                                        {productMenuItem === "Tuile" ?
+                                                            "Tuiles" :
+                                                            productMenuItem === "Mapei" ?
+                                                                "Mapeï" :
+                                                                productMenuItem}
                                                     </button>
 
                                                     {productMenuItem === "Tuile" && (

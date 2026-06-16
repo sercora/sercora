@@ -1,6 +1,8 @@
 type ZoomToolbarProps = {
     zoom: string;
     contextLabel?: string;
+    selectedLineCount?: number;
+    onDeleteSelectedLines?: () => void;
     onFitToScreen: () => void;
     onZoomChange: (zoom: string) => void;
 };
@@ -9,6 +11,8 @@ type ZoomToolbarProps = {
 function ZoomToolbar({
     zoom,
     contextLabel,
+    selectedLineCount = 0,
+    onDeleteSelectedLines,
     onFitToScreen,
     onZoomChange
 }: ZoomToolbarProps) {
@@ -24,6 +28,17 @@ function ZoomToolbar({
             >
                 Ajuster à l'écran
             </button>
+
+            {onDeleteSelectedLines && (
+                <button
+                    type="button"
+                    className="danger"
+                    onClick={onDeleteSelectedLines}
+                    disabled={!selectedLineCount}
+                >
+                    Supprimer lignes
+                </button>
+            )}
 
             <button
                 type="button"

@@ -219,11 +219,41 @@
 
     min-height: 16px;
 
+    padding: 0 4px;
+
     overflow: hidden;
 
     text-overflow: ellipsis;
 
     white-space: nowrap;
+
+}
+
+
+.samples-list .sample-olympia {
+
+    background-color: rgba(255, 214, 64, 0.45);
+
+}
+
+
+.samples-list .sample-mapei {
+
+    background-color: rgba(76, 141, 235, 0.28);
+
+}
+
+
+.samples-list .sample-schluter {
+
+    background-color: rgba(73, 169, 95, 0.30);
+
+}
+
+
+.samples-list .sample-centura {
+
+    background-color: rgba(196, 137, 39, 0.30);
 
 }
 
@@ -1676,6 +1706,28 @@
     background-color: #dbe9ff;
 
     border-color: #5f86c7;
+
+}
+
+
+.matrix-toolbar button.danger {
+
+    border-color: #b94343;
+
+    background-color: #b94343;
+
+    color: #ffffff;
+
+}
+
+
+.matrix-toolbar button.danger:disabled {
+
+    border-color: #c8a8a8;
+
+    background-color: #eee0e0;
+
+    color: #9a6a6a;
 
 }
 
