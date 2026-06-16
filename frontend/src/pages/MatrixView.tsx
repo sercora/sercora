@@ -1574,7 +1574,7 @@ function MatrixView({
 
         fetchProductPage(
             {
-                limit: 20,
+                limit: null,
                 offset: 0,
                 search: productSearch.trim(),
                 supplier: "",
@@ -1593,7 +1593,7 @@ function MatrixView({
                 );
                 setMatrixActionStatus(
                     response.rows.length ?
-                        response.rows.length + " produit(s) trouvé(s)." :
+                        response.total + " produit(s) trouvé(s)." :
                         "Aucun produit trouvé."
                 );
             }
