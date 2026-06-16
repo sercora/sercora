@@ -133,6 +133,7 @@ function App() {
     const [activeEstimateId, setActiveEstimateId] = useState<number | null>(null);
     const [activeToolsMenu, setActiveToolsMenu] = useState<ToolsMenuKey>("Disponible");
     const [activeConfigurationMenu, setActiveConfigurationMenu] = useState<ConfigurationMenuKey>("Courriel");
+    const [navigationRefreshKey, setNavigationRefreshKey] = useState(0);
     const [token, setToken] = useState<string | null>(
         () => localStorage.getItem(AUTH_TOKEN_KEY)
     );
@@ -238,6 +239,16 @@ function App() {
     }
 
 
+    function refreshNavigationView() {
+
+        setNavigationRefreshKey(
+            currentKey =>
+                currentKey + 1
+        );
+
+    }
+
+
     if (setupToken) {
         return (
             <SetPasswordPage
@@ -307,7 +318,10 @@ function App() {
                         type="button"
                         className="header-action"
                         onClick={
-                            () => setActivePage("Profil")
+                            () => {
+                                setActivePage("Profil");
+                                refreshNavigationView();
+                            }
                         }
                     >
                         {currentUser.full_name}
@@ -364,6 +378,7 @@ function App() {
                                     onClick={
                                         () => {
                                             setActivePage(item);
+                                            refreshNavigationView();
 
                                             if (item === "Produits")
                                                 setActiveProductMenu("Tous");
@@ -413,6 +428,7 @@ function App() {
                                                             () => {
                                                                 setActiveProductMenu(productMenuItem);
                                                                 setActivePage("Produits");
+                                                                refreshNavigationView();
                                                             }
                                                         }
                                                     >
@@ -442,6 +458,7 @@ function App() {
                                                                             () => {
                                                                                 setActiveProductMenu(tileSupplierMenuItem);
                                                                                 setActivePage("Produits");
+                                                                                refreshNavigationView();
                                                                             }
                                                                         }
                                                                     >
@@ -494,6 +511,7 @@ function App() {
                                                                     if (projectMenuItem === "En Soumission")
                                                                         setActiveProjectSubmissionMenu("Nouveaux");
                                                                     setActivePage("Projets");
+                                                                    refreshNavigationView();
                                                                 }
                                                             }
                                                         >
@@ -521,6 +539,7 @@ function App() {
                                                                                     setActiveProjectMenu("En Soumission");
                                                                                     setActiveProjectSubmissionMenu(submissionMenuItem);
                                                                                     setActivePage("Projets");
+                                                                                    refreshNavigationView();
                                                                                 }
                                                                             }
                                                                         >
@@ -561,6 +580,7 @@ function App() {
                                                             setActiveEstimateMenu(estimateMenuItem);
                                                             setActiveEstimateId(null);
                                                             setActivePage("Soumissions");
+                                                            refreshNavigationView();
                                                         }
                                                     }
                                                 >
@@ -591,6 +611,7 @@ function App() {
                                                         () => {
                                                             setActiveToolsMenu(toolsMenuItem);
                                                             setActivePage("Outils");
+                                                            refreshNavigationView();
                                                         }
                                                     }
                                                 >
@@ -620,6 +641,7 @@ function App() {
                                                         () => {
                                                             setActiveConfigurationMenu(configurationMenuItem);
                                                             setActivePage("Configuration");
+                                                            refreshNavigationView();
                                                         }
                                                     }
                                                 >
@@ -637,12 +659,12 @@ function App() {
 
                 <main className="app-content">
                     {activePage === "Clients" && (
-                        <ClientsPage />
+                        <ClientsPage key={`clients-${navigationRefreshKey}`} />
                     )}
 
                     {activePage === "Projets" && (
                         <ProjectsPage
-                            key={`${activeProjectMenu}-${activeProjectSubmissionMenu}`}
+                            key={`${activeProjectMenu}-${activeProjectSubmissionMenu}-${navigationRefreshKey}`}
                             projectMenu={activeProjectMenu}
                             projectSubmissionState={activeProjectSubmissionMenu}
                             currentUserId={currentUser.id}
@@ -658,14 +680,14 @@ function App() {
 
                     {activePage === "Produits" && (
                         <ProductsPage
-                            key={activeProductMenu}
+                            key={`${activeProductMenu}-${navigationRefreshKey}`}
                             productMenu={activeProductMenu}
                         />
                     )}
 
                     {activePage === "Outils" && (
                         <ToolsPage
-                            key={activeToolsMenu}
+                            key={`${activeToolsMenu}-${navigationRefreshKey}`}
                             toolScope={
                                 (
                                     activeToolsMenu === "Disponible" ?
@@ -678,7 +700,7 @@ function App() {
 
                     {activePage === "Soumissions" && (
                         <MatrixView
-                            key={`${activeEstimateMenu}-${activeEstimateId || "legacy"}`}
+                            key={`${activeEstimateMenu}-${activeEstimateId || "legacy"}-${navigationRefreshKey}`}
                             estimateMenu={activeEstimateMenu}
                             estimateId={activeEstimateId}
                             onEstimateChange={setActiveEstimateId}
@@ -687,6 +709,7 @@ function App() {
 
                     {activePage === "Profil" && (
                         <ProfilePage
+                            key={`profile-${navigationRefreshKey}`}
                             token={token}
                             user={currentUser}
                             onUserUpdate={handleUserUpdate}
@@ -695,6 +718,7 @@ function App() {
 
                     {activePage === "Usagers" && (
                         <UsersPage
+                            key={`users-${navigationRefreshKey}`}
                             token={token}
                             currentUser={currentUser}
                         />
@@ -702,6 +726,7 @@ function App() {
 
                     {activePage === "Configuration" && (
                         <ConfigurationPage
+                            key={`${activeConfigurationMenu}-${navigationRefreshKey}`}
                             token={token}
                             currentUser={currentUser}
                             configurationMenu={activeConfigurationMenu}
