@@ -129,6 +129,22 @@ def ensure_project_columns(
         text(
             """
             ALTER TABLE project
+            ADD COLUMN IF NOT EXISTS bsdq_project_number VARCHAR(80)
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE project
+            ADD COLUMN IF NOT EXISTS bsdq_due_time VARCHAR(10)
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE project
             ADD COLUMN IF NOT EXISTS addenda TEXT
             """
         )
@@ -475,6 +491,7 @@ def project_create_from_row(
 
     return ProjectCreate(
         project_number=row.project_number,
+        bsdq_project_number=row.bsdq_project_number,
         project_name=row.project_name,
         status=row.status or "PENDING",
         address_line1=row.address_line1,
@@ -483,6 +500,7 @@ def project_create_from_row(
         province=row.province,
         postal_code=row.postal_code,
         bid_due_date=bid_due_date,
+        bsdq_due_time=row.bsdq_due_time,
         start_date=row.start_date,
         end_date=row.end_date,
         architect_name=row.architect_name,
@@ -937,11 +955,13 @@ def insert_project_record(
             """
             INSERT INTO project (
                 project_number,
+                bsdq_project_number,
                 project_name,
                 status,
                 start_date,
                 end_date,
                 bid_due_date,
+                bsdq_due_time,
                 address_line1,
                 address_line2,
                 city,
@@ -954,11 +974,13 @@ def insert_project_record(
             )
             VALUES (
                 :project_number,
+                :bsdq_project_number,
                 :project_name,
                 :status,
                 :start_date,
                 :end_date,
                 :bid_due_date,
+                :bsdq_due_time,
                 :address_line1,
                 :address_line2,
                 :city,
@@ -974,11 +996,13 @@ def insert_project_record(
         ),
         {
             "project_number": clean_optional_text(project.project_number),
+            "bsdq_project_number": clean_optional_text(project.bsdq_project_number),
             "project_name": project.project_name.strip(),
             "status": project.status,
             "start_date": project.start_date,
             "end_date": project.end_date,
             "bid_due_date": project.bid_due_date,
+            "bsdq_due_time": clean_optional_text(project.bsdq_due_time),
             "address_line1": clean_optional_text(project.address_line1),
             "address_line2": clean_optional_text(project.address_line2),
             "city": clean_optional_text(project.city),
@@ -1071,6 +1095,7 @@ def get_projects(
             SELECT
                 p.id,
                 p.project_number,
+                p.bsdq_project_number,
                 p.project_name,
                 p.status,
                 COALESCE(p.submission_state, 'NEW') AS submission_state,
@@ -1080,6 +1105,7 @@ def get_projects(
                 p.start_date,
                 p.end_date,
                 p.bid_due_date,
+                p.bsdq_due_time,
                 p.address_line1,
                 p.address_line2,
                 p.city,
@@ -1152,6 +1178,7 @@ def get_projects(
             GROUP BY
                 p.id,
                 p.project_number,
+                p.bsdq_project_number,
                 p.project_name,
                 p.status,
                 p.submission_state,
@@ -1161,6 +1188,7 @@ def get_projects(
                 p.start_date,
                 p.end_date,
                 p.bid_due_date,
+                p.bsdq_due_time,
                 p.address_line1,
                 p.address_line2,
                 p.city,
@@ -1185,6 +1213,7 @@ def get_projects(
             {
                 "id": row["id"],
                 "project_number": row["project_number"],
+                "bsdq_project_number": row["bsdq_project_number"],
                 "project_name": row["project_name"],
                 "status": row["status"],
                 "submission_state": row["submission_state"],
@@ -1194,6 +1223,7 @@ def get_projects(
                 "start_date": row["start_date"],
                 "end_date": row["end_date"],
                 "bid_due_date": row["bid_due_date"],
+                "bsdq_due_time": row["bsdq_due_time"],
                 "address": project_address(row),
                 "address_line1": row["address_line1"],
                 "address_line2": row["address_line2"],
@@ -1388,11 +1418,13 @@ def get_project(project_id: int):
             SELECT
                 p.id,
                 p.project_number,
+                p.bsdq_project_number,
                 p.project_name,
                 p.status,
                 p.start_date,
                 p.end_date,
                 p.bid_due_date,
+                p.bsdq_due_time,
                 p.address_line1,
                 p.address_line2,
                 p.city,
@@ -1419,11 +1451,13 @@ def get_project(project_id: int):
     return {
         "id": row.id,
         "project_number": row.project_number,
+        "bsdq_project_number": row.bsdq_project_number,
         "project_name": row.project_name,
         "status": row.status,
         "start_date": row.start_date,
         "end_date": row.end_date,
         "bid_due_date": row.bid_due_date,
+        "bsdq_due_time": row.bsdq_due_time,
         "address_line1": row.address_line1,
         "address_line2": row.address_line2,
         "city": row.city,
@@ -1473,6 +1507,7 @@ def create_project(project: ProjectCreate):
 @router.post("/projects/with-files")
 async def create_project_with_files(
     project_number: str | None = Form(None),
+    bsdq_project_number: str | None = Form(None),
     project_name: str = Form(...),
     status: str = Form("PENDING"),
     client_id: int | None = Form(None),
@@ -1482,6 +1517,7 @@ async def create_project_with_files(
     province: str | None = Form(None),
     postal_code: str | None = Form(None),
     bid_due_date: str | None = Form(None),
+    bsdq_due_time: str | None = Form(None),
     start_date: str | None = Form(None),
     end_date: str | None = Form(None),
     architect_name: str | None = Form(None),
@@ -1495,6 +1531,7 @@ async def create_project_with_files(
 
     project = ProjectCreate(
         project_number=clean_optional_text(project_number),
+        bsdq_project_number=clean_optional_text(bsdq_project_number),
         project_name=project_name.strip(),
         status=status,
         client_id=client_id,
@@ -1504,6 +1541,7 @@ async def create_project_with_files(
         province=clean_optional_text(province),
         postal_code=clean_optional_text(postal_code),
         bid_due_date=parse_optional_date(bid_due_date),
+        bsdq_due_time=clean_optional_text(bsdq_due_time),
         start_date=parse_optional_date(start_date),
         end_date=parse_optional_date(end_date),
         architect_name=clean_optional_text(architect_name),
@@ -1561,6 +1599,8 @@ async def create_project_with_files(
 async def update_current_project(
     project_id: int,
     bid_due_date: str | None = Form(None),
+    bsdq_project_number: str | None = Form(None),
+    bsdq_due_time: str | None = Form(None),
     client_ids: list[int] | None = Form(None),
     invitation_client_id: int | None = Form(None),
     addenda_name: str | None = Form(None),
@@ -1584,11 +1624,13 @@ async def update_current_project(
                 SELECT
                     id,
                     project_number,
+                    bsdq_project_number,
                     project_name,
                     status,
                     start_date,
                     end_date,
                     bid_due_date,
+                    bsdq_due_time,
                     address_line1,
                     address_line2,
                     city,
@@ -1683,6 +1725,8 @@ async def update_current_project(
                 UPDATE project
                 SET
                     bid_due_date = :bid_due_date,
+                    bsdq_project_number = :bsdq_project_number,
+                    bsdq_due_time = :bsdq_due_time,
                     addenda = :addenda
                 WHERE id = :project_id
                 """
@@ -1690,6 +1734,8 @@ async def update_current_project(
             {
                 "project_id": project_id,
                 "bid_due_date": next_bid_due_date,
+                "bsdq_project_number": clean_optional_text(bsdq_project_number),
+                "bsdq_due_time": clean_optional_text(bsdq_due_time),
                 "addenda": next_addenda
             }
         )

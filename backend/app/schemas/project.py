@@ -6,6 +6,7 @@ from typing import Optional
 
 class ProjectCreate(BaseModel):
     project_number: Optional[str] = None
+    bsdq_project_number: Optional[str] = None
     project_name: str
     status: str = "PENDING"
     client_id: Optional[int] = None
@@ -15,6 +16,7 @@ class ProjectCreate(BaseModel):
     province: Optional[str] = None
     postal_code: Optional[str] = None
     bid_due_date: Optional[date] = None
+    bsdq_due_time: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     architect_name: Optional[str] = None

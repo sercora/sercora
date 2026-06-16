@@ -29,6 +29,7 @@ export type ClientInput = {
 export type ProjectSummary = {
     id: number;
     project_number: string | null;
+    bsdq_project_number: string | null;
     project_name: string;
     status: string | null;
     submission_state: ProjectSubmissionState;
@@ -38,6 +39,7 @@ export type ProjectSummary = {
     start_date: string | null;
     end_date: string | null;
     bid_due_date: string | null;
+    bsdq_due_time: string | null;
     address: string;
     address_line1: string | null;
     address_line2: string | null;
@@ -72,6 +74,7 @@ export type ProjectInvitation = {
 
 export type ProjectInput = {
     project_number: string | null;
+    bsdq_project_number: string | null;
     project_name: string;
     status: string;
     client_id: number | null;
@@ -81,6 +84,7 @@ export type ProjectInput = {
     province: string | null;
     postal_code: string | null;
     bid_due_date: string | null;
+    bsdq_due_time: string | null;
     start_date: string | null;
     end_date: string | null;
     architect_name: string | null;
@@ -107,6 +111,8 @@ export type ProjectCreateResponse = {
 
 export type ProjectCurrentEditInput = {
     bid_due_date: string | null;
+    bsdq_project_number: string | null;
+    bsdq_due_time: string | null;
     client_ids: number[];
     invitation_client_id: number | null;
     msgFiles: File[];
@@ -378,6 +384,7 @@ export function createProjectWithFiles(
     const formData = new FormData();
 
     appendProjectFormValue(formData, "project_number", project.project_number);
+    appendProjectFormValue(formData, "bsdq_project_number", project.bsdq_project_number);
     appendProjectFormValue(formData, "project_name", project.project_name);
     appendProjectFormValue(formData, "status", project.status);
     appendProjectFormValue(formData, "client_id", project.client_id);
@@ -387,6 +394,7 @@ export function createProjectWithFiles(
     appendProjectFormValue(formData, "province", project.province);
     appendProjectFormValue(formData, "postal_code", project.postal_code);
     appendProjectFormValue(formData, "bid_due_date", project.bid_due_date);
+    appendProjectFormValue(formData, "bsdq_due_time", project.bsdq_due_time);
     appendProjectFormValue(formData, "start_date", project.start_date);
     appendProjectFormValue(formData, "end_date", project.end_date);
     appendProjectFormValue(formData, "architect_name", project.architect_name);
@@ -439,6 +447,8 @@ export function updateProjectCurrent(
     const formData = new FormData();
 
     appendProjectFormValue(formData, "bid_due_date", input.bid_due_date);
+    appendProjectFormValue(formData, "bsdq_project_number", input.bsdq_project_number);
+    appendProjectFormValue(formData, "bsdq_due_time", input.bsdq_due_time);
 
     input.client_ids.forEach(
         clientId =>

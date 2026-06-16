@@ -45,6 +45,7 @@ type ProjectsPageProps = {
 
 const EMPTY_PROJECT: ProjectInput = {
     project_number: null,
+    bsdq_project_number: null,
     project_name: "",
     status: "PENDING",
     client_id: null,
@@ -54,6 +55,7 @@ const EMPTY_PROJECT: ProjectInput = {
     province: "QC",
     postal_code: null,
     bid_due_date: null,
+    bsdq_due_time: null,
     start_date: null,
     end_date: null,
     architect_name: null,
@@ -384,9 +386,16 @@ function ProjectsPage({
     const [projectPreviewError, setProjectPreviewError] = useState("");
     const [isProjectPreviewLoading, setIsProjectPreviewLoading] = useState(false);
     const [editBidDueDate, setEditBidDueDate] = useState("");
+    const [editBsdqProjectNumber, setEditBsdqProjectNumber] = useState("");
+    const [editBsdqDueTime, setEditBsdqDueTime] = useState("");
     const [editClientIds, setEditClientIds] = useState<number[]>([]);
     const [editInvitationClientId, setEditInvitationClientId] = useState<number | null>(null);
     const [editAddenda, setEditAddenda] = useState(EMPTY_ADDENDA);
+    const [createBsdqSearchText, setCreateBsdqSearchText] = useState("");
+    const [createBsdqResults, setCreateBsdqResults] = useState<BsdqProjectSearchResult[]>([]);
+    const [createBsdqSearchError, setCreateBsdqSearchError] = useState("");
+    const [isCreateBsdqSearching, setIsCreateBsdqSearching] = useState(false);
+    const [editBsdqSearchText, setEditBsdqSearchText] = useState("");
     const [bsdqResults, setBsdqResults] = useState<BsdqProjectSearchResult[]>([]);
     const [bsdqSearchError, setBsdqSearchError] = useState("");
     const [isBsdqSearching, setIsBsdqSearching] = useState(false);
@@ -690,12 +699,15 @@ function ProjectsPage({
 
         setEditingProject(project);
         setEditBidDueDate(project.bid_due_date || "");
+        setEditBsdqProjectNumber(project.bsdq_project_number || "");
+        setEditBsdqDueTime(project.bsdq_due_time || "");
         setEditClientIds(project.client_ids || []);
         setEditInvitationClientId(project.client_ids?.[0] || null);
         setEditMsgFiles([]);
         setEditAddenda(EMPTY_ADDENDA);
         setBsdqResults([]);
         setBsdqSearchError("");
+        setEditBsdqSearchText(project.project_name);
         setStatus("");
         setError("");
 
@@ -734,7 +746,7 @@ function ProjectsPage({
 
         searchBsdqProjects(
             {
-                description: editingProject.project_name,
+                description: editBsdqSearchText || editingProject.project_name,
                 city: editingProject.city,
                 date_from: dateFrom,
                 date_to: dateTo
@@ -756,6 +768,132 @@ function ProjectsPage({
                 () =>
                     setIsBsdqSearching(false)
             );
+
+    }
+
+
+    function searchBsdqForNewProject() {
+
+        setIsCreateBsdqSearching(true);
+        setCreateBsdqSearchError("");
+        setCreateBsdqResults([]);
+
+        const dateFrom =
+            form.bid_due_date ?
+                addDays(
+                    form.bid_due_date,
+                    -30
+                ) :
+                formatDateKey(new Date());
+        const dateTo =
+            form.bid_due_date ?
+                addDays(
+                    form.bid_due_date,
+                    60
+                ) :
+                addDays(
+                    formatDateKey(new Date()),
+                    180
+                );
+
+        searchBsdqProjects(
+            {
+                description: createBsdqSearchText || form.project_name,
+                city: form.city,
+                date_from: dateFrom,
+                date_to: dateTo
+            }
+        )
+            .then(
+                response =>
+                    setCreateBsdqResults(response.rows)
+            )
+            .catch(
+                error =>
+                    setCreateBsdqSearchError(
+                        error instanceof Error ?
+                            error.message :
+                            "Recherche BSDQ impossible."
+                    )
+            )
+            .finally(
+                () =>
+                    setIsCreateBsdqSearching(false)
+            );
+
+    }
+
+
+    function applyBsdqResultToForm(
+        result: BsdqProjectSearchResult
+    ) {
+
+        setForm(
+            currentForm => ({
+                ...currentForm,
+                bsdq_project_number: result.bsdq_project_number,
+                bid_due_date: result.due_date || currentForm.bid_due_date,
+                bsdq_due_time: result.due_time || currentForm.bsdq_due_time
+            })
+        );
+
+    }
+
+
+    function applyBsdqResultToEdit(
+        result: BsdqProjectSearchResult
+    ) {
+
+        setEditBsdqProjectNumber(result.bsdq_project_number);
+
+        if (result.due_date)
+            setEditBidDueDate(result.due_date);
+
+        if (result.due_time)
+            setEditBsdqDueTime(result.due_time);
+
+    }
+
+
+    function renderBsdqResults(
+        results: BsdqProjectSearchResult[],
+        onApply: (result: BsdqProjectSearchResult) => void
+    ) {
+
+        if (results.length === 0)
+            return null;
+
+        return (
+            <div className="business-compact-list">
+                {results.map(
+                    result => (
+                        <div
+                            key={`${result.bsdq_project_number}-${result.due_at_text}-${result.city}`}
+                            className="business-compact-item"
+                        >
+                            <div>
+                                <strong>{result.bsdq_project_number}</strong>
+                                <span>{result.description}</span>
+                                <small>
+                                    {result.city || "-"}
+                                    {" | Tombée: "}
+                                    {result.due_at_text || "Non indiquée"}
+                                </small>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={
+                                    () =>
+                                        onApply(result)
+                                }
+                            >
+                                Utiliser
+                            </button>
+                        </div>
+                    )
+                )}
+            </div>
+        );
 
     }
 
@@ -1224,6 +1362,8 @@ function ProjectsPage({
             editingProject.id,
             {
                 bid_due_date: editBidDueDate || null,
+                bsdq_project_number: nullableValue(editBsdqProjectNumber),
+                bsdq_due_time: nullableValue(editBsdqDueTime),
                 client_ids: editClientIds,
                 invitation_client_id: editInvitationClientId,
                 msgFiles: editMsgFiles,
@@ -1292,12 +1432,14 @@ function ProjectsPage({
             {
                 ...form,
                 project_number: nullableValue(form.project_number || ""),
+                bsdq_project_number: nullableValue(form.bsdq_project_number || ""),
                 project_name: form.project_name.trim(),
                 address_line1: nullableValue(form.address_line1 || ""),
                 address_line2: nullableValue(form.address_line2 || ""),
                 city: nullableValue(form.city || ""),
                 province: nullableValue(form.province || ""),
                 postal_code: nullableValue(form.postal_code || ""),
+                bsdq_due_time: nullableValue(form.bsdq_due_time || ""),
                 architect_name: nullableValue(form.architect_name || ""),
                 probable_schedule: nullableValue(form.probable_schedule || ""),
                 source_template_path: nullableValue(form.source_template_path || "")
@@ -1313,6 +1455,9 @@ function ProjectsPage({
                         `${response.upload_file_count || 0} fichier(s) téléversé(s).`
                     );
                     setForm(EMPTY_PROJECT);
+                    setCreateBsdqSearchText("");
+                    setCreateBsdqResults([]);
+                    setCreateBsdqSearchError("");
                     setMsgFiles([]);
                     setFolderFiles([]);
 
@@ -1630,6 +1775,86 @@ function ProjectsPage({
                             />
                         </label>
                     </div>
+
+                    <section className="business-edit-section">
+                        <div className="business-section-heading">
+                            <div>
+                                <span>BSDQ</span>
+                                <h2>Babillard de projets</h2>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={searchBsdqForNewProject}
+                                disabled={isCreateBsdqSearching || (!createBsdqSearchText && !form.project_name)}
+                            >
+                                {isCreateBsdqSearching ? "Recherche..." : "Rechercher"}
+                            </button>
+                        </div>
+
+                        <div className="business-form-grid compact">
+                            <label className="business-field wide">
+                                <span>Texte à rechercher</span>
+                                <input
+                                    value={createBsdqSearchText}
+                                    placeholder={form.project_name || "Nom, numéro ou mots clés du babillard"}
+                                    onChange={
+                                        event =>
+                                            setCreateBsdqSearchText(event.target.value)
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>No BSDQ</span>
+                                <input
+                                    value={form.bsdq_project_number || ""}
+                                    onChange={
+                                        event =>
+                                            setForm(
+                                                {
+                                                    ...form,
+                                                    bsdq_project_number: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Heure tombée</span>
+                                <input
+                                    type="time"
+                                    value={form.bsdq_due_time || ""}
+                                    onChange={
+                                        event =>
+                                            setForm(
+                                                {
+                                                    ...form,
+                                                    bsdq_due_time: event.target.value || null
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+                        </div>
+
+                        {createBsdqSearchError && (
+                            <div className="business-error">
+                                {createBsdqSearchError}
+                            </div>
+                        )}
+
+                        {!createBsdqSearchError && createBsdqResults.length === 0 && !isCreateBsdqSearching && (
+                            <div className="business-muted-panel">
+                                Recherche un projet ouvert au babillard BSDQ et remplit le numéro BSDQ, la date et l'heure de tombée.
+                            </div>
+                        )}
+
+                        {renderBsdqResults(
+                            createBsdqResults,
+                            applyBsdqResultToForm
+                        )}
+                    </section>
 
                     <div className="business-upload-grid">
                         <div
@@ -1966,6 +2191,9 @@ function ProjectsPage({
                                 <th>Client</th>
                                 <th>Adresse</th>
                                 <th>Dépôt</th>
+                                {projectMenu === "En Soumission" && (
+                                    <th>BSDQ</th>
+                                )}
                                 <th>Échéancier</th>
                                 <th>Révisions</th>
                                 {projectMenu === "En Soumission" && (
@@ -1981,13 +2209,13 @@ function ProjectsPage({
                         <tbody>
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={projectMenu === "En Soumission" ? 11 : 9}>
+                                    <td colSpan={projectMenu === "En Soumission" ? 12 : 9}>
                                         Chargement...
                                     </td>
                                 </tr>
                             ) : projects.length === 0 ? (
                                 <tr>
-                                    <td colSpan={projectMenu === "En Soumission" ? 11 : 9}>
+                                    <td colSpan={projectMenu === "En Soumission" ? 12 : 9}>
                                         Aucun projet à afficher.
                                     </td>
                                 </tr>
@@ -2000,6 +2228,16 @@ function ProjectsPage({
                                             <td>{project.client_names || "-"}</td>
                                             <td>{project.address || "-"}</td>
                                             <td>{project.bid_due_date || "-"}</td>
+                                            {projectMenu === "En Soumission" && (
+                                                <td>
+                                                    {project.bsdq_project_number || "-"}
+                                                    {project.bsdq_due_time && (
+                                                        <small className="business-muted-line">
+                                                            {project.bsdq_due_time}
+                                                        </small>
+                                                    )}
+                                                </td>
+                                            )}
                                             <td>
                                                 {project.start_date || "-"}
                                                 {" à "}
@@ -2149,6 +2387,43 @@ function ProjectsPage({
                                 </button>
                             </div>
 
+                            <div className="business-form-grid compact">
+                                <label className="business-field wide">
+                                    <span>Texte à rechercher</span>
+                                    <input
+                                        value={editBsdqSearchText}
+                                        placeholder={editingProject.project_name}
+                                        onChange={
+                                            event =>
+                                                setEditBsdqSearchText(event.target.value)
+                                        }
+                                    />
+                                </label>
+
+                                <label className="business-field">
+                                    <span>No BSDQ</span>
+                                    <input
+                                        value={editBsdqProjectNumber}
+                                        onChange={
+                                            event =>
+                                                setEditBsdqProjectNumber(event.target.value)
+                                        }
+                                    />
+                                </label>
+
+                                <label className="business-field">
+                                    <span>Heure tombée</span>
+                                    <input
+                                        type="time"
+                                        value={editBsdqDueTime}
+                                        onChange={
+                                            event =>
+                                                setEditBsdqDueTime(event.target.value)
+                                        }
+                                    />
+                                </label>
+                            </div>
+
                             {bsdqSearchError && (
                                 <div className="business-error">
                                     {bsdqSearchError}
@@ -2161,39 +2436,9 @@ function ProjectsPage({
                                 </div>
                             )}
 
-                            {bsdqResults.length > 0 && (
-                                <div className="business-compact-list">
-                                    {bsdqResults.map(
-                                        result => (
-                                            <div
-                                                key={`${result.bsdq_project_number}-${result.due_at_text}-${result.city}`}
-                                                className="business-compact-item"
-                                            >
-                                                <div>
-                                                    <strong>{result.bsdq_project_number}</strong>
-                                                    <span>{result.description}</span>
-                                                    <small>
-                                                        {result.city || "-"}
-                                                        {" | Tombée: "}
-                                                        {result.due_at_text || "Non indiquée"}
-                                                    </small>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    disabled={!result.due_date}
-                                                    onClick={
-                                                        () => {
-                                                            if (result.due_date)
-                                                                setEditBidDueDate(result.due_date);
-                                                        }
-                                                    }
-                                                >
-                                                    Utiliser date
-                                                </button>
-                                            </div>
-                                        )
-                                    )}
-                                </div>
+                            {renderBsdqResults(
+                                bsdqResults,
+                                applyBsdqResultToEdit
                             )}
                         </section>
 

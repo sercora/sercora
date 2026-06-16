@@ -144,6 +144,8 @@ CREATE TABLE project (
 
     project_number VARCHAR(50),
 
+    bsdq_project_number VARCHAR(80),
+
     project_name VARCHAR(255) NOT NULL,
 
     architect_name VARCHAR(255),
@@ -180,6 +182,8 @@ CREATE TABLE project (
 
     start_date DATE,
     end_date DATE,
+
+    bsdq_due_time VARCHAR(10),
 
     tile_holdback_percent NUMERIC(5,2),
 
