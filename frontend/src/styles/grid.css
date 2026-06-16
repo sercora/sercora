@@ -2475,18 +2475,9 @@ Couleurs fournisseurs
 }
 
 
-.sercora-grid .ag-row-pinned:last-child .ag-cell {
-
-    background-color: #ccd8e6 !important;
-
-    color: #111827;
-
-}
-
-
 .sercora-grid .ag-floating-bottom .ag-row:first-child .ag-cell {
 
-    border-top: 8px solid #000000 !important;
+    border-top: 4px solid #000000 !important;
 
 }
 
@@ -2526,7 +2517,8 @@ Couleurs fournisseurs
 }
 
 
-.sercora-grid .matrix-summary-hours .ag-cell {
+.sercora-grid .matrix-summary-hours .ag-cell,
+.sercora-grid .matrix-summary-days .ag-cell {
 
     background-color: #ffffff !important;
 
@@ -2537,7 +2529,8 @@ Couleurs fournisseurs
 }
 
 
-.sercora-grid .matrix-summary-hours .summary-label-cell {
+.sercora-grid .matrix-summary-hours .summary-label-cell,
+.sercora-grid .matrix-summary-days .summary-label-cell {
 
     color: #111111;
 

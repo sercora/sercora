@@ -77,6 +77,8 @@ const ZOOM_LEVELS: Record<string, number> = {
     "150": 1.5
 };
 
+const WORK_HOURS_PER_DAY = 8;
+
 const GRID_LOCALE_TEXT = {
     noRowsToShow: "Aucune ligne à afficher",
     loadingOoo: "Chargement...",
@@ -864,10 +866,12 @@ function MatrixView({
                     "matrix-summary-row",
                 params.data?.summary_kind === "material" ?
                     "matrix-summary-material" :
-                    params.data?.summary_kind === "installation" ?
-                        "matrix-summary-installation" :
+                        params.data?.summary_kind === "installation" ?
+                            "matrix-summary-installation" :
                         params.data?.summary_kind === "hours" ?
                             "matrix-summary-hours" :
+                        params.data?.summary_kind === "days" ?
+                            "matrix-summary-days" :
                             "matrix-summary-total-local",
                 params.data?.surface_group === "CM" ?
                     "matrix-summary-cm" :
@@ -1681,6 +1685,12 @@ function MatrixView({
             row: any
         ) {
 
+            const effectiveManpowerMultiplier =
+                Number(row.allocated_install_hours || 0) ?
+                    Number(row.install_hours || 0) /
+                        Number(row.allocated_install_hours || 0) :
+                    0;
+
             return {
                 is_summary_row: true,
                 summary_kind: "hours",
@@ -1690,6 +1700,8 @@ function MatrixView({
                     row.surface_group,
                 product_name:
                     "Nbr d'heure_" + row.surface_group,
+                manpower_multiplier:
+                    effectiveManpowerMultiplier.toFixed(2),
                 install_hours:
                     Number(row.install_hours || 0).toFixed(2),
                 allocated_install_hours:
@@ -1706,6 +1718,62 @@ function MatrixView({
                                                 "_installation"
                                         ] || 0
                                     ) / hourlyRate :
+                                    0
+                            ).toFixed(2)
+                        ]
+                    )
+                )
+            };
+
+        }
+
+        function daysRow(
+            row: any
+        ) {
+
+            const effectiveManpowerMultiplier =
+                Number(row.allocated_install_hours || 0) ?
+                    Number(row.install_hours || 0) /
+                        Number(row.allocated_install_hours || 0) :
+                    0;
+
+            return {
+                is_summary_row: true,
+                summary_kind: "days",
+                surface_name:
+                    row.surface_name,
+                surface_group:
+                    row.surface_group,
+                product_name:
+                    "Nbr de jour_" + row.surface_group,
+                manpower_multiplier:
+                    effectiveManpowerMultiplier.toFixed(2),
+                install_hours:
+                    (
+                        Number(row.install_hours || 0) /
+                        WORK_HOURS_PER_DAY
+                    ).toFixed(2),
+                allocated_install_hours:
+                    (
+                        Number(row.allocated_install_hours || 0) /
+                        WORK_HOURS_PER_DAY
+                    ).toFixed(2),
+                ...Object.fromEntries(
+                    roomFields.map(
+                        roomField => [
+                            roomField,
+                            (
+                                hourlyRate ?
+                                    (
+                                        Number(
+                                            row[
+                                                roomField +
+                                                    "_installation"
+                                            ] || 0
+                                        ) /
+                                        hourlyRate /
+                                        WORK_HOURS_PER_DAY
+                                    ) :
                                     0
                             ).toFixed(2)
                         ]
@@ -1759,9 +1827,11 @@ function MatrixView({
                 totalRow,
                 true
             ),
-            ...orderedSurfaceTotals.map(
-                row =>
-                    hoursRow(row)
+            ...orderedSurfaceTotals.flatMap(
+                row => [
+                    hoursRow(row),
+                    daysRow(row)
+                ]
             )
         ];
 

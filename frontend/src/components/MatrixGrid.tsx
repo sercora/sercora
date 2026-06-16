@@ -79,6 +79,11 @@ const MatrixGrid = forwardRef<any, MatrixGridProps>(
 
                     domLayout="autoHeight"
 
+                    getRowHeight={(params: any) =>
+                        params.node?.rowPinned ?
+                            26 :
+                            22}
+
                     rowHeight={22}
 
                     headerHeight={34}
