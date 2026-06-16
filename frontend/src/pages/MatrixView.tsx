@@ -4739,6 +4739,22 @@ function MatrixView({
                                 <div className="summary-value revision-date">
                                     {formatDate(matrixSummary.estimate.last_revision_at)}
                                 </div>
+                                <div className="summary-label strong">Client</div>
+                                <div className="summary-value strong">
+                                    {matrixSummary.clients.map(
+                                        client => client.name
+                                    ).join(", ")}
+                                </div>
+                                <div className="summary-label">type:</div>
+                                <div className="summary-value">
+                                    {matrixSummary.clients.map(
+                                        client => client.type
+                                    ).filter(Boolean).join(", ")}
+                                </div>
+                                <div className="summary-label">courriel:</div>
+                                <div className="summary-value"></div>
+                                <div className="summary-label">tél:</div>
+                                <div className="summary-value"></div>
                             </div>
 
                             <div className="estimate-summary-plan-details">
@@ -4840,25 +4856,6 @@ function MatrixView({
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="estimate-summary-client">
-                            <div className="summary-label strong">Client</div>
-                            <div className="summary-value strong">
-                                {matrixSummary.clients.map(
-                                    client => client.name
-                                ).join(", ")}
-                            </div>
-                            <div className="summary-label">type:</div>
-                            <div className="summary-value">
-                                {matrixSummary.clients.map(
-                                    client => client.type
-                                ).filter(Boolean).join(", ")}
-                            </div>
-                            <div className="summary-label">courriel:</div>
-                            <div className="summary-value"></div>
-                            <div className="summary-label">tél:</div>
-                            <div className="summary-value"></div>
                         </div>
 
                         <div className="estimate-summary-suppliers">
