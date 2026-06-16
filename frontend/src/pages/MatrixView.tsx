@@ -128,7 +128,7 @@ const GRID_LOCALE_TEXT = {
 };
 
 
-type EstimateMenuKey = "En cours" | "Envoyées" | "Refusées";
+type EstimateMenuKey = "En cours" | "Envoyées" | "Refusé" | "Template";
 
 
 type MatrixViewProps = {
@@ -372,6 +372,9 @@ function MatrixView({
 
             if (estimateMenu === "Envoyées")
                 return "sent";
+
+            if (estimateMenu === "Refusé")
+                return "rejected";
 
             return null;
         },

@@ -12,8 +12,12 @@ router = APIRouter()
 
 NAS_ESTIMATE_ROOTS = {
     "in_progress": Path("/NAS/Soumissions en cours"),
-    "sent": Path("/NAS/Soumissions envoyées")
+    "sent": Path("/NAS/Soumissions envoyées"),
+    "rejected": Path("/NAS/@Recycle/Soumissions en cours")
 }
+
+
+ESTIMATE_FOLDER_STATUS_PATTERN = "^(in_progress|sent|rejected)$"
 
 
 def estimate_root(
@@ -80,7 +84,7 @@ def folder_item_payload(
 
 @router.get("/estimate-folders")
 def get_estimate_folders(
-    status: str = Query(..., pattern="^(in_progress|sent)$"),
+    status: str = Query(..., pattern=ESTIMATE_FOLDER_STATUS_PATTERN),
     path: str = ""
 ):
 
@@ -125,7 +129,7 @@ def get_estimate_folders(
 
 @router.get("/estimate-files")
 def get_estimate_file(
-    status: str = Query(..., pattern="^(in_progress|sent)$"),
+    status: str = Query(..., pattern=ESTIMATE_FOLDER_STATUS_PATTERN),
     path: str = Query(..., min_length=1)
 ):
 

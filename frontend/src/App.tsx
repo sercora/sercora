@@ -20,7 +20,7 @@ import "./App.css";
 
 type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura" | "Olympia";
-type EstimateMenuKey = "En cours" | "Envoyées" | "Refusées";
+type EstimateMenuKey = "En cours" | "Envoyées" | "Refusé" | "Template";
 type ConfigurationMenuKey = "Courriel" | "Importation";
 
 
@@ -52,7 +52,8 @@ const TILE_SUPPLIER_MENU_ITEMS: ProductMenuKey[] = [
 const ESTIMATE_MENU_ITEMS: EstimateMenuKey[] = [
     "En cours",
     "Envoyées",
-    "Refusées"
+    "Refusé",
+    "Template"
 ];
 
 

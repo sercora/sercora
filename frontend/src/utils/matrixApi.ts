@@ -3,7 +3,7 @@ export const API_URL =
     "https://api.serco.pro";
 
 
-export type EstimateFolderStatus = "in_progress" | "sent";
+export type EstimateFolderStatus = "in_progress" | "sent" | "rejected";
 
 
 export type EstimateFolderItem = {
