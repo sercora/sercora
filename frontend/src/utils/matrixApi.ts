@@ -138,6 +138,16 @@ export type EstimateLineInput = {
 };
 
 
+export type EstimateLineProductUpdateInput = {
+    product_id: number;
+    surface_type_id: number;
+    unit_id: number;
+    grout_color: string | null;
+    purchase_price: number;
+    apply_matching_product: boolean;
+};
+
+
 function parseResponse(response: Response) {
 
     if (!response.ok)
@@ -454,6 +464,46 @@ export function updateEstimateLinePosition(
                 {
                     position
                 }
+            )
+
+        }
+
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function updateEstimateLineProduct(
+    lineId: number,
+    update: EstimateLineProductUpdateInput
+): Promise<{
+    id: number;
+    updated_lines: number;
+    message: string;
+}> {
+
+    return fetch(
+
+        API_URL +
+        "/estimate-lines/" +
+        lineId +
+        "/product",
+
+        {
+
+            method: "PUT",
+
+            headers: {
+
+                "Content-Type":
+                    "application/json"
+
+            },
+
+            body: JSON.stringify(
+                update
             )
 
         }

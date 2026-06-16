@@ -30,6 +30,7 @@ import {
     fetchSurfaceTypes,
     updateEstimateMatrixSummary,
     updateEstimateRoom,
+    updateEstimateLineProduct,
     updateEstimateLinePosition,
     updateEstimateLine as saveEstimateLine,
     updateEstimateQuantity as saveEstimateQuantity
@@ -303,6 +304,14 @@ function MatrixView({
     const [newLinePosition, setNewLinePosition] = useState("");
     const [productResults, setProductResults] = useState<Product[]>([]);
     const [selectedProductId, setSelectedProductId] = useState("");
+    const [replaceLine, setReplaceLine] = useState<any | null>(null);
+    const [replaceProductSearch, setReplaceProductSearch] = useState("");
+    const [replaceProductResults, setReplaceProductResults] = useState<Product[]>([]);
+    const [selectedReplaceProductId, setSelectedReplaceProductId] = useState("");
+    const [replaceSurfaceTypeId, setReplaceSurfaceTypeId] = useState("");
+    const [replaceMatchingProduct, setReplaceMatchingProduct] = useState(false);
+    const [replaceProductStatus, setReplaceProductStatus] = useState("");
+    const [isReplaceProductLoading, setIsReplaceProductLoading] = useState(false);
     const [matrixActionStatus, setMatrixActionStatus] = useState("");
     const [isMatrixActionLoading, setIsMatrixActionLoading] = useState(false);
     const [units, setUnits] = useState<Unit[]>([]);
@@ -406,6 +415,19 @@ function MatrixView({
         [
             productResults,
             selectedProductId
+        ]
+    );
+
+
+    const selectedReplaceProduct = useMemo(
+        () =>
+            replaceProductResults.find(
+                product =>
+                    String(product.id) === selectedReplaceProductId
+            ) || null,
+        [
+            replaceProductResults,
+            selectedReplaceProductId
         ]
     );
 
@@ -732,6 +754,11 @@ function MatrixView({
 
         const field =
             params.column.getColId();
+
+        if (field === "replace_product") {
+            openReplaceProductDialog(params.data);
+            return;
+        }
 
         if (
             field !== "product_name" ||
@@ -1280,6 +1307,20 @@ function MatrixView({
                         ].filter(Boolean)
                     },
                     {
+                        field: "replace_product",
+                        headerName: "",
+                        width: 74,
+                        minWidth: 68,
+                        maxWidth: 82,
+                        pinned: "left",
+                        sortable: false,
+                        filter: false,
+                        resizable: false,
+                        suppressMovable: true,
+                        cellRenderer: () => "Changer",
+                        cellClass: "replace-product-cell"
+                    },
+                    {
                         field: "unit_name",
                         headerName: "UNITÉ DE MESURE",
                         width: 92,
@@ -1636,6 +1677,141 @@ function MatrixView({
         .finally(
             () => {
                 setIsMatrixActionLoading(false);
+            }
+        );
+
+    }
+
+
+    function openReplaceProductDialog(
+        row: any
+    ) {
+
+        setReplaceLine(row);
+        setReplaceProductSearch("");
+        setReplaceProductResults([]);
+        setSelectedReplaceProductId("");
+        setReplaceSurfaceTypeId(String(row.surface_type_id || ""));
+        setReplaceMatchingProduct(false);
+        setReplaceProductStatus("");
+
+    }
+
+
+    function searchReplacementProducts() {
+
+        setIsReplaceProductLoading(true);
+        setReplaceProductStatus("");
+
+        fetchProductPage(
+            {
+                limit: null,
+                offset: 0,
+                search: replaceProductSearch.trim(),
+                supplier: "",
+                status: "active",
+                productMenu: "Tous"
+            }
+        )
+
+        .then(
+            response => {
+                setReplaceProductResults(response.rows);
+                setSelectedReplaceProductId(
+                    response.rows[0] ?
+                        String(response.rows[0].id) :
+                        ""
+                );
+                setReplaceProductStatus(
+                    response.rows.length ?
+                        response.total + " produit(s) trouvé(s)." :
+                        "Aucun produit trouvé."
+                );
+            }
+        )
+
+        .catch(
+            () => {
+                setReplaceProductResults([]);
+                setSelectedReplaceProductId("");
+                setReplaceProductStatus("Recherche de produit impossible.");
+            }
+        )
+
+        .finally(
+            () => {
+                setIsReplaceProductLoading(false);
+            }
+        );
+
+    }
+
+
+    function replaceLineProduct() {
+
+        if (!replaceLine)
+            return;
+
+        if (!selectedReplaceProduct) {
+            setReplaceProductStatus("Sélectionner un produit.");
+            return;
+        }
+
+        if (!selectedReplaceProduct.default_unit_id) {
+            setReplaceProductStatus("Ce produit n'a pas d'unité par défaut.");
+            return;
+        }
+
+        const surfaceTypeId =
+            Number(replaceSurfaceTypeId);
+
+        if (!surfaceTypeId) {
+            setReplaceProductStatus("Sélectionner une surface.");
+            return;
+        }
+
+        setIsReplaceProductLoading(true);
+        setReplaceProductStatus("");
+
+        updateEstimateLineProduct(
+            replaceLine.line_id,
+            {
+                product_id:
+                    selectedReplaceProduct.id,
+                surface_type_id:
+                    surfaceTypeId,
+                unit_id:
+                    selectedReplaceProduct.default_unit_id,
+                grout_color:
+                    selectedReplaceProduct.default_grout_color,
+                purchase_price:
+                    selectedReplaceProduct.default_purchase_price ?? 0,
+                apply_matching_product:
+                    replaceMatchingProduct
+            }
+        )
+
+        .then(
+            response => {
+                setReplaceLine(null);
+                setMatrixActionStatus(
+                    response.updated_lines > 1 ?
+                        response.updated_lines + " lignes remplacées." :
+                        "Produit remplacé."
+                );
+                return reloadMatrix();
+            }
+        )
+
+        .catch(
+            () => {
+                setReplaceProductStatus("Remplacement du produit impossible.");
+            }
+        )
+
+        .finally(
+            () => {
+                setIsReplaceProductLoading(false);
             }
         );
 
@@ -2532,6 +2708,166 @@ function MatrixView({
     }
 
 
+    function renderReplaceProductDialog() {
+
+        if (!replaceLine)
+            return null;
+
+        return (
+            <div className="matrix-modal-backdrop">
+                <section className="matrix-product-modal replace-product-modal">
+                    <header>
+                        <h2>Changer le produit</h2>
+                        <button
+                            type="button"
+                            onClick={
+                                () => {
+                                    setReplaceLine(null);
+                                    setReplaceProductStatus("");
+                                }
+                            }
+                        >
+                            Fermer
+                        </button>
+                    </header>
+
+                    <div className="replace-product-content">
+                        <div className="replace-product-current">
+                            <span>Ligne {replaceLine.line_number}</span>
+                            <strong>{replaceLine.product_name}</strong>
+                            <span>{replaceLine.surface_name}</span>
+                        </div>
+
+                        <div className="replace-product-search">
+                            <input
+                                type="search"
+                                value={replaceProductSearch}
+                                onChange={
+                                    event =>
+                                        setReplaceProductSearch(
+                                            event.target.value
+                                        )
+                                }
+                                onKeyDown={
+                                    event => {
+                                        if (event.key === "Enter")
+                                            searchReplacementProducts();
+                                    }
+                                }
+                                placeholder="Rechercher le nouveau produit"
+                            />
+                            <button
+                                type="button"
+                                onClick={searchReplacementProducts}
+                                disabled={isReplaceProductLoading}
+                            >
+                                Chercher
+                            </button>
+                        </div>
+
+                        <div className="replace-product-results">
+                            {replaceProductResults.map(
+                                product => (
+                                    <button
+                                        key={product.id}
+                                        type="button"
+                                        className={
+                                            String(product.id) === selectedReplaceProductId ?
+                                                "selected" :
+                                                ""
+                                        }
+                                        onClick={
+                                            () =>
+                                                setSelectedReplaceProductId(
+                                                    String(product.id)
+                                                )
+                                        }
+                                    >
+                                        {[
+                                            product.manufacturer_name,
+                                            product.name,
+                                            product.size_name,
+                                            product.supplier_product_code
+                                        ].filter(Boolean).join(" - ")}
+                                    </button>
+                                )
+                            )}
+                            {replaceProductResults.length === 0 && (
+                                <div>Aucun produit sélectionné.</div>
+                            )}
+                        </div>
+
+                        <label className="replace-product-surface">
+                            Nouvelle surface de cette ligne
+                            <select
+                                value={replaceSurfaceTypeId}
+                                onChange={
+                                    event =>
+                                        setReplaceSurfaceTypeId(
+                                            event.target.value
+                                        )
+                                }
+                            >
+                                <option value="">Sélectionner une surface</option>
+                                {surfaceTypes.map(
+                                    surface => (
+                                        <option
+                                            key={surface.id}
+                                            value={surface.id}
+                                        >
+                                            {surface.name}
+                                        </option>
+                                    )
+                                )}
+                            </select>
+                        </label>
+
+                        <label className="replace-product-apply-all">
+                            <input
+                                type="checkbox"
+                                checked={replaceMatchingProduct}
+                                onChange={
+                                    event =>
+                                        setReplaceMatchingProduct(
+                                            event.target.checked
+                                        )
+                                }
+                            />
+                            Remplacer aussi les autres lignes de ce produit dans les autres surfaces
+                        </label>
+                    </div>
+
+                    <footer>
+                        {replaceProductStatus && (
+                            <span>{replaceProductStatus}</span>
+                        )}
+                        <button
+                            type="button"
+                            onClick={
+                                () => {
+                                    setReplaceLine(null);
+                                    setReplaceProductStatus("");
+                                }
+                            }
+                            disabled={isReplaceProductLoading}
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="button"
+                            onClick={replaceLineProduct}
+                            disabled={isReplaceProductLoading}
+                        >
+                            Remplacer
+                        </button>
+                    </footer>
+                </section>
+            </div>
+        );
+
+    }
+
+
     function renderTileSurfaceSelector() {
 
         if (!tileSurfaceProduct)
@@ -3190,6 +3526,8 @@ function MatrixView({
             {renderMatrixSummary()}
 
             {renderMatrixActions()}
+
+            {renderReplaceProductDialog()}
 
             {renderTileSurfaceSelector()}
 

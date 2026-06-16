@@ -950,6 +950,211 @@
 }
 
 
+.replace-product-modal {
+
+    width: min(780px, 100%);
+
+}
+
+
+.replace-product-content {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 12px;
+
+    padding: 14px;
+
+}
+
+
+.replace-product-current {
+
+    display: grid;
+
+    grid-template-columns: 70px minmax(0, 1fr) 140px;
+
+    gap: 8px;
+
+    align-items: center;
+
+    padding: 8px 10px;
+
+    border: 1px solid #c9ced6;
+
+    border-radius: 4px;
+
+    background-color: #f6f8fa;
+
+    color: #171a1f;
+
+    font-size: 13px;
+
+}
+
+
+.replace-product-current strong {
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+}
+
+
+.replace-product-search {
+
+    display: flex;
+
+    gap: 8px;
+
+}
+
+
+.replace-product-search input,
+.replace-product-surface select {
+
+    height: 32px;
+
+    padding: 0 8px;
+
+    border: 1px solid #b9c0ca;
+
+    border-radius: 4px;
+
+    background-color: #ffffff;
+
+    color: #171a1f;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 13px;
+
+}
+
+
+.replace-product-search input {
+
+    flex: 1 1 auto;
+
+}
+
+
+.replace-product-search button {
+
+    height: 32px;
+
+    padding: 0 10px;
+
+    border: 1px solid #2f6f43;
+
+    border-radius: 4px;
+
+    background-color: #2f6f43;
+
+    color: #ffffff;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+}
+
+
+.replace-product-results {
+
+    display: flex;
+
+    flex-direction: column;
+
+    max-height: 220px;
+
+    border: 1px solid #b9c0ca;
+
+    border-radius: 4px;
+
+    background-color: #ffffff;
+
+    overflow-y: auto;
+
+}
+
+
+.replace-product-results button,
+.replace-product-results div {
+
+    flex: 0 0 auto;
+
+    min-height: 30px;
+
+    padding: 6px 8px;
+
+    border: 0;
+
+    border-bottom: 1px solid #e0e4e8;
+
+    background-color: #ffffff;
+
+    color: #171a1f;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 12px;
+
+    text-align: left;
+
+}
+
+
+.replace-product-results button.selected {
+
+    background-color: #d7e8d0;
+
+    font-weight: 700;
+
+}
+
+
+.replace-product-surface,
+.replace-product-apply-all {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    color: #3a424c;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+}
+
+
+.replace-product-surface {
+
+    flex-direction: column;
+
+    align-items: flex-start;
+
+}
+
+
+.replace-product-surface select {
+
+    width: min(320px, 100%);
+
+}
+
+
 .room-editor-modal {
 
     width: min(760px, 100%);
@@ -1697,6 +1902,23 @@ Couleurs fournisseurs
     text-decoration: underline;
 
     text-underline-offset: 2px;
+
+}
+
+
+.sercora-grid .replace-product-cell {
+
+    background-color: #eef1f2 !important;
+
+    color: #2f6f43;
+
+    cursor: pointer;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    text-align: center;
 
 }
 

@@ -29,6 +29,15 @@ class EstimateLinePositionUpdate(BaseModel):
     position: int
 
 
+class EstimateLineProductUpdate(BaseModel):
+    product_id: int
+    surface_type_id: int
+    unit_id: int
+    grout_color: Optional[str] = None
+    purchase_price: float
+    apply_matching_product: bool = False
+
+
 class EstimateLineResponse(BaseModel):
     id: int
     estimate_id: int

@@ -4,6 +4,7 @@ from sqlalchemy import text
 from app.database.database import SessionLocal
 from app.schemas.estimate_line import EstimateLineCreate
 from app.schemas.estimate_line import EstimateLinePositionUpdate
+from app.schemas.estimate_line import EstimateLineProductUpdate
 from app.schemas.estimate_line import EstimateLineUpdate
 
 router = APIRouter()
@@ -403,6 +404,118 @@ def update_estimate_line_position(
         "id": line_id,
         "position": target_position,
         "message": "Estimate line position updated"
+    }
+
+
+@router.put("/estimate-lines/{line_id}/product")
+def update_estimate_line_product(
+    line_id: int,
+    update: EstimateLineProductUpdate
+):
+
+    db = SessionLocal()
+
+    line_row = db.execute(
+        text(
+            """
+            SELECT
+                id,
+                estimate_id,
+                product_id
+            FROM estimate_line
+            WHERE id = :id
+            """
+        ),
+        {
+            "id": line_id
+        }
+    ).fetchone()
+
+    if line_row is None:
+
+        db.close()
+
+        raise HTTPException(
+            status_code=404,
+            detail="Estimate line not found"
+        )
+
+    if update.apply_matching_product:
+
+        result = db.execute(
+            text(
+                """
+                UPDATE estimate_line
+                SET
+                    product_id = :product_id,
+                    unit_id = :unit_id,
+                    grout_color = :grout_color,
+                    purchase_price = :purchase_price
+                WHERE estimate_id = :estimate_id
+                    AND product_id = :old_product_id
+                """
+            ),
+            {
+                "estimate_id": line_row.estimate_id,
+                "old_product_id": line_row.product_id,
+                "product_id": update.product_id,
+                "unit_id": update.unit_id,
+                "grout_color": update.grout_color,
+                "purchase_price": update.purchase_price
+            }
+        )
+
+        db.execute(
+            text(
+                """
+                UPDATE estimate_line
+                SET surface_type_id = :surface_type_id
+                WHERE id = :id
+                """
+            ),
+            {
+                "id": line_id,
+                "surface_type_id": update.surface_type_id
+            }
+        )
+
+        updated_lines = result.rowcount
+
+    else:
+
+        result = db.execute(
+            text(
+                """
+                UPDATE estimate_line
+                SET
+                    product_id = :product_id,
+                    surface_type_id = :surface_type_id,
+                    unit_id = :unit_id,
+                    grout_color = :grout_color,
+                    purchase_price = :purchase_price
+                WHERE id = :id
+                """
+            ),
+            {
+                "id": line_id,
+                "product_id": update.product_id,
+                "surface_type_id": update.surface_type_id,
+                "unit_id": update.unit_id,
+                "grout_color": update.grout_color,
+                "purchase_price": update.purchase_price
+            }
+        )
+
+        updated_lines = result.rowcount
+
+    db.commit()
+
+    db.close()
+
+    return {
+        "id": line_id,
+        "updated_lines": updated_lines,
+        "message": "Estimate line product updated"
     }
 
 
