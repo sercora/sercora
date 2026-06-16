@@ -20,7 +20,13 @@ CURRENT_RATE_INFO = {
 class MatrixSummaryUpdate(BaseModel):
     used_hourly_rate: float | None = Field(default=None, ge=0)
     global_profit_percent: float | None = Field(default=None, ge=0)
+    architect_name: str | None = None
+    plan_date: str | None = None
+    plan_pages: str | None = None
+    spec_sections: str | None = None
     probable_schedule: str | None = None
+    probable_schedule_from: str | None = None
+    probable_schedule_to: str | None = None
     tile_holdback_percent: float | None = Field(default=None, ge=0)
     warranty_years: int | None = Field(default=None, ge=0)
 
@@ -104,12 +110,18 @@ def estimate_summary(
                 p.id AS project_id,
                 p.project_number,
                 p.project_name,
+                p.architect_name,
+                p.plan_date,
+                p.plan_pages,
+                p.spec_sections,
                 p.address_line1,
                 p.address_line2,
                 p.city,
                 p.province,
                 p.postal_code,
                 p.probable_schedule,
+                p.start_date,
+                p.end_date,
                 p.tile_holdback_percent,
                 p.warranty_years,
                 (
@@ -242,6 +254,10 @@ def estimate_summary(
             "id": estimate_row.project_id,
             "number": estimate_row.project_number,
             "name": estimate_row.project_name,
+            "architect_name": estimate_row.architect_name,
+            "plan_date": iso_date(estimate_row.plan_date),
+            "plan_pages": estimate_row.plan_pages,
+            "spec_sections": estimate_row.spec_sections,
             "address": build_address(estimate_row)
         },
         "estimate": {
@@ -275,6 +291,8 @@ def estimate_summary(
                 else None
             ),
             "probable_schedule": estimate_row.probable_schedule,
+            "probable_schedule_from": iso_date(estimate_row.start_date),
+            "probable_schedule_to": iso_date(estimate_row.end_date),
             "tile_holdback_percent": (
                 float(estimate_row.tile_holdback_percent)
                 if estimate_row.tile_holdback_percent is not None
@@ -648,7 +666,13 @@ def update_matrix_summary(
                 """
                 UPDATE project
                 SET
+                    architect_name = :architect_name,
+                    plan_date = CAST(:plan_date AS DATE),
+                    plan_pages = :plan_pages,
+                    spec_sections = :spec_sections,
                     probable_schedule = :probable_schedule,
+                    start_date = CAST(:probable_schedule_from AS DATE),
+                    end_date = CAST(:probable_schedule_to AS DATE),
                     tile_holdback_percent = :tile_holdback_percent,
                     warranty_years = :warranty_years
                 WHERE id = :project_id
@@ -656,7 +680,13 @@ def update_matrix_summary(
             ),
             {
                 "project_id": estimate_row.project_id,
+                "architect_name": update.architect_name,
+                "plan_date": update.plan_date,
+                "plan_pages": update.plan_pages,
+                "spec_sections": update.spec_sections,
                 "probable_schedule": update.probable_schedule,
+                "probable_schedule_from": update.probable_schedule_from,
+                "probable_schedule_to": update.probable_schedule_to,
                 "tile_holdback_percent": update.tile_holdback_percent,
                 "warranty_years": update.warranty_years
             }

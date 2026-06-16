@@ -28,6 +28,10 @@ export type EstimateMatrixSummary = {
         id: number;
         number: string | null;
         name: string;
+        architect_name: string | null;
+        plan_date: string | null;
+        plan_pages: string | null;
+        spec_sections: string | null;
         address: string;
     };
     estimate: {
@@ -52,6 +56,8 @@ export type EstimateMatrixSummary = {
         used_hourly_rate: number | null;
         global_profit_percent: number | null;
         probable_schedule: string | null;
+        probable_schedule_from: string | null;
+        probable_schedule_to: string | null;
         tile_holdback_percent: number | null;
         warranty_years: number | null;
     };
@@ -78,7 +84,13 @@ export type EstimateMatrixSummary = {
 export type EstimateMatrixSummaryInput = {
     used_hourly_rate: number | null;
     global_profit_percent: number | null;
+    architect_name: string | null;
+    plan_date: string | null;
+    plan_pages: string | null;
+    spec_sections: string | null;
     probable_schedule: string | null;
+    probable_schedule_from: string | null;
+    probable_schedule_to: string | null;
     tile_holdback_percent: number | null;
     warranty_years: number | null;
 };

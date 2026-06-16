@@ -292,7 +292,13 @@ function MatrixView({
     const [summaryForm, setSummaryForm] = useState({
         used_hourly_rate: "",
         global_profit_percent: "",
+        architect_name: "",
+        plan_date: "",
+        plan_pages: "",
+        spec_sections: "",
         probable_schedule: "",
+        probable_schedule_from: "",
+        probable_schedule_to: "",
         tile_holdback_percent: "",
         warranty_years: ""
     });
@@ -1239,8 +1245,25 @@ function MatrixView({
                 nullableNumber(summaryForm.used_hourly_rate),
             global_profit_percent:
                 nullableNumber(summaryForm.global_profit_percent),
+            architect_name:
+                summaryForm.architect_name.trim() || null,
+            plan_date:
+                summaryForm.plan_date || null,
+            plan_pages:
+                summaryForm.plan_pages.trim() || null,
+            spec_sections:
+                summaryForm.spec_sections.trim() || null,
             probable_schedule:
-                summaryForm.probable_schedule.trim() || null,
+                [
+                    summaryForm.probable_schedule_from,
+                    summaryForm.probable_schedule_to
+                ].filter(Boolean).join(" à ") ||
+                summaryForm.probable_schedule.trim() ||
+                null,
+            probable_schedule_from:
+                summaryForm.probable_schedule_from || null,
+            probable_schedule_to:
+                summaryForm.probable_schedule_to || null,
             tile_holdback_percent:
                 nullableNumber(summaryForm.tile_holdback_percent),
             warranty_years:
@@ -1260,8 +1283,20 @@ function MatrixView({
                     summary.rates.used_hourly_rate?.toString() || "",
                 global_profit_percent:
                     summary.rates.global_profit_percent?.toString() || "",
+                architect_name:
+                    summary.project.architect_name || "",
+                plan_date:
+                    summary.project.plan_date || "",
+                plan_pages:
+                    summary.project.plan_pages || "",
+                spec_sections:
+                    summary.project.spec_sections || "",
                 probable_schedule:
                     summary.rates.probable_schedule || "",
+                probable_schedule_from:
+                    summary.rates.probable_schedule_from || "",
+                probable_schedule_to:
+                    summary.rates.probable_schedule_to || "",
                 tile_holdback_percent:
                     summary.rates.tile_holdback_percent?.toString() || "",
                 warranty_years:
@@ -3700,6 +3735,70 @@ function MatrixView({
                             </div>
                         </div>
 
+                        <div className="estimate-summary-plan-details">
+                            <label>
+                                <span>Architecte:</span>
+                                <input
+                                    type="text"
+                                    value={summaryForm.architect_name}
+                                    onChange={
+                                        event =>
+                                            updateSummaryForm(
+                                                "architect_name",
+                                                event.target.value
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label>
+                                <span>Date plans:</span>
+                                <input
+                                    type="date"
+                                    value={summaryForm.plan_date}
+                                    onChange={
+                                        event =>
+                                            updateSummaryForm(
+                                                "plan_date",
+                                                event.target.value
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="wide">
+                                <span>Pages de plans:</span>
+                                <textarea
+                                    rows={3}
+                                    placeholder="Page | Nom | Description"
+                                    value={summaryForm.plan_pages}
+                                    onChange={
+                                        event =>
+                                            updateSummaryForm(
+                                                "plan_pages",
+                                                event.target.value
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="wide">
+                                <span>Devis:</span>
+                                <textarea
+                                    rows={3}
+                                    placeholder="Section devis | Pages"
+                                    value={summaryForm.spec_sections}
+                                    onChange={
+                                        event =>
+                                            updateSummaryForm(
+                                                "spec_sections",
+                                                event.target.value
+                                            )
+                                    }
+                                />
+                            </label>
+                        </div>
+
                         <div className="estimate-summary-client">
                             <div className="summary-label strong">Client</div>
                             <div className="summary-value strong">
@@ -3837,22 +3936,43 @@ function MatrixView({
 
                         <div className="rates-grid project-settings">
                             <div className="rates-label">Échéancier probable</div>
-                            <input
-                                type="text"
-                                value={summaryForm.probable_schedule}
-                                onChange={
-                                    event =>
-                                        updateSummaryForm(
-                                            "probable_schedule",
-                                            event.target.value
-                                        )
-                                }
-                            />
+                            <div className="schedule-range">
+                                <label>
+                                    De:
+                                    <input
+                                        type="date"
+                                        value={summaryForm.probable_schedule_from}
+                                        onChange={
+                                            event =>
+                                                updateSummaryForm(
+                                                    "probable_schedule_from",
+                                                    event.target.value
+                                                )
+                                        }
+                                    />
+                                </label>
+                                <label>
+                                    À:
+                                    <input
+                                        type="date"
+                                        value={summaryForm.probable_schedule_to}
+                                        onChange={
+                                            event =>
+                                                updateSummaryForm(
+                                                    "probable_schedule_to",
+                                                    event.target.value
+                                                )
+                                        }
+                                    />
+                                </label>
+                            </div>
 
                             <div className="rates-label">Remise fin de projet</div>
                             <input
+                                className="short-number"
                                 type="number"
                                 step="0.01"
+                                maxLength={2}
                                 value={summaryForm.tile_holdback_percent}
                                 onChange={
                                     event =>
@@ -3865,8 +3985,10 @@ function MatrixView({
 
                             <div className="rates-label">Période de garantie</div>
                             <input
+                                className="short-number"
                                 type="number"
                                 step="1"
+                                maxLength={2}
                                 value={summaryForm.warranty_years}
                                 onChange={
                                     event =>

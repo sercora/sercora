@@ -146,6 +146,14 @@ CREATE TABLE project (
 
     project_name VARCHAR(255) NOT NULL,
 
+    architect_name VARCHAR(255),
+
+    plan_date DATE,
+
+    plan_pages TEXT,
+
+    spec_sections TEXT,
+
     status VARCHAR(50) DEFAULT 'PENDING',
 
     address_line1 VARCHAR(255),

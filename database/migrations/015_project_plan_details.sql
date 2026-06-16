@@ -1,0 +1,5 @@
+ALTER TABLE project
+    ADD COLUMN IF NOT EXISTS architect_name VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS plan_date DATE,
+    ADD COLUMN IF NOT EXISTS plan_pages TEXT,
+    ADD COLUMN IF NOT EXISTS spec_sections TEXT;

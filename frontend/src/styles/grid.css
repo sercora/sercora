@@ -12,6 +12,10 @@
 
     background-color: #f4f5f7;
 
+    overflow-y: auto;
+
+    overflow-x: hidden;
+
 }
 
 
@@ -70,6 +74,86 @@
     align-items: center;
 
     width: min(640px, 100%);
+
+}
+
+
+.estimate-summary-plan-details {
+
+    display: grid;
+
+    grid-template-columns: 150px minmax(160px, 190px) 92px minmax(140px, 170px);
+
+    gap: 0;
+
+    width: min(640px, 100%);
+
+}
+
+
+.estimate-summary-plan-details label {
+
+    display: contents;
+
+}
+
+
+.estimate-summary-plan-details label.wide {
+
+    grid-column: 1 / -1;
+
+}
+
+
+.estimate-summary-plan-details span,
+.estimate-summary-plan-details input,
+.estimate-summary-plan-details textarea {
+
+    min-height: 22px;
+
+    padding: 2px 6px;
+
+    border: 1px solid #1f1f1f;
+
+    background-color: #ffffff;
+
+    color: #111111;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 13px;
+
+    line-height: 17px;
+
+}
+
+
+.estimate-summary-plan-details span {
+
+    border-right: 0;
+
+    font-weight: 700;
+
+    text-align: right;
+
+}
+
+
+.estimate-summary-plan-details input,
+.estimate-summary-plan-details textarea {
+
+    width: 100%;
+
+    min-width: 0;
+
+}
+
+
+.estimate-summary-plan-details textarea {
+
+    grid-column: 2 / -1;
+
+    resize: vertical;
 
 }
 
@@ -388,7 +472,9 @@
 
 .project-settings {
 
-    grid-template-columns: 150px 116px;
+    grid-template-columns: 150px 240px;
+
+    width: 390px;
 
 }
 
@@ -404,9 +490,50 @@
 }
 
 
-.project-settings input:last-child {
+.project-settings .short-number {
 
-    background-color: #fff200;
+    width: 48px;
+
+    justify-self: start;
+
+}
+
+
+.schedule-range {
+
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    gap: 6px;
+
+    align-items: center;
+
+}
+
+
+.schedule-range label {
+
+    display: grid;
+
+    grid-template-columns: 22px minmax(0, 1fr);
+
+    align-items: center;
+
+    gap: 4px;
+
+    color: #111111;
+
+    font-weight: 700;
+
+}
+
+
+.schedule-range input {
+
+    width: 100%;
+
+    min-width: 0;
 
 }
 
