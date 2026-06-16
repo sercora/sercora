@@ -15,6 +15,171 @@
 }
 
 
+.estimate-summary-sheet {
+
+    display: flex;
+
+    flex-direction: column;
+
+    flex: 0 0 auto;
+
+    gap: 10px;
+
+    padding: 10px 14px;
+
+    border-bottom: 1px solid #aeb6c2;
+
+    background-color: #f6f6f3;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 13px;
+
+}
+
+
+.estimate-summary-project,
+.estimate-summary-client {
+
+    display: grid;
+
+    grid-template-columns: 150px minmax(240px, 490px);
+
+    align-items: center;
+
+    width: min(640px, 100%);
+
+}
+
+
+.summary-label,
+.summary-value {
+
+    min-height: 18px;
+
+    padding: 1px 6px;
+
+    border: 1px solid #1f1f1f;
+
+    background-color: #ffffff;
+
+    line-height: 16px;
+
+}
+
+
+.summary-label {
+
+    border-right: 0;
+
+    font-weight: 700;
+
+    text-align: right;
+
+}
+
+
+.summary-label.strong,
+.summary-value.strong {
+
+    font-size: 15px;
+
+    font-weight: 700;
+
+}
+
+
+.summary-value.revision-date {
+
+    background-color: #fff200;
+
+}
+
+
+.estimate-summary-suppliers {
+
+    display: grid;
+
+    grid-template-columns: minmax(240px, 530px) 112px;
+
+    width: min(642px, 100%);
+
+}
+
+
+.summary-supplier-title,
+.summary-expiration-title,
+.summary-supplier-name,
+.summary-supplier-expiration {
+
+    min-height: 18px;
+
+    padding: 1px 6px;
+
+    border: 1px solid #1f1f1f;
+
+    line-height: 16px;
+
+}
+
+
+.summary-supplier-title {
+
+    background-color: #9fb8d8;
+
+    font-weight: 700;
+
+    text-align: left;
+
+}
+
+
+.summary-expiration-title,
+.summary-supplier-expiration {
+
+    background-color: #ff0000;
+
+    color: #ffffff;
+
+    font-weight: 700;
+
+    text-align: right;
+
+}
+
+
+.summary-supplier-row {
+
+    display: contents;
+
+}
+
+
+.summary-supplier-row:nth-child(odd) .summary-supplier-name {
+
+    background-color: #f7c99a;
+
+}
+
+
+.summary-supplier-row:nth-child(even) .summary-supplier-name {
+
+    background-color: #cfe2ad;
+
+}
+
+
+.estimate-summary-tiles {
+
+    display: grid;
+
+    grid-template-columns: 150px minmax(240px, 490px);
+
+    width: min(640px, 100%);
+
+}
+
+
 .estimate-folder-page {
 
     background-color: #f4f5f7;

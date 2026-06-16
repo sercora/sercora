@@ -6,6 +6,187 @@ from app.database.database import SessionLocal
 router = APIRouter()
 
 
+def iso_date(value):
+
+    if not value:
+        return None
+
+    return value.isoformat()
+
+
+def build_address(row):
+
+    return ", ".join(
+        [
+            value
+            for value in (
+                row.address_line1,
+                row.address_line2,
+                row.city,
+                row.province,
+                row.postal_code
+            )
+            if value
+        ]
+    )
+
+
+def estimate_summary(
+    db,
+    estimate_id: int
+):
+
+    estimate_row = db.execute(
+        text(
+            """
+            SELECT
+                e.id,
+                e.revision_number,
+                e.estimate_type,
+                e.description,
+                e.created_at,
+                p.id AS project_id,
+                p.project_number,
+                p.project_name,
+                p.address_line1,
+                p.address_line2,
+                p.city,
+                p.province,
+                p.postal_code,
+                (
+                    SELECT max(created_at)
+                    FROM estimate
+                    WHERE project_id = p.id
+                ) AS last_revision_at
+            FROM estimate e
+            JOIN project p
+                ON p.id = e.project_id
+            WHERE e.id = :estimate_id
+            """
+        ),
+        {
+            "estimate_id": estimate_id
+        }
+    ).fetchone()
+
+    if estimate_row is None:
+        return {}
+
+    client_rows = db.execute(
+        text(
+            """
+            SELECT
+                c.name,
+                ct.name AS client_type
+            FROM project_client pc
+            JOIN client c
+                ON c.id = pc.client_id
+            LEFT JOIN client_type ct
+                ON ct.id = c.client_type_id
+            WHERE pc.project_id = :project_id
+            ORDER BY
+                ct.name,
+                c.name
+            """
+        ),
+        {
+            "project_id": estimate_row.project_id
+        }
+    ).fetchall()
+
+    supplier_rows = db.execute(
+        text(
+            """
+            SELECT
+                supplier_name,
+                expires_on,
+                quote_reference,
+                notes
+            FROM estimate_supplier_quote
+            WHERE estimate_id = :estimate_id
+                AND active = TRUE
+            ORDER BY
+                expires_on NULLS LAST,
+                supplier_name
+            """
+        ),
+        {
+            "estimate_id": estimate_id
+        }
+    ).fetchall()
+
+    tile_rows = db.execute(
+        text(
+            """
+            SELECT DISTINCT
+                p.name,
+                p.manufacturer_name,
+                p.size_name,
+                supplier_info.supplier_product_code
+            FROM estimate_line l
+            JOIN product p
+                ON p.id = l.product_id
+            LEFT JOIN product_type pt
+                ON pt.id = p.product_type_id
+            LEFT JOIN LATERAL (
+                SELECT min(ps.supplier_product_code) AS supplier_product_code
+                FROM product_supplier ps
+                WHERE ps.product_id = p.id
+            ) supplier_info
+                ON TRUE
+            WHERE l.estimate_id = :estimate_id
+                AND lower(coalesce(pt.name, '')) = 'tuile'
+            ORDER BY p.name
+            """
+        ),
+        {
+            "estimate_id": estimate_id
+        }
+    ).fetchall()
+
+    return {
+        "project": {
+            "id": estimate_row.project_id,
+            "number": estimate_row.project_number,
+            "name": estimate_row.project_name,
+            "address": build_address(estimate_row)
+        },
+        "estimate": {
+            "id": estimate_row.id,
+            "revision_number": estimate_row.revision_number,
+            "type": estimate_row.estimate_type,
+            "description": estimate_row.description,
+            "created_at": iso_date(estimate_row.created_at),
+            "last_revision_at": iso_date(estimate_row.last_revision_at)
+        },
+        "clients": [
+            {
+                "name": row.name,
+                "type": row.client_type
+            }
+            for row in client_rows
+        ],
+        "supplier_quotes": [
+            {
+                "supplier_name": row.supplier_name,
+                "expires_on": iso_date(row.expires_on),
+                "quote_reference": row.quote_reference,
+                "notes": row.notes
+            }
+            for row in supplier_rows
+        ],
+        "tile_requests": [
+            {
+                "name": row.name,
+                "manufacturer_name": row.manufacturer_name,
+                "size_name": row.size_name,
+                "supplier_product_code": row.supplier_product_code
+            }
+            for row in tile_rows
+        ]
+    }
+
+
 @router.get("/estimates/{estimate_id}/matrix")
 def get_matrix(estimate_id: int):
 
@@ -130,9 +311,16 @@ def get_matrix(estimate_id: int):
 
         }
 
+    summary = estimate_summary(
+        db,
+        estimate_id
+    )
+
     db.close()
 
     return {
+
+        "summary": summary,
 
         "rooms": rooms,
 

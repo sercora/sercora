@@ -25,7 +25,8 @@ import {
     updateEstimateQuantity as saveEstimateQuantity
 } from "../utils/matrixApi";
 import type {
-    EstimateFolderItem
+    EstimateFolderItem,
+    EstimateMatrixSummary
 } from "../utils/matrixApi";
 
 import "../styles/grid.css";
@@ -112,6 +113,7 @@ function MatrixView({
     const [rowData, setRowData] = useState<any[]>([]);
 
     const [zoom, setZoom] = useState("100");
+    const [matrixSummary, setMatrixSummary] = useState<EstimateMatrixSummary | null>(null);
     const [folderPath, setFolderPath] = useState("");
     const [rootName, setRootName] = useState("");
     const [folderItems, setFolderItems] = useState<EstimateFolderItem[]>([]);
@@ -460,6 +462,134 @@ function MatrixView({
     }
 
 
+    function formatDate(
+        value: string | null | undefined
+    ) {
+
+        if (!value)
+            return "";
+
+        return new Date(value).toLocaleDateString("fr-CA");
+
+    }
+
+
+    function supplierQuoteRows(
+        summary: EstimateMatrixSummary
+    ) {
+
+        if (summary.supplier_quotes.length)
+            return summary.supplier_quotes;
+
+        return [
+            {
+                supplier_name: "",
+                expires_on: null,
+                quote_reference: null,
+                notes: null
+            },
+            {
+                supplier_name: "",
+                expires_on: null,
+                quote_reference: null,
+                notes: null
+            },
+            {
+                supplier_name: "",
+                expires_on: null,
+                quote_reference: null,
+                notes: null
+            }
+        ];
+
+    }
+
+
+    function renderMatrixSummary() {
+
+        if (!matrixSummary)
+            return null;
+
+        return (
+            <section className="estimate-summary-sheet">
+                <div className="estimate-summary-project">
+                    <div className="summary-label strong">Projet:</div>
+                    <div className="summary-value strong">
+                        {matrixSummary.project.name}
+                    </div>
+                    <div className="summary-label"># de projet:</div>
+                    <div className="summary-value">
+                        {matrixSummary.project.number || ""}
+                    </div>
+                    <div className="summary-label">adresse:</div>
+                    <div className="summary-value">
+                        {matrixSummary.project.address}
+                    </div>
+                    <div className="summary-label">Dernière révision:</div>
+                    <div className="summary-value revision-date">
+                        {formatDate(matrixSummary.estimate.last_revision_at)}
+                    </div>
+                </div>
+
+                <div className="estimate-summary-client">
+                    <div className="summary-label strong">Client</div>
+                    <div className="summary-value strong">
+                        {matrixSummary.clients.map(
+                            client => client.name
+                        ).join(", ")}
+                    </div>
+                    <div className="summary-label">type:</div>
+                    <div className="summary-value">
+                        {matrixSummary.clients.map(
+                            client => client.type
+                        ).filter(Boolean).join(", ")}
+                    </div>
+                    <div className="summary-label">courriel:</div>
+                    <div className="summary-value"></div>
+                    <div className="summary-label">tél:</div>
+                    <div className="summary-value"></div>
+                </div>
+
+                <div className="estimate-summary-suppliers">
+                    <div className="summary-supplier-title">Fournisseur</div>
+                    <div className="summary-expiration-title">EXPIRATION</div>
+                    {supplierQuoteRows(matrixSummary).map(
+                        (quote, index) => (
+                            <div
+                                key={index}
+                                className="summary-supplier-row"
+                            >
+                                <div className="summary-supplier-name">
+                                    {quote.supplier_name}
+                                </div>
+                                <div className="summary-supplier-expiration">
+                                    {formatDate(quote.expires_on)}
+                                </div>
+                            </div>
+                        )
+                    )}
+                </div>
+
+                <div className="estimate-summary-tiles">
+                    <div className="summary-label strong">Tuiles à demander</div>
+                    <div className="summary-value">
+                        {matrixSummary.tile_requests.length ?
+                            matrixSummary.tile_requests.map(
+                                tile => [
+                                    tile.manufacturer_name,
+                                    tile.name,
+                                    tile.size_name
+                                ].filter(Boolean).join(" - ")
+                            ).join(" | ") :
+                            "Aucune tuile dans la matrice."}
+                    </div>
+                </div>
+            </section>
+        );
+
+    }
+
+
     function openFolderItem(
         item: EstimateFolderItem
     ) {
@@ -760,6 +890,9 @@ function MatrixView({
                     setColumnDefs(
                         cols
                     );
+                    setMatrixSummary(
+                        matrix.summary
+                    );
 
 
                     const rows = matrix.lines.map(
@@ -1004,6 +1137,8 @@ function MatrixView({
     return (
 
         <div className="matrix-page">
+
+            {renderMatrixSummary()}
 
             <ZoomToolbar
                 zoom={zoom}

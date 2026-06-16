@@ -148,6 +148,16 @@ CREATE TABLE project (
 
     status VARCHAR(50) DEFAULT 'PENDING',
 
+    address_line1 VARCHAR(255),
+
+    address_line2 VARCHAR(255),
+
+    city VARCHAR(120),
+
+    province VARCHAR(80),
+
+    postal_code VARCHAR(20),
+
     start_date DATE,
     end_date DATE,
 
@@ -223,3 +233,28 @@ CREATE TABLE estimate_quantity (
 
     quantity NUMERIC(12,2) DEFAULT 0
 );
+
+CREATE TABLE estimate_supplier_quote (
+    id BIGSERIAL PRIMARY KEY,
+
+    estimate_id BIGINT NOT NULL REFERENCES estimate(id) ON DELETE CASCADE,
+
+    supplier_id BIGINT REFERENCES supplier(id),
+
+    supplier_name VARCHAR(255) NOT NULL,
+
+    expires_on DATE,
+
+    quote_reference VARCHAR(120),
+
+    notes TEXT,
+
+    active BOOLEAN DEFAULT TRUE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_estimate_supplier_quote_estimate
+    ON estimate_supplier_quote(estimate_id, active, expires_on);

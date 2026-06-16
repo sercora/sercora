@@ -23,6 +23,47 @@ export type EstimateFolderResponse = {
 };
 
 
+export type EstimateMatrixSummary = {
+    project: {
+        id: number;
+        number: string | null;
+        name: string;
+        address: string;
+    };
+    estimate: {
+        id: number;
+        revision_number: number | null;
+        type: string | null;
+        description: string | null;
+        created_at: string | null;
+        last_revision_at: string | null;
+    };
+    clients: Array<{
+        name: string;
+        type: string | null;
+    }>;
+    supplier_quotes: Array<{
+        supplier_name: string;
+        expires_on: string | null;
+        quote_reference: string | null;
+        notes: string | null;
+    }>;
+    tile_requests: Array<{
+        name: string;
+        manufacturer_name: string | null;
+        size_name: string | null;
+        supplier_product_code: string | null;
+    }>;
+};
+
+
+export type EstimateMatrixResponse = {
+    summary: EstimateMatrixSummary;
+    rooms: string[];
+    lines: any[];
+};
+
+
 function parseResponse(response: Response) {
 
     if (!response.ok)
@@ -75,7 +116,7 @@ export function fetchEstimateFolders(
 }
 
 
-export function fetchEstimateMatrix() {
+export function fetchEstimateMatrix(): Promise<EstimateMatrixResponse> {
 
     return fetch(
         API_URL +
