@@ -8,14 +8,15 @@ import {
 } from "../utils/toolsApi";
 import type {
     ToolAsset,
-    ToolScope
+    ToolScope,
+    ToolSort,
+    ToolSortOrder
 } from "../utils/toolsApi";
 
 import "../styles/tools.css";
 
 
 type PageSize = 20 | 50 | 100 | "all";
-type ToolSort = "asset_tag" | "location" | "name";
 type ToolsPageProps = {
     toolScope: ToolScope;
 };
@@ -65,6 +66,7 @@ function ToolsPage({
     const [pageSize, setPageSize] = useState<PageSize>(DEFAULT_PAGE_SIZE);
     const [pageIndex, setPageIndex] = useState(0);
     const [sortBy, setSortBy] = useState<ToolSort>("asset_tag");
+    const [sortOrder, setSortOrder] = useState<ToolSortOrder>("asc");
     const [total, setTotal] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [statusMessage, setStatusMessage] = useState("");
@@ -128,7 +130,8 @@ function ToolsPage({
         search = submittedQuery,
         nextPageIndex = pageIndex,
         nextPageSize = pageSize,
-        nextSortBy = sortBy
+        nextSortBy = sortBy,
+        nextSortOrder = sortOrder
     ) {
 
         const limit =
@@ -149,6 +152,7 @@ function ToolsPage({
                 limit,
                 offset,
                 sort: nextSortBy,
+                order: nextSortOrder,
                 scope: toolScope
             }
         )
@@ -190,6 +194,7 @@ function ToolsPage({
                     limit: DEFAULT_PAGE_SIZE,
                     offset: 0,
                     sort: "asset_tag",
+                    order: "asc",
                     scope: toolScope
                 }
             )
@@ -247,7 +252,8 @@ function ToolsPage({
             query,
             0,
             pageSize,
-            sortBy
+            sortBy,
+            sortOrder
         );
 
     }
@@ -268,7 +274,8 @@ function ToolsPage({
             submittedQuery,
             0,
             nextPageSize,
-            sortBy
+            sortBy,
+            sortOrder
         );
 
     }
@@ -278,16 +285,67 @@ function ToolsPage({
         value: string
     ) {
 
-        const nextSortBy =
-            value as ToolSort;
+        const nextSortBy = value as ToolSort;
 
         setSortBy(nextSortBy);
+        setSortOrder("asc");
         setPageIndex(0);
         loadTools(
             submittedQuery,
             0,
             pageSize,
-            nextSortBy
+            nextSortBy,
+            "asc"
+        );
+
+    }
+
+
+    function sortResults(
+        nextSortBy: ToolSort
+    ) {
+
+        const nextSortOrder =
+            sortBy === nextSortBy && sortOrder === "asc" ?
+                "desc" :
+                "asc";
+
+        setSortBy(nextSortBy);
+        setSortOrder(nextSortOrder);
+        setPageIndex(0);
+        loadTools(
+            submittedQuery,
+            0,
+            pageSize,
+            nextSortBy,
+            nextSortOrder
+        );
+
+    }
+
+
+    function sortLabel(
+        field: ToolSort,
+        label: string
+    ) {
+
+        return (
+            <button
+                type="button"
+                className="tools-sort-button"
+                onClick={
+                    () =>
+                        sortResults(field)
+                }
+                disabled={isLoading}
+            >
+                <span>{label}</span>
+                {sortBy === field && (
+                    <span className="tools-sort-indicator">
+                        {sortOrder === "asc" ? "▲" : "▼"}
+                    </span>
+                )}
+            </button>
         );
 
     }
@@ -302,7 +360,8 @@ function ToolsPage({
             submittedQuery,
             nextPageIndex,
             pageSize,
-            sortBy
+            sortBy,
+            sortOrder
         );
 
     }
@@ -348,7 +407,8 @@ function ToolsPage({
                                 submittedQuery,
                                 pageIndex,
                                 pageSize,
-                                sortBy
+                                sortBy,
+                                sortOrder
                             )
                     }
                     disabled={isLoading}
@@ -367,8 +427,13 @@ function ToolsPage({
                         disabled={isLoading}
                     >
                         <option value="asset_tag">Tag</option>
-                        <option value="location">Chantier</option>
                         <option value="name">Nom</option>
+                        <option value="model">Modèle</option>
+                        <option value="serial">Série</option>
+                        <option value="category">Catégorie</option>
+                        <option value="location">Chantier</option>
+                        <option value="status">État</option>
+                        <option value="updated_at">Mis à jour</option>
                     </select>
                 </label>
 
@@ -489,14 +554,14 @@ function ToolsPage({
                 <table className="tools-table">
                     <thead>
                         <tr>
-                            <th>Tag</th>
-                            <th>Outil</th>
-                            <th>Modèle</th>
-                            <th>Série</th>
-                            <th>Catégorie</th>
-                            <th>Chantier</th>
-                            <th>État</th>
-                            <th>Mis à jour</th>
+                            <th>{sortLabel("asset_tag", "Tag")}</th>
+                            <th>{sortLabel("name", "Outil")}</th>
+                            <th>{sortLabel("model", "Modèle")}</th>
+                            <th>{sortLabel("serial", "Série")}</th>
+                            <th>{sortLabel("category", "Catégorie")}</th>
+                            <th>{sortLabel("location", "Chantier")}</th>
+                            <th>{sortLabel("status", "État")}</th>
+                            <th>{sortLabel("updated_at", "Mis à jour")}</th>
                         </tr>
                     </thead>
 

@@ -30,6 +30,7 @@ const NAV_ITEMS: PageKey[] = [
     "Clients",
     "Projets",
     "Produits",
+    "Outils",
     "Soumissions",
     "Usagers",
     "Configuration"
@@ -305,24 +306,12 @@ function App() {
                                 <button
                                     type="button"
                                     className={
-                                        (
-                                            item === activePage ||
-                                            (
-                                                item === "Soumissions" &&
-                                                activePage === "Outils"
-                                            )
-                                        ) ?
+                                        item === activePage ?
                                             "nav-item active" :
                                             "nav-item"
                                     }
                                     aria-current={
-                                        (
-                                            item === activePage ||
-                                            (
-                                                item === "Soumissions" &&
-                                                activePage === "Outils"
-                                            )
-                                        ) ?
+                                        item === activePage ?
                                             "page" :
                                             undefined
                                     }
@@ -339,6 +328,9 @@ function App() {
 
                                             if (item === "Soumissions")
                                                 setActiveEstimateMenu("En cours");
+
+                                            if (item === "Outils")
+                                                setActiveToolsMenu("Disponible");
 
                                             if (item === "Configuration")
                                                 setActiveConfigurationMenu("Courriel");
@@ -441,51 +433,35 @@ function App() {
                                             )
                                         )}
 
-                                        <div className="nav-subgroup">
-                                            <button
-                                                type="button"
-                                                className={
-                                                    activePage === "Outils" ?
-                                                        "nav-subitem active" :
-                                                        "nav-subitem"
-                                                }
-                                                onClick={
-                                                    () => {
-                                                        setActiveToolsMenu("Disponible");
-                                                        setActivePage("Outils");
-                                                    }
-                                                }
-                                            >
-                                                Outils
-                                            </button>
+                                    </div>
+                                )}
 
-                                            <div className="nav-submenu nested">
-                                                {TOOLS_MENU_ITEMS.map(
-                                                    toolsMenuItem => (
-                                                        <button
-                                                            key={toolsMenuItem}
-                                                            type="button"
-                                                            className={
-                                                                (
-                                                                    activePage === "Outils" &&
-                                                                    activeToolsMenu === toolsMenuItem
-                                                                ) ?
-                                                                    "nav-subitem nested active" :
-                                                                    "nav-subitem nested"
-                                                            }
-                                                            onClick={
-                                                                () => {
-                                                                    setActiveToolsMenu(toolsMenuItem);
-                                                                    setActivePage("Outils");
-                                                                }
-                                                            }
-                                                        >
-                                                            {toolsMenuItem}
-                                                        </button>
-                                                    )
-                                                )}
-                                            </div>
-                                        </div>
+                                {item === "Outils" && (
+                                    <div className="nav-submenu">
+                                        {TOOLS_MENU_ITEMS.map(
+                                            toolsMenuItem => (
+                                                <button
+                                                    key={toolsMenuItem}
+                                                    type="button"
+                                                    className={
+                                                        (
+                                                            activePage === "Outils" &&
+                                                            activeToolsMenu === toolsMenuItem
+                                                        ) ?
+                                                            "nav-subitem active" :
+                                                            "nav-subitem"
+                                                    }
+                                                    onClick={
+                                                        () => {
+                                                            setActiveToolsMenu(toolsMenuItem);
+                                                            setActivePage("Outils");
+                                                        }
+                                                    }
+                                                >
+                                                    {toolsMenuItem}
+                                                </button>
+                                            )
+                                        )}
                                     </div>
                                 )}
 

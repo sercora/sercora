@@ -335,6 +335,55 @@
 }
 
 
+.tools-sort-button {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: flex-start;
+
+    gap: 6px;
+
+    width: 100%;
+
+    height: 100%;
+
+    padding: 0;
+
+    border: 0;
+
+    background: transparent;
+
+    color: inherit;
+
+    font: inherit;
+
+    text-align: left;
+
+    cursor: pointer;
+
+}
+
+
+.tools-sort-button:disabled {
+
+    cursor: default;
+
+}
+
+
+.tools-sort-indicator {
+
+    color: #2d8f25;
+
+    font-size: 10px;
+
+    line-height: 1;
+
+}
+
+
 .tools-table td {
 
     height: 31px;

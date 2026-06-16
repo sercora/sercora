@@ -16,6 +16,16 @@ router = APIRouter()
 
 
 TOOL_SCOPE_PATTERN = "^(all|available|deployed)$"
+TOOL_SORT_KEYS = {
+    "asset_tag",
+    "name",
+    "model",
+    "serial",
+    "category",
+    "location",
+    "status",
+    "updated_at"
+}
 
 
 def snipeit_config():
@@ -134,11 +144,7 @@ def sort_tools(
     order: str
 ):
 
-    sort_key = (
-        sort
-        if sort in {"asset_tag", "location", "name"}
-        else "asset_tag"
-    )
+    sort_key = sort if sort in TOOL_SORT_KEYS else "asset_tag"
     reverse = order == "desc"
 
     return sorted(

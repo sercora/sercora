@@ -26,13 +26,24 @@ export type ToolsResponse = {
 
 
 export type ToolScope = "all" | "available" | "deployed";
+export type ToolSort =
+    "asset_tag" |
+    "name" |
+    "model" |
+    "serial" |
+    "category" |
+    "location" |
+    "status" |
+    "updated_at";
+export type ToolSortOrder = "asc" | "desc";
 
 
 export type ToolsRequest = {
     search?: string;
     limit?: number;
     offset?: number;
-    sort?: string;
+    sort?: ToolSort;
+    order?: ToolSortOrder;
     scope?: ToolScope;
 };
 
@@ -59,6 +70,8 @@ export function fetchTools(
         request.search || "";
     const sort =
         request.sort || "asset_tag";
+    const order =
+        request.order || "asc";
     const scope =
         request.scope || "all";
 
@@ -67,7 +80,7 @@ export function fetchTools(
             limit: String(limit),
             offset: String(offset),
             sort,
-            order: "asc",
+            order,
             scope
         }
     );
