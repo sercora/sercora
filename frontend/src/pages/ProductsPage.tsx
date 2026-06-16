@@ -29,7 +29,6 @@ import {
 import "../styles/products.css";
 
 
-type FilterState = "active" | "inactive" | "all";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile";
 type PageSize = 10 | 20 | 50 | "all";
 
@@ -289,7 +288,7 @@ function ProductsPage({
     const [form, setForm] = useState<ProductInput>(EMPTY_FORM);
     const [query, setQuery] = useState("");
     const [supplierFilter, setSupplierFilter] = useState("");
-    const [filter, setFilter] = useState<FilterState>("active");
+    const [showInactiveProducts, setShowInactiveProducts] = useState(false);
     const [pageSize, setPageSize] = useState<PageSize>(20);
     const [currentPage, setCurrentPage] = useState(1);
     const [isEditorVisible, setIsEditorVisible] = useState(true);
@@ -371,18 +370,6 @@ function ProductsPage({
                         return false;
 
                     if (
-                        filter === "active" &&
-                        !product.active
-                    )
-                        return false;
-
-                    if (
-                        filter === "inactive" &&
-                        product.active
-                    )
-                        return false;
-
-                    if (
                         normalizedSupplier &&
                         ![
                             product.supplier_names,
@@ -422,7 +409,6 @@ function ProductsPage({
         },
 
         [
-            filter,
             productMenu,
             products,
             query,
@@ -479,7 +465,9 @@ function ProductsPage({
                     supplier:
                         supplierFilter.trim(),
                     status:
-                        filter,
+                        showInactiveProducts ?
+                            "all" :
+                            "active",
                     productMenu
                 }
             )
@@ -494,10 +482,10 @@ function ProductsPage({
             ),
 
         [
-            filter,
             pageSize,
             productMenu,
             query,
+            showInactiveProducts,
             supplierFilter,
             visiblePage
         ]
@@ -774,6 +762,28 @@ function ProductsPage({
     }
 
 
+    function cancelProductEdit() {
+
+        setStatusMessage("");
+
+        if (selectedProduct) {
+            setForm(
+                toForm(selectedProduct)
+            );
+            return;
+        }
+
+        setForm(
+            {
+                ...EMPTY_FORM,
+                product_type_id:
+                    productTypes[0]?.id || 0
+            }
+        );
+
+    }
+
+
     function deactivateProduct() {
 
         if (!selectedProductId)
@@ -974,19 +984,19 @@ function ProductsPage({
                         )}
                     </select>
 
-                    <select
-                        value={filter}
-                        onChange={
-                            event => {
-                                setCurrentPage(1);
-                                setFilter(event.target.value as FilterState);
+                    <label className="inactive-products-toggle">
+                        <input
+                            type="checkbox"
+                            checked={showInactiveProducts}
+                            onChange={
+                                event => {
+                                    setCurrentPage(1);
+                                    setShowInactiveProducts(event.target.checked);
+                                }
                             }
-                        }
-                    >
-                        <option value="active">Actifs</option>
-                        <option value="inactive">Inactifs</option>
-                        <option value="all">Tous</option>
-                    </select>
+                        />
+                        Inactifs
+                    </label>
 
                     <button
                         type="button"
@@ -1398,7 +1408,15 @@ function ProductsPage({
                         onClick={saveProduct}
                         disabled={isSaving}
                     >
-                        Enregistrer
+                        Sauvegarder
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={cancelProductEdit}
+                        disabled={isSaving}
+                    >
+                        Annuler
                     </button>
 
                     <button
