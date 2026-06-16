@@ -31,6 +31,7 @@ UPLOAD_CHUNK_SIZE = 1024 * 1024
 UPLOAD_MAX_BYTES = 500 * 1024 * 1024
 SUBMISSION_STATES = {
     "new": "NEW",
+    "approved": "APPROVED",
     "undecided": "UNDECIDED",
     "refused": "REFUSED"
 }
@@ -808,7 +809,7 @@ def get_projects(
     scope: str = Query("all", pattern="^(all|current|submission)$"),
     submission_state: str | None = Query(
         None,
-        pattern="^(new|undecided|refused)$"
+        pattern="^(new|approved|undecided|refused)$"
     )
 ):
 

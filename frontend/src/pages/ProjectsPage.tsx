@@ -97,8 +97,8 @@ const MONTH_LABEL_FORMATTER = new Intl.DateTimeFormat(
 
 
 type ProjectViewMode = "Liste" | "Calendrier";
-type ProjectSubmissionMenuKey = "Nouveaux" | "Indécis" | "Refusé";
-type ProjectSubmissionApiState = "new" | "undecided" | "refused";
+type ProjectSubmissionMenuKey = "Nouveaux" | "Approuvés" | "Indécis" | "Refusés";
+type ProjectSubmissionApiState = "new" | "approved" | "undecided" | "refused";
 
 
 const PROJECT_SUBMISSION_API_STATE: Record<
@@ -106,13 +106,15 @@ const PROJECT_SUBMISSION_API_STATE: Record<
     ProjectSubmissionApiState
 > = {
     Nouveaux: "new",
+    Approuvés: "approved",
     Indécis: "undecided",
-    Refusé: "refused"
+    Refusés: "refused"
 };
 
 
 const PROJECT_SUBMISSION_LABELS: Record<string, string> = {
     NEW: "Nouveau",
+    APPROVED: "Approuvé",
     UNDECIDED: "Indécis",
     REFUSED: "Refusé"
 };
@@ -123,6 +125,7 @@ const PROJECT_SUBMISSION_STATE_VALUES: Record<
     ProjectSubmissionApiState
 > = {
     NEW: "new",
+    APPROVED: "approved",
     UNDECIDED: "undecided",
     REFUSED: "refused"
 };
@@ -1836,6 +1839,7 @@ function ProjectsPage({
                                                             }
                                                         >
                                                             <option value="new">Nouveau</option>
+                                                            <option value="approved">Approuvé</option>
                                                             <option value="undecided">Indécis</option>
                                                             <option value="refused">Refusé</option>
                                                         </select>

@@ -57,7 +57,7 @@ export type ProjectSummary = {
 };
 
 
-export type ProjectSubmissionState = "NEW" | "UNDECIDED" | "REFUSED";
+export type ProjectSubmissionState = "NEW" | "APPROVED" | "UNDECIDED" | "REFUSED";
 
 
 export type ProjectInvitation = {
@@ -225,7 +225,7 @@ export function updateClient(
 
 export function fetchProjects(
     scope: "all" | "current" | "submission" = "all",
-    submissionState: "new" | "undecided" | "refused" = "new"
+    submissionState: "new" | "approved" | "undecided" | "refused" = "new"
 ): Promise<ProjectSummary[]> {
 
     const params = new URLSearchParams(
@@ -253,7 +253,7 @@ export function fetchProjects(
 
 export function updateProjectSubmissionState(
     projectId: number,
-    submissionState: "new" | "undecided" | "refused",
+    submissionState: "new" | "approved" | "undecided" | "refused",
     userId: number | null
 ) {
 

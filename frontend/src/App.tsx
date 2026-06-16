@@ -24,7 +24,7 @@ import "./App.css";
 type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura" | "Olympia";
 type ProjectMenuKey = "En cours" | "En Soumission" | "Création";
-type ProjectSubmissionMenuKey = "Nouveaux" | "Indécis" | "Refusé";
+type ProjectSubmissionMenuKey = "Nouveaux" | "Approuvés" | "Indécis" | "Refusés";
 type EstimateMenuKey = "En cours" | "Envoyées" | "Refusé" | "Template";
 type ToolsMenuKey = "Disponible" | "Déployé";
 type ConfigurationMenuKey = "Courriel" | "Importation";
@@ -69,8 +69,9 @@ const DISABLED_PROJECT_MENU_ITEMS: ProjectMenuKey[] = [
 
 const PROJECT_SUBMISSION_MENU_ITEMS: ProjectSubmissionMenuKey[] = [
     "Nouveaux",
+    "Approuvés",
     "Indécis",
-    "Refusé"
+    "Refusés"
 ];
 
 
@@ -522,7 +523,11 @@ function App() {
                                                                                 }
                                                                             }
                                                                         >
-                                                                            {submissionMenuItem}
+                                                                            {submissionMenuItem === "Nouveaux" ? (
+                                                                                <strong>{submissionMenuItem}</strong>
+                                                                            ) : (
+                                                                                submissionMenuItem
+                                                                            )}
                                                                         </button>
                                                                     )
                                                                 )}
