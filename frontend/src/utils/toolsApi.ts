@@ -1,5 +1,7 @@
 import { API_URL } from "./matrixApi";
 
+export { API_URL };
+
 
 export type ToolAsset = {
     id: number;
@@ -12,6 +14,8 @@ export type ToolAsset = {
     manufacturer: string;
     status: string;
     status_type: string;
+    image_url: string;
+    image_proxy_path: string;
     assigned_to: string;
     location: string;
     last_checkout: string;

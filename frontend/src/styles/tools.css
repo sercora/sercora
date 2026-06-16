@@ -403,6 +403,47 @@
 }
 
 
+.tool-image-cell {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    width: 46px;
+
+    height: 36px;
+
+}
+
+
+.tool-image-cell img {
+
+    width: 36px;
+
+    height: 30px;
+
+    object-fit: cover;
+
+    border: 1px solid #cfd5dc;
+
+    border-radius: 3px;
+
+    background-color: #f4f5f7;
+
+}
+
+
+.tool-image-cell span {
+
+    color: #9aa3ad;
+
+    font-size: 12px;
+
+}
+
+
 .tools-table tr:hover td {
 
     background-color: #f8fbff;

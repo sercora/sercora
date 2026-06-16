@@ -4,6 +4,7 @@ import {
 } from "react";
 
 import {
+    API_URL,
     fetchTools
 } from "../utils/toolsApi";
 import type {
@@ -554,6 +555,7 @@ function ToolsPage({
                 <table className="tools-table">
                     <thead>
                         <tr>
+                            <th>Image</th>
                             <th>{sortLabel("asset_tag", "Tag")}</th>
                             <th>{sortLabel("name", "Outil")}</th>
                             <th>{sortLabel("model", "Modèle")}</th>
@@ -569,6 +571,19 @@ function ToolsPage({
                         {tools.map(
                             tool => (
                                 <tr key={tool.id}>
+                                    <td>
+                                        <div className="tool-image-cell">
+                                            {tool.image_proxy_path ? (
+                                                <img
+                                                    src={API_URL + tool.image_proxy_path}
+                                                    alt={tool.name || tool.asset_tag}
+                                                    loading="lazy"
+                                                />
+                                            ) : (
+                                                <span>-</span>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td>{tool.asset_tag}</td>
                                     <td>{tool.name}</td>
                                     <td>

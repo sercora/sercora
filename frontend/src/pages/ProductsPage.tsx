@@ -1125,6 +1125,24 @@ function ProductsPage({
     }
 
 
+    function closeProductEditor() {
+
+        setSelectedProductId(null);
+        setSelectedProductIds([]);
+        setIsCreatingProduct(false);
+        setStatusMessage("");
+        setIsEditorVisible(false);
+        setForm(
+            {
+                ...EMPTY_FORM,
+                product_type_id:
+                    productTypes[0]?.id || 0
+            }
+        );
+
+    }
+
+
     function deactivateProduct() {
 
         if (!selectedProductId)
@@ -1481,7 +1499,16 @@ function ProductsPage({
 
                 <div className="editor-header">
                     <h2>Modifier groupe</h2>
-                    <span>{selectedProductIds.length} produits</span>
+                    <div className="editor-header-actions">
+                        <span>{selectedProductIds.length} produits</span>
+                        <button
+                            type="button"
+                            onClick={closeProductEditor}
+                            disabled={isSaving}
+                        >
+                            Fermer
+                        </button>
+                    </div>
                 </div>
 
                 <div className="bulk-editor-grid">
@@ -1755,7 +1782,16 @@ function ProductsPage({
                     <h2>
                         {selectedProduct ? "Modifier produit" : "Nouveau produit"}
                     </h2>
-                    <span>{totalProductCount} produits</span>
+                    <div className="editor-header-actions">
+                        <span>{totalProductCount} produits</span>
+                        <button
+                            type="button"
+                            onClick={closeProductEditor}
+                            disabled={isSaving}
+                        >
+                            Fermer
+                        </button>
+                    </div>
                 </div>
 
                 <div className="editor-grid">

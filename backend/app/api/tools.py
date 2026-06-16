@@ -3,11 +3,12 @@ import os
 import unicodedata
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response
 
 
 load_dotenv()
@@ -75,6 +76,36 @@ def nested_value(
     return ""
 
 
+def asset_image_url(
+    asset: dict[str, Any]
+):
+
+    for key in (
+        "image",
+        "image_url",
+        "thumbnail",
+        "avatar"
+    ):
+        value = asset.get(key)
+
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+        if isinstance(value, dict):
+            nested_url = (
+                value.get("url") or
+                value.get("image") or
+                value.get("image_url") or
+                value.get("src") or
+                ""
+            )
+
+            if nested_url:
+                return str(nested_url).strip()
+
+    return ""
+
+
 def normalize_asset(
     asset: dict[str, Any]
 ):
@@ -94,6 +125,12 @@ def normalize_asset(
         "manufacturer": nested_name(asset.get("manufacturer")),
         "status": nested_name(status_label),
         "status_type": nested_value(status_label, "status_type"),
+        "image_url": asset_image_url(asset),
+        "image_proxy_path": (
+            f"/tools/{asset.get('id')}/image"
+            if asset_image_url(asset) and asset.get("id")
+            else ""
+        ),
         "assigned_to": nested_name(assigned_to),
         "location": nested_name(asset.get("location")),
         "last_checkout": nested_value(asset.get("last_checkout"), "formatted"),
@@ -263,3 +300,75 @@ def get_tools(
         "total": payload.get("total", len(rows)),
         "rows": rows
     }
+
+
+@router.get("/tools/{tool_id}/image")
+def get_tool_image(
+    tool_id: int
+):
+
+    base_url, api_token = snipeit_config()
+    payload = snipeit_get(
+        f"/hardware/{tool_id}",
+        {}
+    )
+    image_url = asset_image_url(payload)
+
+    if not image_url:
+        raise HTTPException(
+            status_code=404,
+            detail="Tool image not found"
+        )
+
+    parsed_image_url = urlparse(image_url)
+    parsed_base_url = urlparse(base_url)
+
+    if parsed_image_url.netloc != parsed_base_url.netloc:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid Snipe-IT image host"
+        )
+
+    request = Request(
+        image_url,
+        headers={
+            "Accept": "image/*",
+            "Authorization": "Bearer " + api_token
+        }
+    )
+
+    try:
+        with urlopen(request, timeout=15) as response:
+            content_type = response.headers.get(
+                "Content-Type",
+                "application/octet-stream"
+            )
+
+            if not content_type.lower().startswith("image/"):
+                raise HTTPException(
+                    status_code=415,
+                    detail="Snipe-IT file is not an image"
+                )
+
+            return Response(
+                content=response.read(),
+                media_type=content_type,
+                headers={
+                    "Cache-Control": "private, max-age=300"
+                }
+            )
+
+    except HTTPException:
+        raise
+
+    except HTTPError as error:
+        raise HTTPException(
+            status_code=error.code,
+            detail=error.reason
+        ) from error
+
+    except URLError as error:
+        raise HTTPException(
+            status_code=502,
+            detail=str(error.reason)
+        ) from error
