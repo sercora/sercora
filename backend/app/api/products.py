@@ -259,7 +259,7 @@ def get_products(
     status: str = Query("active", pattern="^(active|inactive|all)$"),
     product_menu: str = Query(
         "Tous",
-        pattern="^(Tous|Mapei|Prosol|Schluter|Tuile)$"
+        pattern="^(Tous|Mapei|Prosol|Schluter|Tuile|Centura)$"
     ),
     paged: bool = False
 ):
@@ -345,6 +345,14 @@ def get_products(
             )
         elif product_menu == "Tuile":
             filters.append("pt.name = 'Tuile'")
+        elif product_menu == "Centura":
+            filters.append(
+                """
+                pt.name = 'Tuile'
+                AND lower(coalesce(supplier_info.supplier_names, ''))
+                    LIKE '%centura%'
+                """
+            )
 
         where_clause = (
             "WHERE " + " AND ".join(filters)

@@ -29,7 +29,7 @@ import {
 import "../styles/products.css";
 
 
-type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile";
+type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura";
 type PageSize = 10 | 20 | 50 | "all";
 
 
@@ -270,6 +270,10 @@ function matchesProductMenu(
 
     if (productMenu === "Tuile")
         return (product.product_type_name || "").toLowerCase() === "tuile";
+
+    if (productMenu === "Centura")
+        return searchableText.includes("centura") &&
+            (product.product_type_name || "").toLowerCase() === "tuile";
 
     return true;
 

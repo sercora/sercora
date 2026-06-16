@@ -407,6 +407,24 @@
 }
 
 
+.nav-subgroup {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 4px;
+
+}
+
+
+.nav-submenu.nested {
+
+    padding-left: 14px;
+
+}
+
+
 .nav-subitem {
 
     display: flex;
@@ -438,6 +456,17 @@
     text-align: left;
 
     cursor: pointer;
+
+}
+
+
+.nav-subitem.nested {
+
+    height: 28px;
+
+    color: #aebbb2;
+
+    font-size: 12px;
 
 }
 

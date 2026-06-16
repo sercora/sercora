@@ -19,7 +19,7 @@ import "./App.css";
 
 
 type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
-type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile";
+type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura";
 type EstimateMenuKey = "En cours" | "Envoyées" | "Refusées";
 
 
@@ -39,6 +39,11 @@ const PRODUCT_MENU_ITEMS: ProductMenuKey[] = [
     "Prosol",
     "Schluter",
     "Tuile"
+];
+
+
+const TILE_SUPPLIER_MENU_ITEMS: ProductMenuKey[] = [
+    "Centura"
 ];
 
 
@@ -311,26 +316,59 @@ function App() {
                                     <div className="nav-submenu">
                                         {PRODUCT_MENU_ITEMS.map(
                                             productMenuItem => (
-                                                <button
+                                                <div
                                                     key={productMenuItem}
-                                                    type="button"
-                                                    className={
-                                                        (
-                                                            activePage === "Produits" &&
-                                                            activeProductMenu === productMenuItem
-                                                        ) ?
-                                                            "nav-subitem active" :
-                                                            "nav-subitem"
-                                                    }
-                                                    onClick={
-                                                        () => {
-                                                            setActiveProductMenu(productMenuItem);
-                                                            setActivePage("Produits");
-                                                        }
-                                                    }
+                                                    className="nav-subgroup"
                                                 >
-                                                    {productMenuItem}
-                                                </button>
+                                                    <button
+                                                        type="button"
+                                                        className={
+                                                            (
+                                                                activePage === "Produits" &&
+                                                                activeProductMenu === productMenuItem
+                                                            ) ?
+                                                                "nav-subitem active" :
+                                                                "nav-subitem"
+                                                        }
+                                                        onClick={
+                                                            () => {
+                                                                setActiveProductMenu(productMenuItem);
+                                                                setActivePage("Produits");
+                                                            }
+                                                        }
+                                                    >
+                                                        {productMenuItem}
+                                                    </button>
+
+                                                    {productMenuItem === "Tuile" && (
+                                                        <div className="nav-submenu nested">
+                                                            {TILE_SUPPLIER_MENU_ITEMS.map(
+                                                                tileSupplierMenuItem => (
+                                                                    <button
+                                                                        key={tileSupplierMenuItem}
+                                                                        type="button"
+                                                                        className={
+                                                                            (
+                                                                                activePage === "Produits" &&
+                                                                                activeProductMenu === tileSupplierMenuItem
+                                                                            ) ?
+                                                                                "nav-subitem nested active" :
+                                                                                "nav-subitem nested"
+                                                                        }
+                                                                        onClick={
+                                                                            () => {
+                                                                                setActiveProductMenu(tileSupplierMenuItem);
+                                                                                setActivePage("Produits");
+                                                                            }
+                                                                        }
+                                                                    >
+                                                                        {tileSupplierMenuItem}
+                                                                    </button>
+                                                                )
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )
                                         )}
                                     </div>
