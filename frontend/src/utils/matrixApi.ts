@@ -149,6 +149,7 @@ export type EstimateLineInput = {
     surface_type_id: number;
     unit_id: number;
     insert_position?: number | null;
+    plan_code?: string | null;
     grout_color: string | null;
     loss_percent: number;
     purchase_price: number;
@@ -169,6 +170,7 @@ export type EstimateLineProductUpdateInput = {
 
 export type EstimateLineUpdateInput = {
     surface_type_id: number;
+    plan_code?: string | null;
     loss_percent: number;
     purchase_price: number;
     profit_percent: number;

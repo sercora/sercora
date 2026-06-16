@@ -64,6 +64,7 @@ import "../styles/grid.css";
 
 const LINE_EDITABLE_FIELDS = [
     "surface_name",
+    "plan_code",
     "loss_percent",
     "purchase_price",
     "profit_percent",
@@ -811,9 +812,11 @@ function MatrixView({
         } else {
 
             params.data[field] =
-                parseNumber(
-                    params.newValue
-                );
+                field === "plan_code" ?
+                    String(params.newValue || "").trim() :
+                    parseNumber(
+                        params.newValue
+                    );
 
         }
 
@@ -1295,6 +1298,8 @@ function MatrixView({
         return {
             surface_type_id:
                 parseNumber(row.surface_type_id),
+            plan_code:
+                String(row.plan_code || "").trim() || null,
             loss_percent:
                 parseNumber(row.loss_percent),
             purchase_price:
@@ -1938,6 +1943,9 @@ function MatrixView({
                     surface_name:
                         line.surface_name,
 
+                    plan_code:
+                        line.plan_code || "",
+
                     product_name:
                         line.product_name,
 
@@ -2297,6 +2305,16 @@ function MatrixView({
                         cellEditorParams: {
                             values: surfaceNames
                         },
+                        cellClass: "editable-cell"
+                    },
+                    {
+                        field: "plan_code",
+                        headerName: "CODE PLAN",
+                        width: 96,
+                        minWidth: 82,
+                        pinned: "left",
+                        editable: (params: any) =>
+                            !params.data?.is_summary_row,
                         cellClass: "editable-cell"
                     },
                     {
@@ -3413,6 +3431,8 @@ function MatrixView({
                         insertPosition ?
                             insertPosition + index :
                             null,
+                    plan_code:
+                        null,
                     grout_color:
                         product.default_grout_color,
                     loss_percent:

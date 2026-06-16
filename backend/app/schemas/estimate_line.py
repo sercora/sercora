@@ -8,6 +8,7 @@ class EstimateLineCreate(BaseModel):
     surface_type_id: int
     unit_id: int
     insert_position: Optional[int] = None
+    plan_code: Optional[str] = None
 
     grout_color: Optional[str] = None
 
@@ -19,6 +20,7 @@ class EstimateLineCreate(BaseModel):
 
 class EstimateLineUpdate(BaseModel):
     surface_type_id: int
+    plan_code: Optional[str] = None
     loss_percent: float
     purchase_price: float
     profit_percent: float
@@ -49,6 +51,7 @@ class EstimateLineResponse(BaseModel):
     product_id: int
     surface_type_id: int
     unit_id: int
+    plan_code: Optional[str]
 
     grout_color: Optional[str]
 

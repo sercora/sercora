@@ -227,6 +227,8 @@ CREATE TABLE estimate_line (
 
     unit_id INTEGER REFERENCES unit(id),
 
+    plan_code VARCHAR(80),
+
     grout_color VARCHAR(100),
 
     loss_percent NUMERIC(6,2),

@@ -406,6 +406,8 @@ def get_matrix(estimate_id: int):
 
                 u.name AS unit_name,
 
+                l.plan_code,
+
                 l.grout_color,
 
                 l.loss_percent,
@@ -512,6 +514,8 @@ def get_matrix(estimate_id: int):
                 "surface_name": row.surface_name,
 
                 "unit_name": row.unit_name,
+
+                "plan_code": row.plan_code,
 
                 "grout_color": row.grout_color,
 
