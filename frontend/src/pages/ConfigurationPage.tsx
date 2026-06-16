@@ -24,6 +24,7 @@ const EMPTY_SETTINGS: EmailSettings = {
     smtp_password: "",
     from_email: "",
     from_name: "Sercora",
+    reply_to_email: "",
     use_tls: true,
     use_ssl: false,
     active: false
@@ -308,6 +309,23 @@ function ConfigurationPage({
                         />
                     </label>
                 </div>
+
+                <label className="field-stack">
+                    <span>Adresse Reply-To</span>
+                    <input
+                        value={settings.reply_to_email}
+                        type="email"
+                        placeholder="Laisser vide pour utiliser l'expediteur"
+                        onChange={
+                            event => setSettings(
+                                {
+                                    ...settings,
+                                    reply_to_email: event.target.value
+                                }
+                            )
+                        }
+                    />
+                </label>
 
                 <div className="checkbox-grid">
                     <label className="checkbox-line">

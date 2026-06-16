@@ -46,6 +46,7 @@ export type EmailSettings = {
     smtp_password?: string;
     from_email: string;
     from_name: string;
+    reply_to_email: string;
     use_tls: boolean;
     use_ssl: boolean;
     active: boolean;

@@ -30,6 +30,7 @@ class EmailSettingsInput(BaseModel):
     smtp_password: str | None = None
     from_email: str
     from_name: str = "Sercora"
+    reply_to_email: str | None = None
     use_tls: bool = True
     use_ssl: bool = False
     active: bool = True
@@ -78,6 +79,7 @@ def settings_payload(row):
             "smtp_username": "",
             "from_email": "",
             "from_name": "Sercora",
+            "reply_to_email": "",
             "use_tls": True,
             "use_ssl": False,
             "active": False,
@@ -90,6 +92,7 @@ def settings_payload(row):
         "smtp_username": row.smtp_username or "",
         "from_email": row.from_email or "",
         "from_name": row.from_name or "Sercora",
+        "reply_to_email": row.reply_to_email or "",
         "use_tls": row.use_tls,
         "use_ssl": row.use_ssl,
         "active": row.active,
@@ -109,6 +112,7 @@ def get_settings_row(db):
                 smtp_password,
                 from_email,
                 from_name,
+                reply_to_email,
                 use_tls,
                 use_ssl,
                 active
@@ -149,6 +153,10 @@ def send_email(
     message["From"] = f"{sender_name} <{settings.from_email}>"
     message["To"] = recipient
     message["Subject"] = subject
+
+    if settings.reply_to_email:
+        message["Reply-To"] = settings.reply_to_email
+
     message.set_content(body)
 
     if settings.use_ssl:
@@ -296,6 +304,7 @@ def save_email_settings(
                     smtp_password,
                     from_email,
                     from_name,
+                    reply_to_email,
                     use_tls,
                     use_ssl,
                     active,
@@ -309,6 +318,7 @@ def save_email_settings(
                     :smtp_password,
                     :from_email,
                     :from_name,
+                    :reply_to_email,
                     :use_tls,
                     :use_ssl,
                     :active,
@@ -322,6 +332,7 @@ def save_email_settings(
                     smtp_password = EXCLUDED.smtp_password,
                     from_email = EXCLUDED.from_email,
                     from_name = EXCLUDED.from_name,
+                    reply_to_email = EXCLUDED.reply_to_email,
                     use_tls = EXCLUDED.use_tls,
                     use_ssl = EXCLUDED.use_ssl,
                     active = EXCLUDED.active,
@@ -335,6 +346,9 @@ def save_email_settings(
                 "smtp_password": smtp_password,
                 "from_email": settings.from_email.strip(),
                 "from_name": settings.from_name.strip() or "Sercora",
+                "reply_to_email": (
+                    (settings.reply_to_email or "").strip() or None
+                ),
                 "use_tls": settings.use_tls,
                 "use_ssl": settings.use_ssl,
                 "active": settings.active
