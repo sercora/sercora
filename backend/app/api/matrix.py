@@ -250,10 +250,17 @@ def get_matrix(estimate_id: int):
         text(
             """
             SELECT
+                id,
+                phase_name,
+                floor_name,
                 room_name
             FROM room
             WHERE estimate_id = :estimate_id
-            ORDER BY room_name
+            ORDER BY
+                NULLIF(phase_name, ''),
+                NULLIF(floor_name, ''),
+                room_name,
+                id
             """
         ),
         {
@@ -261,7 +268,21 @@ def get_matrix(estimate_id: int):
         }
     )
 
-    rooms = [row.room_name for row in room_rows]
+    room_columns = [
+        {
+            "id": row.id,
+            "key": "room_" + str(row.id),
+            "phase_name": row.phase_name,
+            "floor_name": row.floor_name,
+            "room_name": row.room_name
+        }
+        for row in room_rows
+    ]
+
+    rooms = [
+        room["key"]
+        for room in room_columns
+    ]
 
     rows = db.execute(
         text(
@@ -289,6 +310,12 @@ def get_matrix(estimate_id: int):
                 l.profit_percent,
 
                 l.installation_cost,
+
+                r.id AS room_id,
+
+                r.phase_name,
+
+                r.floor_name,
 
                 r.room_name,
 
@@ -318,7 +345,10 @@ def get_matrix(estimate_id: int):
 
             ORDER BY
                 l.id,
-                r.room_name NULLS LAST
+                NULLIF(r.phase_name, '') NULLS LAST,
+                NULLIF(r.floor_name, '') NULLS LAST,
+                r.room_name NULLS LAST,
+                r.id NULLS LAST
             """
         ),
         {
@@ -365,7 +395,9 @@ def get_matrix(estimate_id: int):
         if row.room_name is None:
             continue
 
-        matrix[line_id]["quantities"][row.room_name] = {
+        room_key = "room_" + str(row.room_id)
+
+        matrix[line_id]["quantities"][room_key] = {
 
             "id": row.quantity_id,
 
@@ -385,6 +417,8 @@ def get_matrix(estimate_id: int):
         "summary": summary,
 
         "rooms": rooms,
+
+        "room_columns": room_columns,
 
         "lines": list(matrix.values())
 

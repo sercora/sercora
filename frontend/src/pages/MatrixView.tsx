@@ -36,13 +36,19 @@ import type {
     EstimateMatrixResponse,
     EstimateMatrixSummary,
     EstimateMatrixSummaryInput,
+    EstimateRoomColumn,
     SurfaceType
 } from "../utils/matrixApi";
 import {
-    fetchProductPage
+    fetchProduct,
+    fetchProductPage,
+    fetchUnits,
+    updateProduct
 } from "../utils/productsApi";
 import type {
-    Product
+    Product,
+    ProductInput,
+    Unit
 } from "../utils/productsApi";
 
 import "../styles/grid.css";
@@ -119,6 +125,150 @@ type MatrixViewProps = {
 };
 
 
+function textValue(
+    value: string | null
+) {
+
+    const trimmedValue =
+        String(value || "").trim();
+
+    if (!trimmedValue)
+        return null;
+
+    return trimmedValue;
+
+}
+
+
+function numberValue(
+    value: string | number | null
+) {
+
+    if (value === null)
+        return null;
+
+    const normalizedValue =
+        String(value).replace(",", ".").trim();
+
+    if (!normalizedValue)
+        return null;
+
+    const parsedValue =
+        Number(normalizedValue);
+
+    if (Number.isNaN(parsedValue))
+        return null;
+
+    return parsedValue;
+
+}
+
+
+function productToForm(
+    product: Product
+): ProductInput {
+
+    return {
+        product_type_id:
+            product.product_type_id,
+        name:
+            product.name || "",
+        manufacturer_name:
+            product.manufacturer_name || "",
+        collection_name:
+            product.collection_name || "",
+        color_name:
+            product.color_name || "",
+        finish_name:
+            product.finish_name || "",
+        size_name:
+            product.size_name || "",
+        default_unit_id:
+            product.default_unit_id,
+        default_grout_color:
+            product.default_grout_color || "",
+        prosol_product_id:
+            product.prosol_product_id,
+        prosol_uuid:
+            product.prosol_uuid,
+        prosol_sku:
+            product.prosol_sku,
+        manufacturer_sku:
+            product.manufacturer_sku,
+        category_name:
+            product.category_name,
+        image_url:
+            product.image_url,
+        source_url:
+            product.source_url,
+        default_purchase_price:
+            product.default_purchase_price,
+        msrp_price:
+            product.msrp_price,
+        supplier_name:
+            product.supplier_names || "",
+        supplier_product_code:
+            product.supplier_product_code || "",
+        technical_documents:
+            product.technical_documents || [],
+        coverage_options:
+            product.coverage_options || [],
+        active:
+            product.active
+    };
+
+}
+
+
+function normalizeProductForm(
+    form: ProductInput
+): ProductInput {
+
+    return {
+        ...form,
+        name:
+            String(form.name || "").trim(),
+        manufacturer_name:
+            textValue(form.manufacturer_name),
+        collection_name:
+            textValue(form.collection_name),
+        color_name:
+            textValue(form.color_name),
+        finish_name:
+            textValue(form.finish_name),
+        size_name:
+            textValue(form.size_name),
+        default_grout_color:
+            textValue(form.default_grout_color),
+        prosol_uuid:
+            textValue(form.prosol_uuid),
+        prosol_sku:
+            textValue(form.prosol_sku),
+        manufacturer_sku:
+            textValue(form.manufacturer_sku),
+        category_name:
+            textValue(form.category_name),
+        image_url:
+            textValue(form.image_url),
+        source_url:
+            textValue(form.source_url),
+        default_purchase_price:
+            numberValue(form.default_purchase_price),
+        msrp_price:
+            numberValue(form.msrp_price),
+        supplier_name:
+            textValue(form.supplier_name),
+        supplier_product_code:
+            textValue(form.supplier_product_code),
+        coverage_options:
+            form.coverage_options || [],
+        active:
+            form.active
+    };
+
+}
+
+
 function MatrixView({
     estimateMenu
 }: MatrixViewProps) {
@@ -141,12 +291,20 @@ function MatrixView({
     });
     const [isSummarySaving, setIsSummarySaving] = useState(false);
     const [summaryStatus, setSummaryStatus] = useState("");
+    const [newRoomPhase, setNewRoomPhase] = useState("");
+    const [newRoomFloor, setNewRoomFloor] = useState("");
     const [newRoomName, setNewRoomName] = useState("");
     const [productSearch, setProductSearch] = useState("");
     const [productResults, setProductResults] = useState<Product[]>([]);
     const [selectedProductId, setSelectedProductId] = useState("");
     const [matrixActionStatus, setMatrixActionStatus] = useState("");
     const [isMatrixActionLoading, setIsMatrixActionLoading] = useState(false);
+    const [units, setUnits] = useState<Unit[]>([]);
+    const [editingProductId, setEditingProductId] = useState<number | null>(null);
+    const [productForm, setProductForm] = useState<ProductInput | null>(null);
+    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+    const [isProductSaving, setIsProductSaving] = useState(false);
+    const [productEditStatus, setProductEditStatus] = useState("");
     const [folderPath, setFolderPath] = useState("");
     const [rootName, setRootName] = useState("");
     const [folderItems, setFolderItems] = useState<EstimateFolderItem[]>([]);
@@ -232,6 +390,45 @@ function MatrixView({
             selectedProductId
         ]
     );
+
+
+    function matrixRoomColumns(
+        matrix: EstimateMatrixResponse
+    ): EstimateRoomColumn[] {
+
+        if (matrix.room_columns?.length)
+            return matrix.room_columns;
+
+        return matrix.rooms.map(
+            room => ({
+                id:
+                    0,
+                key:
+                    room,
+                phase_name:
+                    "",
+                floor_name:
+                    "",
+                room_name:
+                    room
+            })
+        );
+
+    }
+
+
+    function matrixRoomKeys(
+        matrix: EstimateMatrixResponse
+    ) {
+
+        return matrixRoomColumns(
+            matrix
+        ).map(
+            room =>
+                room.key
+        );
+
+    }
 
 
     function refreshGrid() {
@@ -677,17 +874,19 @@ function MatrixView({
 
                 };
 
-                matrix.rooms.forEach(
+                matrixRoomColumns(
+                    matrix
+                ).forEach(
 
-                    (room: string) => {
+                    room => {
 
-                        row[room] =
-                            line.quantities[room]?.quantity ?? 0;
+                        row[room.key] =
+                            line.quantities[room.key]?.quantity ?? 0;
 
                         row[
-                            room + "_id"
+                            room.key + "_id"
                         ] =
-                            line.quantities[room]?.id;
+                            line.quantities[room.key]?.id;
 
                     }
 
@@ -723,13 +922,20 @@ function MatrixView({
                     surface.name
             );
 
-        const roomColumns = matrix.rooms.map(
+        const roomFields =
+            matrixRoomKeys(
+                matrix
+            );
 
-            (room: string) => ({
+        const flatRoomColumns = matrixRoomColumns(
+            matrix
+        ).map(
 
-                field: room,
+            room => ({
 
-                headerName: room,
+                field: room.key,
+
+                headerName: room.room_name,
 
                 width: 82,
 
@@ -745,6 +951,91 @@ function MatrixView({
             })
 
         );
+
+        const roomGroups = new Map<string, Map<string, any[]>>();
+
+        matrixRoomColumns(
+            matrix
+        ).forEach(
+            room => {
+                const phaseName =
+                    room.phase_name?.trim() || "";
+
+                const floorName =
+                    room.floor_name?.trim() || "";
+
+                if (!roomGroups.has(phaseName))
+                    roomGroups.set(
+                        phaseName,
+                        new Map()
+                    );
+
+                const phaseGroup =
+                    roomGroups.get(phaseName);
+
+                if (!phaseGroup)
+                    return;
+
+                if (!phaseGroup.has(floorName))
+                    phaseGroup.set(
+                        floorName,
+                        []
+                    );
+
+                phaseGroup.get(floorName)?.push(
+                    flatRoomColumns.find(
+                        column =>
+                            column.field === room.key
+                    )
+                );
+            }
+        );
+
+        const groupedRoomColumns = Array.from(
+            roomGroups.entries()
+        ).map(
+            ([
+                phaseName,
+                floorGroups
+            ]) => {
+                const floorChildren =
+                    Array.from(
+                        floorGroups.entries()
+                    ).map(
+                        ([
+                            floorName,
+                            columns
+                        ]) => {
+                            const visibleColumns =
+                                columns.filter(Boolean);
+
+                            if (!floorName)
+                                return visibleColumns;
+
+                            return {
+                                headerName:
+                                    floorName,
+                                marryChildren:
+                                    true,
+                                children:
+                                    visibleColumns
+                            };
+                        }
+                    ).flat();
+
+                if (!phaseName)
+                    return floorChildren;
+
+                return {
+                    headerName:
+                        phaseName,
+                    marryChildren:
+                        true,
+                    children:
+                        floorChildren
+                };
+            }
+        ).flat();
 
         return [
 
@@ -793,7 +1084,7 @@ function MatrixView({
             {
                 headerName: "TAKE OFF",
                 marryChildren: true,
-                children: roomColumns
+                children: groupedRoomColumns
             },
 
             {
@@ -809,7 +1100,7 @@ function MatrixView({
                             (params: any) =>
                                 getQtyTotal(
                                     params,
-                                    matrix.rooms
+                                    roomFields
                                 )
                     },
                     {
@@ -831,7 +1122,7 @@ function MatrixView({
                             (params: any) =>
                                 getLossQuantity(
                                     params,
-                                    matrix.rooms
+                                    roomFields
                                 ).toFixed(2)
                     },
                     {
@@ -843,7 +1134,7 @@ function MatrixView({
                             (params: any) =>
                                 getQtyWithLoss(
                                     params,
-                                    matrix.rooms
+                                    roomFields
                                 ).toFixed(2)
                     },
                     {
@@ -886,7 +1177,7 @@ function MatrixView({
                             (params: any) =>
                                 getProfit(
                                     params,
-                                    matrix.rooms
+                                    roomFields
                                 ).toFixed(2)
                     },
                     {
@@ -911,7 +1202,7 @@ function MatrixView({
                             (params: any) =>
                                 getSellPrice(
                                     params,
-                                    matrix.rooms
+                                    roomFields
                                 ).toFixed(2)
                     }
                 ]
@@ -946,7 +1237,7 @@ function MatrixView({
                             (params: any) =>
                                 getInstallationSellTotal(
                                     params,
-                                    matrix.rooms
+                                    roomFields
                                 ).toFixed(2)
                     }
                 ]
@@ -1147,9 +1438,9 @@ function MatrixView({
                 estimate_id:
                     matrixSummary.estimate.id,
                 phase_name:
-                    "",
+                    newRoomPhase.trim(),
                 floor_name:
-                    "",
+                    newRoomFloor.trim(),
                 room_name:
                     roomName
             }
@@ -1178,18 +1469,96 @@ function MatrixView({
     }
 
 
-    function addLine() {
+    function loadUnitsIfNeeded() {
+
+        if (units.length)
+            return Promise.resolve(units);
+
+        return fetchUnits()
+
+        .then(
+            response => {
+                setUnits(response);
+                return response;
+            }
+        );
+
+    }
+
+
+    function openProductEditor(
+        productId: number,
+        message = ""
+    ) {
+
+        setIsMatrixActionLoading(true);
+        setProductEditStatus(message);
+
+        Promise.all(
+            [
+                fetchProduct(productId),
+                loadUnitsIfNeeded()
+            ]
+        )
+
+        .then(
+            ([
+                product
+            ]) => {
+                setEditingProductId(product.id);
+                setProductForm(productToForm(product));
+                setIsProductModalOpen(true);
+            }
+        )
+
+        .catch(
+            () => {
+                setMatrixActionStatus("Impossible de charger le produit.");
+            }
+        )
+
+        .finally(
+            () => {
+                setIsMatrixActionLoading(false);
+            }
+        );
+
+    }
+
+
+    function updateProductForm(
+        field: keyof ProductInput,
+        value: string | number | boolean | null
+    ) {
+
+        setProductForm(
+            previousForm => {
+                if (!previousForm)
+                    return previousForm;
+
+                return {
+                    ...previousForm,
+                    [field]:
+                        value
+                };
+            }
+        );
+
+    }
+
+
+    function createLineForProduct(
+        product: Product
+    ) {
 
         if (!matrixSummary)
             return;
 
-        if (!selectedProduct) {
-            setMatrixActionStatus("Sélectionner un produit.");
-            return;
-        }
-
-        if (!selectedProduct.default_unit_id) {
-            setMatrixActionStatus("Ce produit n'a pas d'unité par défaut.");
+        if (!product.default_unit_id) {
+            openProductEditor(
+                product.id,
+                "Choisir une unité par défaut pour ajouter ce produit à la matrice."
+            );
             return;
         }
 
@@ -1202,17 +1571,17 @@ function MatrixView({
             estimate_id:
                 matrixSummary.estimate.id,
             product_id:
-                selectedProduct.id,
+                product.id,
             surface_type_id:
                 surfaceTypes[0].id,
             unit_id:
-                selectedProduct.default_unit_id,
+                product.default_unit_id,
             grout_color:
-                selectedProduct.default_grout_color,
+                product.default_grout_color,
             loss_percent:
                 15,
             purchase_price:
-                selectedProduct.default_purchase_price ?? 0,
+                product.default_purchase_price ?? 0,
             profit_percent:
                 matrixSummary.rates.global_profit_percent ?? 20,
             installation_cost:
@@ -1242,6 +1611,86 @@ function MatrixView({
         .finally(
             () => {
                 setIsMatrixActionLoading(false);
+            }
+        );
+
+    }
+
+
+    function addLine() {
+
+        if (!selectedProduct) {
+            setMatrixActionStatus("Sélectionner un produit.");
+            return;
+        }
+
+        createLineForProduct(
+            selectedProduct
+        );
+
+    }
+
+
+    function saveProductAndAddLine() {
+
+        if (!editingProductId || !productForm)
+            return;
+
+        const payload =
+            normalizeProductForm(productForm);
+
+        if (!payload.name || !payload.product_type_id) {
+            setProductEditStatus("Nom et type requis.");
+            return;
+        }
+
+        if (!payload.default_unit_id) {
+            setProductEditStatus("Choisir une unité par défaut.");
+            return;
+        }
+
+        setIsProductSaving(true);
+        setProductEditStatus("");
+
+        updateProduct(
+            editingProductId,
+            payload
+        )
+
+        .then(
+            () =>
+                fetchProduct(editingProductId)
+        )
+
+        .then(
+            product => {
+                setProductResults(
+                    previousProducts =>
+                        previousProducts.map(
+                            previousProduct =>
+                                previousProduct.id === product.id ?
+                                    product :
+                                    previousProduct
+                        )
+                );
+                setSelectedProductId(String(product.id));
+                setIsProductModalOpen(false);
+                setEditingProductId(null);
+                setProductForm(null);
+                setMatrixActionStatus("Produit sauvegardé.");
+                createLineForProduct(product);
+            }
+        )
+
+        .catch(
+            () => {
+                setProductEditStatus("Sauvegarde du produit impossible.");
+            }
+        )
+
+        .finally(
+            () => {
+                setIsProductSaving(false);
             }
         );
 
@@ -1287,6 +1736,24 @@ function MatrixView({
         return (
             <section className="matrix-action-bar">
                 <div className="matrix-action-group">
+                    <input
+                        type="text"
+                        value={newRoomPhase}
+                        onChange={
+                            event =>
+                                setNewRoomPhase(event.target.value)
+                        }
+                        placeholder="Phase"
+                    />
+                    <input
+                        type="text"
+                        value={newRoomFloor}
+                        onChange={
+                            event =>
+                                setNewRoomFloor(event.target.value)
+                        }
+                        placeholder="Étage"
+                    />
                     <input
                         type="text"
                         value={newRoomName}
@@ -1359,6 +1826,22 @@ function MatrixView({
                     >
                         Ajouter ligne
                     </button>
+                    <button
+                        type="button"
+                        className="secondary"
+                        onClick={
+                            () => {
+                                if (selectedProduct)
+                                    openProductEditor(selectedProduct.id);
+                            }
+                        }
+                        disabled={
+                            isMatrixActionLoading ||
+                            !selectedProduct
+                        }
+                    >
+                        Éditer produit
+                    </button>
                 </div>
 
                 {matrixActionStatus && (
@@ -1367,6 +1850,199 @@ function MatrixView({
                     </span>
                 )}
             </section>
+        );
+
+    }
+
+
+    function renderProductEditor() {
+
+        if (!isProductModalOpen || !productForm)
+            return null;
+
+        return (
+            <div className="matrix-modal-backdrop">
+                <section className="matrix-product-modal">
+                    <header>
+                        <h2>Modifier produit</h2>
+                        <button
+                            type="button"
+                            onClick={
+                                () => {
+                                    setIsProductModalOpen(false);
+                                    setEditingProductId(null);
+                                    setProductForm(null);
+                                }
+                            }
+                        >
+                            Fermer
+                        </button>
+                    </header>
+
+                    <div className="matrix-product-form">
+                        <label>
+                            Nom
+                            <input
+                                type="text"
+                                value={productForm.name}
+                                onChange={
+                                    event =>
+                                        updateProductForm(
+                                            "name",
+                                            event.target.value
+                                        )
+                                }
+                            />
+                        </label>
+
+                        <label>
+                            Manufacturier
+                            <input
+                                type="text"
+                                value={productForm.manufacturer_name || ""}
+                                onChange={
+                                    event =>
+                                        updateProductForm(
+                                            "manufacturer_name",
+                                            event.target.value
+                                        )
+                                }
+                            />
+                        </label>
+
+                        <label>
+                            Format
+                            <input
+                                type="text"
+                                value={productForm.size_name || ""}
+                                onChange={
+                                    event =>
+                                        updateProductForm(
+                                            "size_name",
+                                            event.target.value
+                                        )
+                                }
+                            />
+                        </label>
+
+                        <label>
+                            Code fournisseur
+                            <input
+                                type="text"
+                                value={productForm.supplier_product_code || ""}
+                                onChange={
+                                    event =>
+                                        updateProductForm(
+                                            "supplier_product_code",
+                                            event.target.value
+                                        )
+                                }
+                            />
+                        </label>
+
+                        <label>
+                            Unité
+                            <select
+                                value={productForm.default_unit_id || ""}
+                                onChange={
+                                    event =>
+                                        updateProductForm(
+                                            "default_unit_id",
+                                            event.target.value ?
+                                                Number(event.target.value) :
+                                                null
+                                        )
+                                }
+                            >
+                                <option value="">Aucune</option>
+                                {units.map(
+                                    unit => (
+                                        <option
+                                            key={unit.id}
+                                            value={unit.id}
+                                        >
+                                            {unit.name} ({unit.symbol})
+                                        </option>
+                                    )
+                                )}
+                            </select>
+                        </label>
+
+                        <label>
+                            Prix achat
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={productForm.default_purchase_price ?? ""}
+                                onChange={
+                                    event =>
+                                        updateProductForm(
+                                            "default_purchase_price",
+                                            event.target.value
+                                        )
+                                }
+                            />
+                        </label>
+
+                        <label>
+                            MSRP
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={productForm.msrp_price ?? ""}
+                                onChange={
+                                    event =>
+                                        updateProductForm(
+                                            "msrp_price",
+                                            event.target.value
+                                        )
+                                }
+                            />
+                        </label>
+
+                        <label>
+                            Coulis par défaut
+                            <input
+                                type="text"
+                                value={productForm.default_grout_color || ""}
+                                onChange={
+                                    event =>
+                                        updateProductForm(
+                                            "default_grout_color",
+                                            event.target.value
+                                        )
+                                }
+                            />
+                        </label>
+                    </div>
+
+                    <footer>
+                        {productEditStatus && (
+                            <span>{productEditStatus}</span>
+                        )}
+                        <button
+                            type="button"
+                            onClick={
+                                () => {
+                                    setIsProductModalOpen(false);
+                                    setEditingProductId(null);
+                                    setProductForm(null);
+                                }
+                            }
+                            disabled={isProductSaving}
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="button"
+                            onClick={saveProductAndAddLine}
+                            disabled={isProductSaving}
+                        >
+                            Sauvegarder et ajouter ligne
+                        </button>
+                    </footer>
+                </section>
+            </div>
         );
 
     }
@@ -1786,6 +2462,8 @@ function MatrixView({
             {renderMatrixSummary()}
 
             {renderMatrixActions()}
+
+            {renderProductEditor()}
 
             <ZoomToolbar
                 zoom={zoom}

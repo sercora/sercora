@@ -86,7 +86,17 @@ export type EstimateMatrixSummaryInput = {
 export type EstimateMatrixResponse = {
     summary: EstimateMatrixSummary;
     rooms: string[];
+    room_columns?: EstimateRoomColumn[];
     lines: any[];
+};
+
+
+export type EstimateRoomColumn = {
+    id: number;
+    key: string;
+    phase_name: string | null;
+    floor_name: string | null;
+    room_name: string;
 };
 
 
