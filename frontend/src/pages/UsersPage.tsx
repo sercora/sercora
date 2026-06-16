@@ -39,6 +39,24 @@ const EMPTY_USER: UserInput = {
 };
 
 
+function formatDateTime(
+    value: string | null
+) {
+
+    if (!value)
+        return "-";
+
+    return new Date(value).toLocaleString(
+        "fr-CA",
+        {
+            dateStyle: "short",
+            timeStyle: "short"
+        }
+    );
+
+}
+
+
 type UsersPageProps = {
     token: string;
     currentUser: SercoraUser;
@@ -359,6 +377,8 @@ function UsersPage({
                                     <th>Nom</th>
                                     <th>Role</th>
                                     <th>Etat</th>
+                                    <th>Création</th>
+                                    <th>Dernière connexion</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -381,6 +401,8 @@ function UsersPage({
                                             <td>
                                                 {user.active ? "Actif" : "Inactif"}
                                             </td>
+                                            <td>{formatDateTime(user.created_at)}</td>
+                                            <td>{formatDateTime(user.last_login_at)}</td>
                                         </tr>
                                     )
                                 )}

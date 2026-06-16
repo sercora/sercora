@@ -173,21 +173,56 @@ def parse_token(token: str):
 
 def user_payload(row):
 
+    values = row._mapping
+
     return {
-        "id": row.id,
-        "username": row.username,
-        "full_name": row.full_name,
-        "email": row.email,
-        "role": row.role,
-        "active": row.active,
-        "must_change_password": row.must_change_password
+        "id": values["id"],
+        "username": values["username"],
+        "full_name": values["full_name"],
+        "email": values["email"],
+        "role": values["role"],
+        "active": values["active"],
+        "must_change_password": values["must_change_password"],
+        "created_at": values.get("created_at"),
+        "last_login_at": values.get("last_login_at")
     }
+
+
+def ensure_user_columns(db):
+
+    db.execute(
+        text(
+            """
+            ALTER TABLE app_user
+            ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE app_user
+            ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE app_user
+            ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP
+            """
+        )
+    )
+    db.commit()
 
 
 def get_user_by_id(
     db,
     user_id: int
 ):
+
+    ensure_user_columns(db)
 
     row = db.execute(
         text(
@@ -199,7 +234,9 @@ def get_user_by_id(
                 email,
                 role,
                 active,
-                must_change_password
+                must_change_password,
+                created_at,
+                last_login_at
             FROM app_user
             WHERE id = :id
             """
@@ -219,6 +256,8 @@ def get_user_by_id(
 
 
 def ensure_default_admin(db):
+
+    ensure_user_columns(db)
 
     count = db.execute(
         text("SELECT count(*) FROM app_user")
@@ -276,6 +315,7 @@ def get_current_user(
     db = SessionLocal()
 
     try:
+        ensure_user_columns(db)
         row = db.execute(
             text(
                 """
@@ -286,7 +326,9 @@ def get_current_user(
                     email,
                     role,
                     active,
-                    must_change_password
+                    must_change_password,
+                    created_at,
+                    last_login_at
                 FROM app_user
                 WHERE id = :id
                 """
@@ -337,7 +379,9 @@ def login(request: LoginRequest):
                     role,
                     password_hash,
                     active,
-                    must_change_password
+                    must_change_password,
+                    created_at,
+                    last_login_at
                 FROM app_user
                 WHERE lower(username) = lower(:username)
                 """
@@ -356,6 +400,42 @@ def login(request: LoginRequest):
                 status_code=401,
                 detail="Invalid username or password"
             )
+
+        db.execute(
+            text(
+                """
+                UPDATE app_user
+                SET last_login_at = CURRENT_TIMESTAMP
+                WHERE id = :id
+                """
+            ),
+            {
+                "id": row.id
+            }
+        )
+        db.commit()
+
+        row = db.execute(
+            text(
+                """
+                SELECT
+                    id,
+                    username,
+                    full_name,
+                    email,
+                    role,
+                    active,
+                    must_change_password,
+                    created_at,
+                    last_login_at
+                FROM app_user
+                WHERE id = :id
+                """
+            ),
+            {
+                "id": row.id
+            }
+        ).fetchone()
 
         return {
             "token": create_token(row.id),
@@ -445,6 +525,7 @@ def get_users(_admin=Depends(require_admin)):
     db = SessionLocal()
 
     try:
+        ensure_user_columns(db)
         rows = db.execute(
             text(
                 """
@@ -455,7 +536,9 @@ def get_users(_admin=Depends(require_admin)):
                     email,
                     role,
                     active,
-                    must_change_password
+                    must_change_password,
+                    created_at,
+                    last_login_at
                 FROM app_user
                 ORDER BY active DESC, full_name, username
                 """
@@ -480,6 +563,7 @@ def create_user(
     db = SessionLocal()
 
     try:
+        ensure_user_columns(db)
         try:
             row = db.execute(
                 text(
@@ -542,6 +626,7 @@ def update_user(
     db = SessionLocal()
 
     try:
+        ensure_user_columns(db)
         current = db.execute(
             text("SELECT id FROM app_user WHERE id = :id"),
             {

@@ -12,6 +12,8 @@ export type SercoraUser = {
     role: UserRole;
     active: boolean;
     must_change_password: boolean;
+    created_at: string | null;
+    last_login_at: string | null;
 };
 
 
