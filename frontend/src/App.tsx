@@ -1,14 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import LoginPage from "./pages/LoginPage";
 import MatrixView from "./pages/MatrixView";
+import ProfilePage from "./pages/ProfilePage";
 import ProductsPage from "./pages/ProductsPage";
 import ToolsPage from "./pages/ToolsPage";
+import UsersPage from "./pages/UsersPage";
 import sercoraLogo from "./assets/sercora-logo.png";
+import type { SercoraUser } from "./utils/authApi";
+import {
+    fetchMe,
+    login
+} from "./utils/authApi";
 
 import "./App.css";
 
 
-type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions";
+type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions" | "Profil" | "Usagers";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile";
 type EstimateMenuKey = "En cours" | "Envoyées" | "Refusées";
 
@@ -18,7 +26,8 @@ const NAV_ITEMS: PageKey[] = [
     "Projets",
     "Produits",
     "Outils",
-    "Soumissions"
+    "Soumissions",
+    "Usagers"
 ];
 
 
@@ -42,8 +51,13 @@ const PAGE_CONTEXT: Record<PageKey, string> = {
     Projets: "Chantiers et suivis",
     Produits: "Catalogue, prix et fournisseurs",
     Outils: "Inventaire Snipe-IT",
-    Soumissions: "Estimations et quantités"
+    Soumissions: "Estimations et quantités",
+    Profil: "Compte et mot de passe",
+    Usagers: "Roles et acces"
 };
+
+
+const AUTH_TOKEN_KEY = "sercora_auth_token";
 
 
 function App() {
@@ -51,6 +65,110 @@ function App() {
     const [activePage, setActivePage] = useState<PageKey>("Soumissions");
     const [activeProductMenu, setActiveProductMenu] = useState<ProductMenuKey>("Tous");
     const [activeEstimateMenu, setActiveEstimateMenu] = useState<EstimateMenuKey>("En cours");
+    const [token, setToken] = useState<string | null>(
+        () => localStorage.getItem(AUTH_TOKEN_KEY)
+    );
+    const [currentUser, setCurrentUser] = useState<SercoraUser | null>(null);
+    const [isCheckingSession, setIsCheckingSession] = useState(Boolean(token));
+
+
+    useEffect(
+        () => {
+            if (!token)
+                return;
+
+            let isMounted = true;
+
+            fetchMe(token)
+                .then(
+                    user => {
+                        if (!isMounted)
+                            return;
+
+                        setCurrentUser(user);
+                        setIsCheckingSession(false);
+                    }
+                )
+                .catch(
+                    () => {
+                        if (!isMounted)
+                            return;
+
+                        localStorage.removeItem(AUTH_TOKEN_KEY);
+                        setToken(null);
+                        setCurrentUser(null);
+                        setIsCheckingSession(false);
+                    }
+                );
+
+            return () => {
+                isMounted = false;
+            };
+        },
+        [
+            token
+        ]
+    );
+
+
+    async function handleLogin(
+        username: string,
+        password: string
+    ) {
+
+        const response = await login(
+            username,
+            password
+        );
+
+        localStorage.setItem(
+            AUTH_TOKEN_KEY,
+            response.token
+        );
+        setToken(response.token);
+        setCurrentUser(response.user);
+        setActivePage(
+            response.user.must_change_password ?
+                "Profil" :
+                "Soumissions"
+        );
+
+    }
+
+
+    function handleLogout() {
+
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        setToken(null);
+        setCurrentUser(null);
+        setActivePage("Soumissions");
+
+    }
+
+
+    function handleUserUpdate(
+        user: SercoraUser
+    ) {
+
+        setCurrentUser(user);
+
+    }
+
+
+    if (isCheckingSession) {
+        return (
+            <main className="session-loading">
+                Chargement de la session...
+            </main>
+        );
+    }
+
+
+    if (!token || !currentUser) {
+        return (
+            <LoginPage onLogin={handleLogin} />
+        );
+    }
 
 
     return (
@@ -83,10 +201,27 @@ function App() {
                 </div>
 
                 <div className="header-meta">
+                    <button
+                        type="button"
+                        className="header-action"
+                        onClick={
+                            () => setActivePage("Profil")
+                        }
+                    >
+                        {currentUser.full_name}
+                    </button>
+                    <span className="role-header-pill">{currentUser.role}</span>
                     <span className="environment-pill">Production</span>
                     <span className="build-pill">
                         Build {__SERCORA_BUILD_NUMBER__}
                     </span>
+                    <button
+                        type="button"
+                        className="header-action"
+                        onClick={handleLogout}
+                    >
+                        Deconnexion
+                    </button>
                 </div>
 
             </header>
@@ -98,7 +233,12 @@ function App() {
                     aria-label="Navigation principale"
                 >
 
-                    {NAV_ITEMS.map(
+                    {NAV_ITEMS.filter(
+                        item => (
+                            item !== "Usagers" ||
+                            currentUser.role === "admin"
+                        )
+                    ).map(
                         item => (
                             <div
                                 key={item}
@@ -214,6 +354,21 @@ function App() {
                         <MatrixView
                             key={activeEstimateMenu}
                             estimateMenu={activeEstimateMenu}
+                        />
+                    )}
+
+                    {activePage === "Profil" && (
+                        <ProfilePage
+                            token={token}
+                            user={currentUser}
+                            onUserUpdate={handleUserUpdate}
+                        />
+                    )}
+
+                    {activePage === "Usagers" && (
+                        <UsersPage
+                            token={token}
+                            currentUser={currentUser}
                         />
                     )}
                 </main>

@@ -161,8 +161,50 @@
 }
 
 
+.header-action {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    max-width: 190px;
+
+    height: 28px;
+
+    padding: 0 10px;
+
+    overflow: hidden;
+
+    border: 1px solid rgba(255, 255, 255, 0.14);
+
+    border-radius: 999px;
+
+    background-color: rgba(255, 255, 255, 0.07);
+
+    color: #f4f7f5;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    line-height: 28px;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+    cursor: pointer;
+
+}
+
+
 .environment-pill,
-.build-pill {
+.build-pill,
+.role-header-pill {
 
     display: inline-flex;
 
@@ -183,6 +225,17 @@
     line-height: 28px;
 
     white-space: nowrap;
+
+}
+
+
+.role-header-pill {
+
+    border: 1px solid rgba(255, 255, 255, 0.12);
+
+    background-color: rgba(255, 255, 255, 0.05);
+
+    color: #dce7dd;
 
 }
 
@@ -456,6 +509,29 @@
     text-align: right;
 
     white-space: nowrap;
+
+}
+
+
+.session-loading {
+
+    display: grid;
+
+    width: 100vw;
+
+    height: 100vh;
+
+    place-items: center;
+
+    background-color: #101611;
+
+    color: #f7faf7;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 15px;
+
+    font-weight: 700;
 
 }
 
