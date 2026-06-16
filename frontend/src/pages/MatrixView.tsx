@@ -309,6 +309,7 @@ function MatrixView({
     const [replaceProductResults, setReplaceProductResults] = useState<Product[]>([]);
     const [selectedReplaceProductId, setSelectedReplaceProductId] = useState("");
     const [replaceSurfaceTypeId, setReplaceSurfaceTypeId] = useState("");
+    const [replaceLinePosition, setReplaceLinePosition] = useState("");
     const [replaceMatchingProduct, setReplaceMatchingProduct] = useState(false);
     const [replaceProductStatus, setReplaceProductStatus] = useState("");
     const [isReplaceProductLoading, setIsReplaceProductLoading] = useState(false);
@@ -1692,6 +1693,7 @@ function MatrixView({
         setReplaceProductResults([]);
         setSelectedReplaceProductId("");
         setReplaceSurfaceTypeId(String(row.surface_type_id || ""));
+        setReplaceLinePosition(String(row.line_number || ""));
         setReplaceMatchingProduct(false);
         setReplaceProductStatus("");
 
@@ -1747,20 +1749,10 @@ function MatrixView({
     }
 
 
-    function replaceLineProduct() {
+    function applyReplaceLineChanges() {
 
         if (!replaceLine)
             return;
-
-        if (!selectedReplaceProduct) {
-            setReplaceProductStatus("Sélectionner un produit.");
-            return;
-        }
-
-        if (!selectedReplaceProduct.default_unit_id) {
-            setReplaceProductStatus("Ce produit n'a pas d'unité par défaut.");
-            return;
-        }
 
         const surfaceTypeId =
             Number(replaceSurfaceTypeId);
@@ -1770,34 +1762,115 @@ function MatrixView({
             return;
         }
 
+        const nextPosition =
+            Number(replaceLinePosition);
+
+        if (
+            replaceLinePosition.trim() &&
+            (
+                Number.isNaN(nextPosition) ||
+                nextPosition <= 0
+            )
+        ) {
+            setReplaceProductStatus("Position invalide.");
+            return;
+        }
+
+        if (
+            selectedReplaceProduct &&
+            !selectedReplaceProduct.default_unit_id
+        ) {
+            setReplaceProductStatus("Ce produit n'a pas d'unité par défaut.");
+            return;
+        }
+
         setIsReplaceProductLoading(true);
         setReplaceProductStatus("");
 
-        updateEstimateLineProduct(
-            replaceLine.line_id,
-            {
-                product_id:
-                    selectedReplaceProduct.id,
-                surface_type_id:
-                    surfaceTypeId,
-                unit_id:
-                    selectedReplaceProduct.default_unit_id,
-                grout_color:
-                    selectedReplaceProduct.default_grout_color,
-                purchase_price:
-                    selectedReplaceProduct.default_purchase_price ?? 0,
-                apply_matching_product:
-                    replaceMatchingProduct
+        const updates: Promise<any>[] = [];
+
+        if (selectedReplaceProduct) {
+
+            const replaceUnitId =
+                selectedReplaceProduct.default_unit_id;
+
+            if (!replaceUnitId) {
+                setReplaceProductStatus("Ce produit n'a pas d'unité par défaut.");
+                setIsReplaceProductLoading(false);
+                return;
             }
-        )
+
+            updates.push(
+                updateEstimateLineProduct(
+                    replaceLine.line_id,
+                    {
+                        product_id:
+                            selectedReplaceProduct.id,
+                        surface_type_id:
+                            surfaceTypeId,
+                        unit_id:
+                            replaceUnitId,
+                        grout_color:
+                            selectedReplaceProduct.default_grout_color,
+                        purchase_price:
+                            selectedReplaceProduct.default_purchase_price ?? 0,
+                        apply_matching_product:
+                            replaceMatchingProduct
+                    }
+                )
+            );
+
+        } else {
+
+            updates.push(
+                saveEstimateLine(
+                    replaceLine.line_id,
+                    {
+                        surface_type_id:
+                            surfaceTypeId,
+                        loss_percent:
+                            parseNumber(replaceLine.loss_percent),
+                        purchase_price:
+                            parseNumber(replaceLine.purchase_price),
+                        profit_percent:
+                            parseNumber(replaceLine.profit_percent),
+                        installation_cost:
+                            parseNumber(replaceLine.installation_cost)
+                    }
+                )
+            );
+
+        }
+
+        if (
+            replaceLinePosition.trim() &&
+            nextPosition !== Number(replaceLine.line_number)
+        ) {
+            updates.push(
+                updateEstimateLinePosition(
+                    replaceLine.line_id,
+                    nextPosition
+                )
+            );
+        }
+
+        Promise.all(updates)
 
         .then(
-            response => {
+            responses => {
+                const productResponse =
+                    responses.find(
+                        response =>
+                            response?.updated_lines
+                    );
+
                 setReplaceLine(null);
                 setMatrixActionStatus(
-                    response.updated_lines > 1 ?
-                        response.updated_lines + " lignes remplacées." :
-                        "Produit remplacé."
+                    productResponse?.updated_lines > 1 ?
+                        productResponse.updated_lines + " lignes remplacées." :
+                        selectedReplaceProduct ?
+                            "Produit remplacé." :
+                            "Ligne mise à jour."
                 );
                 return reloadMatrix();
             }
@@ -2717,7 +2790,7 @@ function MatrixView({
             <div className="matrix-modal-backdrop">
                 <section className="matrix-product-modal replace-product-modal">
                     <header>
-                        <h2>Changer le produit</h2>
+                        <h2>Changer ligne</h2>
                         <button
                             type="button"
                             onClick={
@@ -2754,7 +2827,7 @@ function MatrixView({
                                             searchReplacementProducts();
                                     }
                                 }
-                                placeholder="Rechercher le nouveau produit"
+                                placeholder="Rechercher un nouveau produit"
                             />
                             <button
                                 type="button"
@@ -2822,6 +2895,22 @@ function MatrixView({
                             </select>
                         </label>
 
+                        <label className="replace-product-position">
+                            Position de ligne
+                            <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={replaceLinePosition}
+                                onChange={
+                                    event =>
+                                        setReplaceLinePosition(
+                                            event.target.value
+                                        )
+                                }
+                            />
+                        </label>
+
                         <label className="replace-product-apply-all">
                             <input
                                 type="checkbox"
@@ -2833,7 +2922,7 @@ function MatrixView({
                                         )
                                 }
                             />
-                            Remplacer aussi les autres lignes de ce produit dans les autres surfaces
+                            Si un nouveau produit est sélectionné, remplacer aussi les autres lignes de ce produit dans les autres surfaces
                         </label>
                     </div>
 
@@ -2855,10 +2944,10 @@ function MatrixView({
                         </button>
                         <button
                             type="button"
-                            onClick={replaceLineProduct}
+                            onClick={applyReplaceLineChanges}
                             disabled={isReplaceProductLoading}
                         >
-                            Remplacer
+                            Appliquer
                         </button>
                     </footer>
                 </section>

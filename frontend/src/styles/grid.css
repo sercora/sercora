@@ -1016,7 +1016,8 @@
 
 
 .replace-product-search input,
-.replace-product-surface select {
+.replace-product-surface select,
+.replace-product-position input {
 
     height: 32px;
 
@@ -1122,6 +1123,7 @@
 
 
 .replace-product-surface,
+.replace-product-position,
 .replace-product-apply-all {
 
     display: flex;
@@ -1144,6 +1146,22 @@
     flex-direction: column;
 
     align-items: flex-start;
+
+}
+
+
+.replace-product-position {
+
+    flex-direction: column;
+
+    align-items: flex-start;
+
+}
+
+
+.replace-product-position input {
+
+    width: 120px;
 
 }
 
