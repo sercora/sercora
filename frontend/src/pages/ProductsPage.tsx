@@ -1,4 +1,5 @@
 import {
+    useCallback,
     useEffect,
     useMemo,
     useState
@@ -8,7 +9,7 @@ import type { ChangeEvent } from "react";
 import {
     createProduct,
     disableProduct,
-    fetchProducts,
+    fetchProductPage,
     fetchProductTypes,
     fetchUnits,
     updateProduct
@@ -276,6 +277,7 @@ function ProductsPage({
 }: ProductsPageProps) {
 
     const [products, setProducts] = useState<Product[]>([]);
+    const [totalProductCount, setTotalProductCount] = useState(0);
     const [productTypes, setProductTypes] = useState<ProductType[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
     const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
@@ -291,24 +293,12 @@ function ProductsPage({
     const [statusMessage, setStatusMessage] = useState("");
 
 
-    function loadProducts() {
-
-        return fetchProducts()
-
-        .then(
-            setProducts
-        );
-
-    }
-
-
     useEffect(
 
         () => {
 
             Promise.all(
                 [
-                    fetchProducts(),
                     fetchProductTypes(),
                     fetchUnits()
                 ]
@@ -316,12 +306,10 @@ function ProductsPage({
 
             .then(
                 ([
-                    productRows,
                     typeRows,
                     unitRows
                 ]) => {
 
-                    setProducts(productRows);
                     setProductTypes(typeRows);
                     setUnits(unitRows);
 
@@ -446,13 +434,13 @@ function ProductsPage({
 
             return Math.max(
                 1,
-                Math.ceil(filteredProducts.length / pageSize)
+                Math.ceil(totalProductCount / pageSize)
             );
 
         },
 
         [
-            filteredProducts.length,
+            totalProductCount,
             pageSize
         ]
 
@@ -466,27 +454,85 @@ function ProductsPage({
         );
 
 
-    const paginatedProducts = useMemo(
+    const loadProducts = useCallback(
+
+        () =>
+            fetchProductPage(
+                {
+                    limit:
+                        pageSize === "all" ?
+                            null :
+                            pageSize,
+                    offset:
+                        pageSize === "all" ?
+                            0 :
+                            (visiblePage - 1) * pageSize,
+                    search:
+                        query.trim(),
+                    supplier:
+                        supplierFilter.trim(),
+                    status:
+                        filter,
+                    productMenu
+                }
+            )
+
+            .then(
+                response => {
+
+                    setProducts(response.rows);
+                    setTotalProductCount(response.total);
+
+                }
+            ),
+
+        [
+            filter,
+            pageSize,
+            productMenu,
+            query,
+            supplierFilter,
+            visiblePage
+        ]
+
+    );
+
+
+    useEffect(
 
         () => {
 
-            if (pageSize === "all")
-                return filteredProducts;
+            loadProducts()
 
-            const startIndex =
-                (visiblePage - 1) * pageSize;
+            .catch(
+                () => {
 
-            return filteredProducts.slice(
-                startIndex,
-                startIndex + pageSize
+                    setStatusMessage(
+                        "Impossible de charger les produits."
+                    );
+
+                }
             );
 
         },
 
         [
-            filteredProducts,
-            pageSize,
-            visiblePage
+            loadProducts
+        ]
+
+    );
+
+
+    const paginatedProducts = useMemo(
+
+        () => {
+
+            return filteredProducts;
+
+        },
+
+        [
+            filteredProducts
         ]
 
     );
@@ -837,8 +883,10 @@ function ProductsPage({
                         type="search"
                         value={query}
                         onChange={
-                            event =>
-                                setQuery(event.target.value)
+                            event => {
+                                setCurrentPage(1);
+                                setQuery(event.target.value);
+                            }
                         }
                         placeholder="Rechercher"
                     />
@@ -847,8 +895,10 @@ function ProductsPage({
                         className="supplier-filter"
                         value={supplierFilter}
                         onChange={
-                            event =>
-                                setSupplierFilter(event.target.value)
+                            event => {
+                                setCurrentPage(1);
+                                setSupplierFilter(event.target.value);
+                            }
                         }
                     >
                         <option value="">Fournisseurs</option>
@@ -867,8 +917,10 @@ function ProductsPage({
                     <select
                         value={filter}
                         onChange={
-                            event =>
-                                setFilter(event.target.value as FilterState)
+                            event => {
+                                setCurrentPage(1);
+                                setFilter(event.target.value as FilterState);
+                            }
                         }
                     >
                         <option value="active">Actifs</option>
@@ -968,12 +1020,12 @@ function ProductsPage({
 
                 <div className="products-pagination">
                     <span>
-                        {filteredProducts.length ?
+                        {totalProductCount ?
                             (
                                 (visiblePage - 1) *
                                 (
                                     pageSize === "all" ?
-                                        filteredProducts.length :
+                                        totalProductCount :
                                         pageSize
                                 ) +
                                 1
@@ -981,24 +1033,26 @@ function ProductsPage({
                             0}
                         -
                         {pageSize === "all" ?
-                            filteredProducts.length :
+                            totalProductCount :
                             Math.min(
                                 visiblePage * pageSize,
-                                filteredProducts.length
+                                totalProductCount
                             )}
                         {" / "}
-                        {filteredProducts.length}
+                        {totalProductCount}
                     </span>
 
                     <select
                         value={String(pageSize)}
                         onChange={
-                            event =>
+                            event => {
+                                setCurrentPage(1);
                                 setPageSize(
                                     event.target.value === "all" ?
                                         "all" :
                                         Number(event.target.value) as PageSize
-                                )
+                                );
+                            }
                         }
                     >
                         <option value="10">10</option>
@@ -1067,7 +1121,7 @@ function ProductsPage({
                     <h2>
                         {selectedProduct ? "Modifier produit" : "Nouveau produit"}
                     </h2>
-                    <span>{filteredProducts.length} produits</span>
+                    <span>{totalProductCount} produits</span>
                 </div>
 
                 <div className="editor-grid">

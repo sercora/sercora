@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import text
 
 from app.database.database import SessionLocal
@@ -247,44 +247,166 @@ def get_units():
 
 
 @router.get("/products")
-def get_products():
+def get_products(
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    search: str | None = None,
+    supplier: str | None = None,
+    status: str = Query("active", pattern="^(active|inactive|all)$"),
+    product_menu: str = Query(
+        "Tous",
+        pattern="^(Tous|Mapei|Prosol|Tuile)$"
+    ),
+    paged: bool = False
+):
 
     db = SessionLocal()
 
     try:
+        params = {
+            "limit": limit,
+            "offset": offset,
+            "search": f"%{(search or '').strip().lower()}%",
+            "supplier": f"%{(supplier or '').strip().lower()}%"
+        }
+        filters = []
+
+        if status == "active":
+            filters.append("p.active = TRUE")
+        elif status == "inactive":
+            filters.append("p.active = FALSE")
+
+        if search and search.strip():
+            filters.append(
+                """
+                lower(concat_ws(
+                    ' ',
+                    p.name,
+                    pt.name,
+                    p.manufacturer_name,
+                    p.collection_name,
+                    p.color_name,
+                    p.size_name,
+                    p.category_name,
+                    p.manufacturer_sku,
+                    p.prosol_sku,
+                    supplier_info.supplier_names,
+                    supplier_info.supplier_product_code
+                )) LIKE :search
+                """
+            )
+
+        if supplier and supplier.strip():
+            filters.append(
+                """
+                lower(concat_ws(
+                    ' ',
+                    p.manufacturer_name,
+                    supplier_info.supplier_names
+                )) LIKE :supplier
+                """
+            )
+
+        if product_menu == "Prosol":
+            filters.append(
+                """
+                (
+                    p.prosol_product_id IS NOT NULL
+                    OR lower(coalesce(supplier_info.supplier_names, ''))
+                        LIKE '%prosol%'
+                )
+                """
+            )
+        elif product_menu == "Mapei":
+            filters.append(
+                """
+                lower(concat_ws(
+                    ' ',
+                    p.name,
+                    p.manufacturer_name,
+                    supplier_info.supplier_names
+                )) LIKE '%mapei%'
+                """
+            )
+        elif product_menu == "Tuile":
+            filters.append("pt.name = 'Tuile'")
+
+        where_clause = (
+            "WHERE " + " AND ".join(filters)
+            if filters
+            else ""
+        )
+        supplier_cte = """
+            WITH supplier_info AS (
+                SELECT
+                    ps.product_id,
+                    string_agg(s.name, ', ' ORDER BY s.name)
+                        AS supplier_names,
+                    min(ps.supplier_product_code)
+                        AS supplier_product_code
+                FROM product_supplier ps
+                JOIN supplier s
+                    ON s.id = ps.supplier_id
+                GROUP BY ps.product_id
+            )
+        """
+        from_clause = """
+            FROM product p
+            LEFT JOIN product_type pt
+                ON pt.id = p.product_type_id
+            LEFT JOIN unit u
+                ON u.id = p.default_unit_id
+            LEFT JOIN supplier_info
+                ON supplier_info.product_id = p.id
+        """
+        pagination_clause = (
+            """
+            LIMIT :limit
+            OFFSET :offset
+            """
+            if limit is not None
+            else ""
+        )
+
         rows = db.execute(
             text(
-                """
+                supplier_cte + """
                 SELECT
                     """ + PRODUCT_SELECT_FIELDS + """
-                FROM product p
-                LEFT JOIN product_type pt
-                    ON pt.id = p.product_type_id
-                LEFT JOIN unit u
-                    ON u.id = p.default_unit_id
-                LEFT JOIN LATERAL (
-                    SELECT
-                        string_agg(s.name, ', ' ORDER BY s.name)
-                            AS supplier_names,
-                        min(ps.supplier_product_code)
-                            AS supplier_product_code
-                    FROM product_supplier ps
-                    JOIN supplier s
-                        ON s.id = ps.supplier_id
-                    WHERE ps.product_id = p.id
-                ) supplier_info
-                    ON TRUE
+                """ + from_clause + """
+                """ + where_clause + """
                 ORDER BY
                     p.active DESC,
                     p.name
+                """ + pagination_clause + """
                 """
-            )
+            ),
+            params
         )
 
-        return [
+        products = [
             product_payload(row)
             for row in rows
         ]
+
+        if limit is None and not paged:
+            return products
+
+        total = db.execute(
+            text(
+                supplier_cte + """
+                SELECT count(*)
+                """ + from_clause + """
+                """ + where_clause + """
+                """
+            ),
+            params
+        ).scalar()
+
+        return {
+            "total": total,
+            "rows": products
+        }
 
     finally:
         db.close()

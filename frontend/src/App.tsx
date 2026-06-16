@@ -137,7 +137,10 @@ function App() {
 
                 <main className="app-content">
                     {activePage === "Produits" && (
-                        <ProductsPage productMenu={activeProductMenu} />
+                        <ProductsPage
+                            key={activeProductMenu}
+                            productMenu={activeProductMenu}
+                        />
                     )}
 
                     {activePage === "Outils" && (

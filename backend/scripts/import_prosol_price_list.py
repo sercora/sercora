@@ -10,10 +10,8 @@ from sqlalchemy import text
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from app.api.prosol import extract_size, local_product_type_id  # noqa: E402
-from app.api.products import sync_product_supplier  # noqa: E402
+from app.api.prosol import extract_size  # noqa: E402
 from app.database.database import SessionLocal  # noqa: E402
-from app.schemas.product import ProductCreate  # noqa: E402
 
 
 NS = {
@@ -246,51 +244,204 @@ def unit_id_for(db, uom):
     return row.id if row else None
 
 
-def existing_product_id(db, code):
+def load_unit_ids(db):
 
-    row = db.execute(
+    return {
+        row.symbol.lower(): row.id
+        for row in db.execute(
+            text(
+                """
+                SELECT id, symbol
+                FROM unit
+                """
+            )
+        )
+    }
+
+
+def unit_id_from_map(unit_ids, uom):
+
+    normalized_uom = normalized_text(uom).lower()
+    aliases = {
+        "1": "unité",
+        "ea": "unité",
+        "each": "unité",
+        "unit": "unité",
+        "lf": "pi lin",
+        "linear foot": "pi lin",
+        "sf": "pi²",
+        "sqft": "pi²",
+        "ft2": "pi²",
+        "bag": "sac",
+        "sac": "sac",
+        "gal": "gal",
+        "gallon": "gal",
+        "l": "l",
+        "litre": "l"
+    }
+    symbol = aliases.get(
+        normalized_uom,
+        normalized_uom
+    )
+
+    return unit_ids.get(symbol)
+
+
+def load_product_type_ids(db):
+
+    return {
+        row.name: row.id
+        for row in db.execute(
+            text(
+                """
+                SELECT id, name
+                FROM product_type
+                WHERE active = TRUE
+                """
+            )
+        )
+    }
+
+
+def product_type_id_from_map(
+    product_type_ids,
+    values
+):
+
+    category_text = " ".join(
+        [
+            values.get("category_name") or "",
+            values.get("name") or ""
+        ]
+    ).lower()
+    candidates = []
+
+    if any(
+        keyword in category_text
+        for keyword in (
+            "coulis",
+            "grout"
+        )
+    ):
+        candidates.append("Coulis")
+
+    if any(
+        keyword in category_text
+        for keyword in (
+            "membrane",
+            "underlayment",
+            "ditra",
+            "kerdi",
+            "chauffage"
+        )
+    ):
+        candidates.append("Membrane")
+
+    if any(
+        keyword in category_text
+        for keyword in (
+            "mortier",
+            "ciment-colle",
+            "thinset",
+            "adhesive",
+            "colle"
+        )
+    ):
+        candidates.append("Colle")
+
+    if any(
+        keyword in category_text
+        for keyword in (
+            "autonivel",
+            "leveler",
+            "nivel"
+        )
+    ):
+        candidates.append("Autonivelant")
+
+    if any(
+        keyword in category_text
+        for keyword in (
+            "moulure",
+            "profil",
+            "profile",
+            "trim",
+            "nose",
+            "base"
+        )
+    ):
+        candidates.append("Moulure")
+
+    if any(
+        keyword in category_text
+        for keyword in (
+            "scellant",
+            "sealant",
+            "silicone"
+        )
+    ):
+        candidates.append("Scellant")
+
+    if "tile" in category_text or "tuile" in category_text:
+        candidates.append("Tuile")
+
+    candidates.extend(
+        [
+            "Colle",
+            "Tuile"
+        ]
+    )
+
+    for candidate in candidates:
+        if candidate in product_type_ids:
+            return product_type_ids[candidate]
+
+    return next(iter(product_type_ids.values()))
+
+
+def load_existing_product_ids(db):
+
+    product_ids = {}
+
+    for row in db.execute(
         text(
             """
-            SELECT p.id
+            SELECT upper(ps.supplier_product_code) AS code, p.id
             FROM product p
             JOIN product_supplier ps
                 ON ps.product_id = p.id
             JOIN supplier s
                 ON s.id = ps.supplier_id
             WHERE s.name = 'Prosol'
-                AND upper(ps.supplier_product_code) = :code
             ORDER BY p.id
-            LIMIT 1
             """
-        ),
-        {
-            "code": code
-        }
-    ).fetchone()
+        )
+    ):
+        product_ids[row.code] = row.id
 
-    if row:
-        return row.id
-
-    row = db.execute(
+    for row in db.execute(
         text(
             """
-            SELECT id
+            SELECT upper(COALESCE(manufacturer_sku, prosol_sku)) AS code, id
             FROM product
-            WHERE upper(manufacturer_sku) = :code
-                OR upper(prosol_sku) = :code
-            ORDER BY id
-            LIMIT 1
+            WHERE manufacturer_sku IS NOT NULL
+                OR prosol_sku IS NOT NULL
             """
-        ),
-        {
-            "code": code
-        }
-    ).fetchone()
+        )
+    ):
+        product_ids.setdefault(
+            row.code,
+            row.id
+        )
 
-    return row.id if row else None
+    return product_ids
 
 
-def product_values(db, row):
+def product_values(
+    row,
+    unit_ids,
+    product_type_ids
+):
 
     code = normalized_text(row.get("CODE")).upper()
     name = (
@@ -309,37 +460,92 @@ def product_values(db, row):
         "prosol_sku": code,
         "default_purchase_price": decimal_value(row.get("YOUR PRICE")),
         "msrp_price": decimal_value(row.get("LIST PRICE")),
-        "default_unit_id": unit_id_for(
-            db,
+        "default_unit_id": unit_id_from_map(
+            unit_ids,
             row.get("UOM (UNIT OF MEASURE)")
         ),
         "active": True
     }
-    product["product_type_id"] = local_product_type_id(
-        db,
-        {
-            "name": product["name"],
-            "category_name": product["category_name"] or ""
-        }
+    product["product_type_id"] = product_type_id_from_map(
+        product_type_ids,
+        product
     )
 
     return product
 
 
-def upsert_product(db, row):
+def supplier_id(db):
 
-    code = normalized_text(row.get("CODE")).upper()
-    values = product_values(
-        db,
-        row
-    )
-    product_id = existing_product_id(
-        db,
-        code
-    )
+    return db.execute(
+        text(
+            """
+            INSERT INTO supplier (
+                supplier_type_id,
+                name
+            )
+            VALUES (
+                (
+                    SELECT id
+                    FROM supplier_type
+                    WHERE name = 'Produits de pose'
+                    LIMIT 1
+                ),
+                'Prosol'
+            )
+            ON CONFLICT (name)
+            DO UPDATE SET name = EXCLUDED.name
+            RETURNING id
+            """
+        )
+    ).fetchone().id
 
-    if product_id:
-        values["id"] = product_id
+
+def upsert_products(db, rows):
+
+    unit_ids = load_unit_ids(db)
+    product_type_ids = load_product_type_ids(db)
+    existing_product_ids = load_existing_product_ids(db)
+    updates = []
+    inserts = []
+    product_codes = []
+
+    for index, row in enumerate(rows, start=1):
+        code = normalized_text(row.get("CODE")).upper()
+
+        if not code:
+            continue
+
+        values = product_values(
+            row,
+            unit_ids,
+            product_type_ids
+        )
+        product_id = existing_product_ids.get(code)
+
+        if product_id:
+            values["id"] = product_id
+            updates.append(values)
+            product_codes.append(
+                {
+                    "product_id": product_id,
+                    "supplier_product_code": code
+                }
+            )
+        else:
+            inserts.append(
+                {
+                    "code": code,
+                    "values": values
+                }
+            )
+
+        if index % 5000 == 0:
+            print(
+                f"Prepared {index}/{len(rows)} rows",
+                flush=True
+            )
+
+    if updates:
         db.execute(
             text(
                 """
@@ -362,10 +568,14 @@ def upsert_product(db, row):
                 WHERE id = :id
                 """
             ),
-            values
+            updates
+        )
+        print(
+            f"Updated {len(updates)} existing products",
+            flush=True
         )
 
-    else:
+    for index, insert in enumerate(inserts, start=1):
         product_id = db.execute(
             text(
                 """
@@ -404,22 +614,68 @@ def upsert_product(db, row):
                 RETURNING id
                 """
             ),
-            values
+            insert["values"]
         ).fetchone().id
-
-    sync_product_supplier(
-        db,
-        product_id,
-        ProductCreate(
-            product_type_id=values["product_type_id"],
-            name=values["name"],
-            supplier_name="Prosol",
-            supplier_product_code=code,
-            active=True
+        product_codes.append(
+            {
+                "product_id": product_id,
+                "supplier_product_code": insert["code"]
+            }
         )
-    )
 
-    return product_id
+        if index % 5000 == 0:
+            print(
+                f"Inserted {index}/{len(inserts)} new products",
+                flush=True
+            )
+
+    if product_codes:
+        product_ids = [
+            item["product_id"]
+            for item in product_codes
+        ]
+        prosol_supplier_id = supplier_id(db)
+
+        db.execute(
+            text(
+                """
+                DELETE FROM product_supplier
+                WHERE product_id = ANY(:product_ids)
+                """
+            ),
+            {
+                "product_ids": product_ids
+            }
+        )
+        db.execute(
+            text(
+                """
+                INSERT INTO product_supplier (
+                    product_id,
+                    supplier_id,
+                    supplier_product_code
+                )
+                VALUES (
+                    :product_id,
+                    :supplier_id,
+                    :supplier_product_code
+                )
+                """
+            ),
+            [
+                {
+                    **item,
+                    "supplier_id": prosol_supplier_id
+                }
+                for item in product_codes
+            ]
+        )
+
+    return {
+        "updated": len(updates),
+        "inserted": len(inserts),
+        "linked": len(product_codes)
+    }
 
 
 def import_price_list(path: Path, sheet_name: str, dry_run: bool):
@@ -439,23 +695,15 @@ def import_price_list(path: Path, sheet_name: str, dry_run: bool):
     failed = 0
 
     try:
-        for row in rows:
-            try:
-                if not dry_run:
-                    upsert_product(
-                        db,
-                        row
-                    )
-
-                imported += 1
-
-            except Exception as error:
-                failed += 1
-                print(
-                    "FAILED",
-                    row.get("CODE"),
-                    error
-                )
+        if not dry_run:
+            summary = upsert_products(
+                db,
+                rows
+            )
+            imported = summary["updated"] + summary["inserted"]
+            print(summary)
+        else:
+            imported = len(rows)
 
         if dry_run:
             db.rollback()

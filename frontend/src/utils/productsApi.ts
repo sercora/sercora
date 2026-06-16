@@ -70,6 +70,22 @@ export type Unit = {
 };
 
 
+export type ProductListResponse = {
+    total: number;
+    rows: Product[];
+};
+
+
+export type ProductListParams = {
+    limit: number | null;
+    offset: number;
+    search: string;
+    supplier: string;
+    status: "active" | "inactive" | "all";
+    productMenu: "Tous" | "Mapei" | "Prosol" | "Tuile";
+};
+
+
 function parseResponse(response: Response) {
 
     if (!response.ok)
@@ -85,6 +101,38 @@ export function fetchProducts(): Promise<Product[]> {
     return fetch(
         API_URL +
         "/products"
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function fetchProductPage(
+    params: ProductListParams
+): Promise<ProductListResponse> {
+
+    const searchParams = new URLSearchParams(
+        {
+            offset: String(params.offset),
+            search: params.search,
+            supplier: params.supplier,
+            status: params.status,
+            product_menu: params.productMenu,
+            paged: "1"
+        }
+    );
+
+    if (params.limit !== null)
+        searchParams.set(
+            "limit",
+            String(params.limit)
+        );
+
+    return fetch(
+        API_URL +
+        "/products?" +
+        searchParams.toString()
     )
 
     .then(parseResponse);
