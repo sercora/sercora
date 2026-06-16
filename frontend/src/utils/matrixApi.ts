@@ -32,6 +32,7 @@ export type EstimateMatrixSummary = {
         plan_date: string | null;
         plan_pages: string | null;
         spec_sections: string | null;
+        addenda: string | null;
         address: string;
     };
     estimate: {
@@ -88,6 +89,7 @@ export type EstimateMatrixSummaryInput = {
     plan_date: string | null;
     plan_pages: string | null;
     spec_sections: string | null;
+    addenda: string | null;
     probable_schedule: string | null;
     probable_schedule_from: string | null;
     probable_schedule_to: string | null;

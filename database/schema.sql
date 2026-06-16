@@ -154,6 +154,8 @@ CREATE TABLE project (
 
     spec_sections TEXT,
 
+    addenda TEXT,
+
     status VARCHAR(50) DEFAULT 'PENDING',
 
     address_line1 VARCHAR(255),

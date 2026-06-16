@@ -91,6 +91,14 @@ const NUMERIC_MATRIX_FIELDS = new Set(
     ]
 );
 
+type AddendaRow = {
+    name: string;
+    date: string;
+    plans: boolean;
+    specs: boolean;
+    description: string;
+};
+
 const GRID_LOCALE_TEXT = {
     noRowsToShow: "Aucune ligne à afficher",
     loadingOoo: "Chargement...",
@@ -314,6 +322,7 @@ function MatrixView({
         plan_date: "",
         plan_pages: "",
         spec_sections: "",
+        addenda: "",
         probable_schedule: "",
         probable_schedule_from: "",
         probable_schedule_to: "",
@@ -2130,6 +2139,8 @@ function MatrixView({
                 summaryForm.plan_pages.trim() || null,
             spec_sections:
                 summaryForm.spec_sections.trim() || null,
+            addenda:
+                summaryForm.addenda.trim() || null,
             probable_schedule:
                 [
                     summaryForm.probable_schedule_from,
@@ -2168,6 +2179,8 @@ function MatrixView({
                     summary.project.plan_pages || "",
                 spec_sections:
                     summary.project.spec_sections || "",
+                addenda:
+                    summary.project.addenda || "",
                 probable_schedule:
                     summary.rates.probable_schedule || "",
                 probable_schedule_from:
@@ -3208,6 +3221,125 @@ function MatrixView({
                 column =>
                     column.trim()
             ).join(" | ")
+        );
+
+    }
+
+
+    function emptyAddendaRow(): AddendaRow {
+
+        return {
+            name: "",
+            date: "",
+            plans: false,
+            specs: false,
+            description: ""
+        };
+
+    }
+
+
+    function addendaRows() {
+
+        if (!summaryForm.addenda)
+            return [
+                emptyAddendaRow()
+            ];
+
+        try {
+            const parsedRows =
+                JSON.parse(summaryForm.addenda);
+
+            if (Array.isArray(parsedRows) && parsedRows.length)
+                return parsedRows.map(
+                    row => ({
+                        ...emptyAddendaRow(),
+                        name:
+                            String(row.name || ""),
+                        date:
+                            String(row.date || ""),
+                        plans:
+                            Boolean(row.plans),
+                        specs:
+                            Boolean(row.specs),
+                        description:
+                            String(row.description || "")
+                    })
+                );
+        } catch {
+            return [
+                {
+                    ...emptyAddendaRow(),
+                    description:
+                        summaryForm.addenda
+                }
+            ];
+        }
+
+        return [
+            emptyAddendaRow()
+        ];
+
+    }
+
+
+    function serializeAddendaRows(
+        rows: AddendaRow[]
+    ) {
+
+        return JSON.stringify(
+            rows.map(
+                row => ({
+                    name:
+                        row.name.trim(),
+                    date:
+                        row.date,
+                    plans:
+                        row.plans,
+                    specs:
+                        row.specs,
+                    description:
+                        row.description.trim()
+                })
+            )
+        );
+
+    }
+
+
+    function updateAddendaRow(
+        rowIndex: number,
+        field: keyof AddendaRow,
+        value: string | boolean
+    ) {
+
+        const rows =
+            addendaRows();
+
+        rows[rowIndex] = {
+            ...rows[rowIndex],
+            [field]:
+                value
+        };
+
+        updateSummaryForm(
+            "addenda",
+            serializeAddendaRows(rows)
+        );
+
+    }
+
+
+    function addAddendaRow() {
+
+        updateSummaryForm(
+            "addenda",
+            serializeAddendaRows(
+                [
+                    ...addendaRows(),
+                    emptyAddendaRow()
+                ]
+            )
         );
 
     }
@@ -5151,6 +5283,99 @@ function MatrixView({
                                             )
                                         )}
                                     </div>
+                                </div>
+
+                                <div className="addenda-block">
+                                    <div className="addenda-title">
+                                        Addenda:
+                                    </div>
+                                    <div className="addenda-grid">
+                                        <div className="plan-pages-header">Nom</div>
+                                        <div className="plan-pages-header">Date</div>
+                                        <div className="plan-pages-header">Plans</div>
+                                        <div className="plan-pages-header">Devis</div>
+                                        <div className="plan-pages-header">Description</div>
+                                        {addendaRows().map(
+                                            (row, rowIndex) => (
+                                                <div
+                                                    key={rowIndex}
+                                                    className="addenda-row"
+                                                >
+                                                    <input
+                                                        type="text"
+                                                        value={row.name}
+                                                        onChange={
+                                                            event =>
+                                                                updateAddendaRow(
+                                                                    rowIndex,
+                                                                    "name",
+                                                                    event.target.value
+                                                                )
+                                                        }
+                                                    />
+                                                    <input
+                                                        type="date"
+                                                        value={row.date}
+                                                        onChange={
+                                                            event =>
+                                                                updateAddendaRow(
+                                                                    rowIndex,
+                                                                    "date",
+                                                                    event.target.value
+                                                                )
+                                                        }
+                                                    />
+                                                    <label className="addenda-checkbox">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={row.plans}
+                                                            onChange={
+                                                                event =>
+                                                                    updateAddendaRow(
+                                                                        rowIndex,
+                                                                        "plans",
+                                                                        event.target.checked
+                                                                    )
+                                                            }
+                                                        />
+                                                    </label>
+                                                    <label className="addenda-checkbox">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={row.specs}
+                                                            onChange={
+                                                                event =>
+                                                                    updateAddendaRow(
+                                                                        rowIndex,
+                                                                        "specs",
+                                                                        event.target.checked
+                                                                    )
+                                                            }
+                                                        />
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={row.description}
+                                                        onChange={
+                                                            event =>
+                                                                updateAddendaRow(
+                                                                    rowIndex,
+                                                                    "description",
+                                                                    event.target.value
+                                                                )
+                                                        }
+                                                    />
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="plan-pages-add"
+                                        onClick={addAddendaRow}
+                                    >
+                                        Ajouter
+                                    </button>
                                 </div>
                             </div>
                         </div>

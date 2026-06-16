@@ -24,6 +24,7 @@ class MatrixSummaryUpdate(BaseModel):
     plan_date: str | None = None
     plan_pages: str | None = None
     spec_sections: str | None = None
+    addenda: str | None = None
     probable_schedule: str | None = None
     probable_schedule_from: str | None = None
     probable_schedule_to: str | None = None
@@ -114,6 +115,7 @@ def estimate_summary(
                 p.plan_date,
                 p.plan_pages,
                 p.spec_sections,
+                p.addenda,
                 p.address_line1,
                 p.address_line2,
                 p.city,
@@ -258,6 +260,7 @@ def estimate_summary(
             "plan_date": iso_date(estimate_row.plan_date),
             "plan_pages": estimate_row.plan_pages,
             "spec_sections": estimate_row.spec_sections,
+            "addenda": estimate_row.addenda,
             "address": build_address(estimate_row)
         },
         "estimate": {
@@ -683,6 +686,7 @@ def update_matrix_summary(
                     plan_date = CAST(:plan_date AS DATE),
                     plan_pages = :plan_pages,
                     spec_sections = :spec_sections,
+                    addenda = :addenda,
                     probable_schedule = :probable_schedule,
                     start_date = CAST(:probable_schedule_from AS DATE),
                     end_date = CAST(:probable_schedule_to AS DATE),
@@ -697,6 +701,7 @@ def update_matrix_summary(
                 "plan_date": update.plan_date,
                 "plan_pages": update.plan_pages,
                 "spec_sections": update.spec_sections,
+                "addenda": update.addenda,
                 "probable_schedule": update.probable_schedule,
                 "probable_schedule_from": update.probable_schedule_from,
                 "probable_schedule_to": update.probable_schedule_to,
