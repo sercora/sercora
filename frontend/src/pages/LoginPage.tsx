@@ -799,9 +799,6 @@ function LoginPage({
                         <button type="button">
                             Mot de passe oublié
                         </button>
-                        <button type="button">
-                            Créer un compte
-                        </button>
                     </div>
                 </form>
             </section>
