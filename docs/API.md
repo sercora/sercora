@@ -351,9 +351,15 @@ image_proxy_path
 GET /estimate-folders
 GET /estimate-files
 GET /estimate-file-preview
+GET /project-folders
+GET /project-files
+GET /project-file-preview
 ```
 
 Ces endpoints naviguent les dossiers NAS et retournent des apercus PDF, MSG, Word ou Excel lorsque possible.
+
+Les endpoints `estimate-*` naviguent les racines legacy par statut.
+Les endpoints `project-*` naviguent l'arborescence du projet dans le dossier RW Sercora a partir de `project_id`.
 
 Statuses:
 

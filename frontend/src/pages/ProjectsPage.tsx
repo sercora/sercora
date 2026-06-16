@@ -12,11 +12,21 @@ import {
     fetchProjects,
     updateProjectCurrent
 } from "../utils/businessApi";
+import {
+    fetchProjectFilePreview,
+    fetchProjectFolders,
+    projectFilePreviewUrl,
+    projectFileUrl
+} from "../utils/matrixApi";
 import type {
     Client,
     ProjectInput,
     ProjectSummary
 } from "../utils/businessApi";
+import type {
+    EstimateFilePreview,
+    EstimateFolderItem
+} from "../utils/matrixApi";
 
 import "../styles/business.css";
 
@@ -219,6 +229,38 @@ function fileDisplayName(
 }
 
 
+function formatFileSize(
+    size: number
+) {
+
+    if (!size)
+        return "";
+
+    if (size < 1024)
+        return `${size} o`;
+
+    if (size < 1024 * 1024)
+        return `${(size / 1024).toFixed(1)} Ko`;
+
+    return `${(size / 1024 / 1024).toFixed(1)} Mo`;
+
+}
+
+
+function formatFileDate(
+    value: number
+) {
+
+    if (!value)
+        return "";
+
+    return new Date(value * 1000).toLocaleDateString(
+        "fr-CA"
+    );
+
+}
+
+
 function ProjectsPage({
     projectMenu,
     onOpenEstimate
@@ -235,6 +277,18 @@ function ProjectsPage({
     const [editMsgFiles, setEditMsgFiles] = useState<File[]>([]);
     const [folderFiles, setFolderFiles] = useState<File[]>([]);
     const [editingProject, setEditingProject] = useState<ProjectSummary | null>(null);
+    const [folderProject, setFolderProject] = useState<ProjectSummary | null>(null);
+    const [projectFolderPath, setProjectFolderPath] = useState("");
+    const [projectRootName, setProjectRootName] = useState("");
+    const [projectFolderItems, setProjectFolderItems] = useState<EstimateFolderItem[]>([]);
+    const [projectFolderSearch, setProjectFolderSearch] = useState("");
+    const [isProjectFolderLoading, setIsProjectFolderLoading] = useState(false);
+    const [projectFolderError, setProjectFolderError] = useState("");
+    const [projectFilePreview, setProjectFilePreview] = useState<EstimateFilePreview | null>(null);
+    const [projectPreviewPath, setProjectPreviewPath] = useState("");
+    const [projectPdfPreviewUrl, setProjectPdfPreviewUrl] = useState("");
+    const [projectPreviewError, setProjectPreviewError] = useState("");
+    const [isProjectPreviewLoading, setIsProjectPreviewLoading] = useState(false);
     const [editBidDueDate, setEditBidDueDate] = useState("");
     const [editClientIds, setEditClientIds] = useState<number[]>([]);
     const [editInvitationClientId, setEditInvitationClientId] = useState<number | null>(null);
@@ -300,6 +354,58 @@ function ProjectsPage({
             ),
         [
             projects
+        ]
+    );
+
+    const filteredProjectFolderItems = useMemo(
+        () => {
+            const normalizedSearch =
+                projectFolderSearch.trim().toLowerCase();
+
+            if (!normalizedSearch)
+                return projectFolderItems;
+
+            return projectFolderItems.filter(
+                item =>
+                    item.name.toLowerCase().includes(normalizedSearch)
+            );
+        },
+        [
+            projectFolderItems,
+            projectFolderSearch
+        ]
+    );
+
+    const projectFolderBreadcrumbs = useMemo(
+        () => {
+            const parts =
+                projectFolderPath ?
+                    projectFolderPath.split("/") :
+                    [];
+
+            return [
+                {
+                    label:
+                        projectRootName || "Dossier projet",
+                    path:
+                        ""
+                },
+                ...parts.map(
+                    (_part, index) => ({
+                        label:
+                            parts[index],
+                        path:
+                            parts.slice(
+                                0,
+                                index + 1
+                            ).join("/")
+                    })
+                )
+            ];
+        },
+        [
+            projectFolderPath,
+            projectRootName
         ]
     );
 
@@ -414,6 +520,172 @@ function ProjectsPage({
 
         if (editMsgInputRef.current)
             editMsgInputRef.current.value = "";
+
+    }
+
+
+    function loadProjectFolder(
+        projectId: number,
+        path = ""
+    ) {
+
+        setIsProjectFolderLoading(true);
+        setProjectFolderError("");
+
+        fetchProjectFolders(
+            projectId,
+            path
+        )
+
+        .then(
+            response => {
+                setProjectFolderPath(response.path);
+                setProjectRootName(response.root_name);
+                setProjectFolderItems(response.items);
+            }
+        )
+
+        .catch(
+            error =>
+                setProjectFolderError(
+                    error instanceof Error ?
+                        error.message :
+                        "Impossible de charger le dossier projet."
+                )
+        )
+
+        .finally(
+            () =>
+                setIsProjectFolderLoading(false)
+        );
+
+    }
+
+
+    function openProjectFolder(
+        project: ProjectSummary
+    ) {
+
+        setFolderProject(project);
+        setProjectFolderPath("");
+        setProjectRootName("");
+        setProjectFolderItems([]);
+        setProjectFolderSearch("");
+        setProjectFolderError("");
+        setProjectFilePreview(null);
+        setProjectPreviewPath("");
+        setProjectPdfPreviewUrl("");
+        setProjectPreviewError("");
+        loadProjectFolder(
+            project.id,
+            ""
+        );
+
+    }
+
+
+    function closeProjectFolder() {
+
+        setFolderProject(null);
+        setProjectFolderPath("");
+        setProjectFolderItems([]);
+        setProjectFilePreview(null);
+        setProjectPreviewPath("");
+        setProjectPdfPreviewUrl("");
+        setProjectPreviewError("");
+
+    }
+
+
+    function openProjectFolderPath(
+        path: string
+    ) {
+
+        if (!folderProject)
+            return;
+
+        setProjectFilePreview(null);
+        setProjectPreviewPath("");
+        setProjectPdfPreviewUrl("");
+        setProjectPreviewError("");
+        loadProjectFolder(
+            folderProject.id,
+            path
+        );
+
+    }
+
+
+    function openProjectFolderParent() {
+
+        if (!projectFolderPath)
+            return;
+
+        openProjectFolderPath(
+            projectFolderPath.split("/").slice(
+                0,
+                -1
+            ).join("/")
+        );
+
+    }
+
+
+    function openProjectFilePreview(
+        item: EstimateFolderItem
+    ) {
+
+        if (!folderProject)
+            return;
+
+        setProjectPreviewPath(item.relative_path);
+        setProjectFilePreview(null);
+        setProjectPdfPreviewUrl("");
+        setProjectPreviewError("");
+        setIsProjectPreviewLoading(true);
+
+        fetchProjectFilePreview(
+            folderProject.id,
+            item.relative_path
+        )
+
+        .then(
+            preview => {
+                setProjectFilePreview(preview);
+
+                if (preview.type === "pdf")
+                    setProjectPdfPreviewUrl(
+                        projectFilePreviewUrl(
+                            folderProject.id,
+                            item.relative_path
+                        )
+                    );
+            }
+        )
+
+        .catch(
+            () =>
+                setProjectPreviewError("Aperçu non disponible pour ce fichier.")
+        )
+
+        .finally(
+            () =>
+                setIsProjectPreviewLoading(false)
+        );
+
+    }
+
+
+    function openProjectFolderItem(
+        item: EstimateFolderItem
+    ) {
+
+        if (item.is_dir) {
+            openProjectFolderPath(item.relative_path);
+            return;
+        }
+
+        openProjectFilePreview(item);
 
     }
 
@@ -1191,6 +1463,18 @@ function ProjectsPage({
                                                     <button
                                                         type="button"
                                                         className="business-table-action"
+                                                        onClick={
+                                                            () =>
+                                                                openProjectFolder(project)
+                                                        }
+                                                    >
+                                                        Dossier
+                                                    </button>
+                                                )}
+                                                {projectMenu === "En Soumission" && (
+                                                    <button
+                                                        type="button"
+                                                        className="business-table-action"
                                                         disabled={!project.latest_estimate_id}
                                                         onClick={
                                                             () => {
@@ -1219,6 +1503,208 @@ function ProjectsPage({
                             )}
                         </tbody>
                     </table>
+                </div>
+            )}
+
+            {folderProject && (
+                <div className="business-modal-backdrop">
+                    <section className="business-modal project-folder-modal">
+                        <header>
+                            <div>
+                                <span>Dossier projet</span>
+                                <h2>{folderProject.project_name}</h2>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={closeProjectFolder}
+                            >
+                                Fermer
+                            </button>
+                        </header>
+
+                        <div className="project-folder-toolbar">
+                            <div className="project-folder-breadcrumbs">
+                                {projectFolderBreadcrumbs.map(
+                                    (breadcrumb, index) => (
+                                        <button
+                                            key={`${breadcrumb.path}-${index}`}
+                                            type="button"
+                                            onClick={
+                                                () =>
+                                                    openProjectFolderPath(breadcrumb.path)
+                                            }
+                                        >
+                                            {breadcrumb.label}
+                                        </button>
+                                    )
+                                )}
+                            </div>
+                            <input
+                                type="search"
+                                value={projectFolderSearch}
+                                placeholder="Rechercher dans le dossier"
+                                onChange={
+                                    event =>
+                                        setProjectFolderSearch(event.target.value)
+                                }
+                            />
+                        </div>
+
+                        <div className="project-folder-content">
+                            <div className="project-folder-list-panel">
+                                {projectFolderPath && (
+                                    <button
+                                        type="button"
+                                        className="project-folder-back"
+                                        onClick={openProjectFolderParent}
+                                    >
+                                        Remonter
+                                    </button>
+                                )}
+
+                                {projectFolderError && (
+                                    <div className="business-error">
+                                        {projectFolderError}
+                                    </div>
+                                )}
+
+                                {isProjectFolderLoading && (
+                                    <div className="project-folder-empty">
+                                        Chargement...
+                                    </div>
+                                )}
+
+                                {!isProjectFolderLoading && !projectFolderError && (
+                                    <div className="project-folder-list">
+                                        {filteredProjectFolderItems.length ? (
+                                            filteredProjectFolderItems.map(
+                                                item => (
+                                                    <button
+                                                        key={item.relative_path}
+                                                        type="button"
+                                                        className={
+                                                            [
+                                                                "project-folder-item",
+                                                                item.is_dir ? "directory" : "file",
+                                                                item.relative_path === projectPreviewPath ?
+                                                                    "selected" :
+                                                                    ""
+                                                            ].filter(Boolean).join(" ")
+                                                        }
+                                                        onClick={
+                                                            () =>
+                                                                openProjectFolderItem(item)
+                                                        }
+                                                    >
+                                                        <span className="project-folder-icon">
+                                                            {item.is_dir ? "DIR" : "DOC"}
+                                                        </span>
+                                                        <span className="project-folder-name">
+                                                            {item.name}
+                                                        </span>
+                                                        <span className="project-folder-meta">
+                                                            {item.is_dir ?
+                                                                "Dossier" :
+                                                                formatFileSize(item.size)}
+                                                        </span>
+                                                        <span className="project-folder-date">
+                                                            {formatFileDate(item.modified_at)}
+                                                        </span>
+                                                    </button>
+                                                )
+                                            )
+                                        ) : (
+                                            <div className="project-folder-empty">
+                                                Aucun fichier.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            <aside className="project-file-preview">
+                                <header>
+                                    <strong>
+                                        {projectPreviewPath ?
+                                            projectPreviewPath.split("/").at(-1) :
+                                            "Aperçu"}
+                                    </strong>
+                                    {projectPreviewPath && (
+                                        <a
+                                            href={projectFileUrl(
+                                                folderProject.id,
+                                                projectPreviewPath
+                                            )}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                        >
+                                            Ouvrir
+                                        </a>
+                                    )}
+                                </header>
+
+                                {!projectPreviewPath && (
+                                    <div className="project-file-preview-empty">
+                                        Sélectionne un PDF, un fichier Office ou un courriel .msg.
+                                    </div>
+                                )}
+
+                                {isProjectPreviewLoading && (
+                                    <div className="project-file-preview-empty">
+                                        Chargement de l'aperçu...
+                                    </div>
+                                )}
+
+                                {projectPreviewError && (
+                                    <div className="business-error">
+                                        {projectPreviewError}
+                                    </div>
+                                )}
+
+                                {!isProjectPreviewLoading && projectFilePreview?.type === "pdf" && (
+                                    <iframe
+                                        title={projectFilePreview.name}
+                                        src={projectPdfPreviewUrl}
+                                    />
+                                )}
+
+                                {!isProjectPreviewLoading && projectFilePreview?.type === "msg" && (
+                                    <div className="project-msg-preview">
+                                        <div>
+                                            <strong>Objet</strong>
+                                            <span>{projectFilePreview.subject || "-"}</span>
+                                        </div>
+                                        <div>
+                                            <strong>De</strong>
+                                            <span>{projectFilePreview.from || "-"}</span>
+                                        </div>
+                                        <div>
+                                            <strong>À</strong>
+                                            <span>{projectFilePreview.to || "-"}</span>
+                                        </div>
+                                        <div>
+                                            <strong>Date</strong>
+                                            <span>{projectFilePreview.date || "-"}</span>
+                                        </div>
+                                        {projectFilePreview.html ? (
+                                            <div
+                                                className="project-msg-html"
+                                                dangerouslySetInnerHTML={
+                                                    {
+                                                        __html: projectFilePreview.html
+                                                    }
+                                                }
+                                            />
+                                        ) : (
+                                            <pre>
+                                                {projectFilePreview.body || "Aucun contenu texte."}
+                                            </pre>
+                                        )}
+                                    </div>
+                                )}
+                            </aside>
+                        </div>
+                    </section>
                 </div>
             )}
 

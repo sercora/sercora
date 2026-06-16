@@ -26,6 +26,12 @@ NAS_ESTIMATE_ROOTS = {
     "sent": Path("/NAS/Soumissions envoyées"),
     "rejected": Path("/NAS/@Recycle/Soumissions en cours")
 }
+PROJECT_RW_ROOT = Path(
+    os.getenv(
+        "SERCORA_PROJECT_RW_ROOT",
+        "/NAS_SERCORA_RW"
+    )
+)
 
 
 ESTIMATE_FOLDER_STATUS_PATTERN = "^(in_progress|sent|rejected)$"
@@ -88,6 +94,113 @@ def estimate_root(
         )
 
     return root
+
+
+def safe_project_folder_part(
+    value: str,
+    fallback: str
+):
+
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "-", value or "")
+    name = re.sub(r"\s+", " ", name).strip(" .")
+
+    if not name:
+        name = fallback
+
+    return name[:150]
+
+
+def project_folder_name_from_values(
+    project_name: str,
+    bid_due_date
+):
+
+    date_part = (
+        bid_due_date.strftime("%Y %m %d")
+        if bid_due_date
+        else "0000 00 00"
+    )
+
+    return f"{date_part}, {safe_project_folder_part(project_name, 'Projet')}"
+
+
+def project_folder_root(
+    project_id: int
+):
+
+    db = SessionLocal()
+
+    try:
+        row = db.execute(
+            text(
+                """
+                SELECT
+                    project_name,
+                    bid_due_date
+                FROM project
+                WHERE id = :project_id
+                """
+            ),
+            {
+                "project_id": project_id
+            }
+        ).fetchone()
+    finally:
+        db.close()
+
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found"
+        )
+
+    if not PROJECT_RW_ROOT.exists():
+        raise HTTPException(
+            status_code=503,
+            detail="Project NAS folder is not mounted"
+        )
+
+    root = PROJECT_RW_ROOT.resolve()
+    project_root = (
+        root /
+        project_folder_name_from_values(
+            row.project_name,
+            row.bid_due_date
+        )
+    ).resolve()
+
+    if root != project_root and root not in project_root.parents:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid project folder"
+        )
+
+    return root, project_root
+
+
+def resolve_project_path(
+    project_id: int,
+    relative_path: str | None
+):
+
+    _root, project_root = project_folder_root(project_id)
+    clean_path = (relative_path or "").strip("/")
+
+    if Path(clean_path).is_absolute() or ".." in Path(clean_path).parts:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid project path"
+        )
+
+    target = (project_root / clean_path).resolve()
+
+    if project_root != target and project_root not in target.parents:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid project path"
+        )
+
+    return project_root, target
 
 
 def resolve_estimate_path(
@@ -568,6 +681,113 @@ def get_estimate_file_preview(
         raise HTTPException(
             status_code=404,
             detail="NAS file not found"
+        )
+
+    extension = target.suffix.lower()
+
+    if extension not in PREVIEW_EXTENSIONS:
+        raise HTTPException(
+            status_code=415,
+            detail="Preview is not supported for this file type"
+        )
+
+    if extension == ".pdf":
+        return FileResponse(
+            target,
+            media_type="application/pdf",
+            filename=target.name,
+            content_disposition_type="inline"
+        )
+
+    if extension in OFFICE_PREVIEW_EXTENSIONS:
+        return office_preview_pdf_response(target)
+
+    return msg_preview_payload(target)
+
+
+@router.get("/project-folders")
+def get_project_folders(
+    project_id: int = Query(..., ge=1),
+    path: str = ""
+):
+
+    root, target = resolve_project_path(
+        project_id,
+        path
+    )
+
+    if not target.exists() or not target.is_dir():
+        raise HTTPException(
+            status_code=404,
+            detail="Project folder not found"
+        )
+
+    items = []
+
+    for entry in target.iterdir():
+        try:
+            items.append(
+                folder_item_payload(
+                    root,
+                    entry
+                )
+            )
+        except OSError:
+            continue
+
+    items.sort(
+        key=lambda item: (
+            not item["is_dir"],
+            item["name"].lower()
+        )
+    )
+
+    return {
+        "project_id": project_id,
+        "path": str(target.relative_to(root)) if target != root else "",
+        "root_name": root.name,
+        "items": items
+    }
+
+
+@router.get("/project-files")
+def get_project_file(
+    project_id: int = Query(..., ge=1),
+    path: str = Query(..., min_length=1)
+):
+
+    _root, target = resolve_project_path(
+        project_id,
+        path
+    )
+
+    if not target.exists() or not target.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="Project file not found"
+        )
+
+    return FileResponse(
+        target,
+        filename=target.name
+    )
+
+
+@router.get("/project-file-preview")
+def get_project_file_preview(
+    project_id: int = Query(..., ge=1),
+    path: str = Query(..., min_length=1)
+):
+
+    _root, target = resolve_project_path(
+        project_id,
+        path
+    )
+
+    if not target.exists() or not target.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="Project file not found"
         )
 
     extension = target.suffix.lower()

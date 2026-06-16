@@ -23,6 +23,14 @@ export type EstimateFolderResponse = {
 };
 
 
+export type ProjectFolderResponse = {
+    project_id: number;
+    path: string;
+    root_name: string;
+    items: EstimateFolderItem[];
+};
+
+
 export type EstimateFilePreview =
     {
         type: "pdf";
@@ -292,6 +300,94 @@ export function fetchEstimateFolders(
     return fetch(
         API_URL +
         "/estimate-folders?" +
+        params.toString()
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function projectFileUrl(
+    projectId: number,
+    path: string
+) {
+
+    const params = new URLSearchParams(
+        {
+            project_id:
+                String(projectId),
+            path
+        }
+    );
+
+    return API_URL +
+        "/project-files?" +
+        params.toString();
+
+}
+
+
+export function projectFilePreviewUrl(
+    projectId: number,
+    path: string
+) {
+
+    const params = new URLSearchParams(
+        {
+            project_id:
+                String(projectId),
+            path
+        }
+    );
+
+    return API_URL +
+        "/project-file-preview?" +
+        params.toString();
+
+}
+
+
+export function fetchProjectFilePreview(
+    projectId: number,
+    path: string
+): Promise<EstimateFilePreview> {
+
+    const params = new URLSearchParams(
+        {
+            project_id:
+                String(projectId),
+            path
+        }
+    );
+
+    return fetch(
+        API_URL +
+        "/project-file-preview?" +
+        params.toString()
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function fetchProjectFolders(
+    projectId: number,
+    path = ""
+): Promise<ProjectFolderResponse> {
+
+    const params = new URLSearchParams(
+        {
+            project_id:
+                String(projectId),
+            path
+        }
+    );
+
+    return fetch(
+        API_URL +
+        "/project-folders?" +
         params.toString()
     )
 

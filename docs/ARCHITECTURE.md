@@ -176,6 +176,7 @@ project
 ```
 
 Le menu **Projets > En Soumission** ouvre la derniere revision disponible via `latest_estimate_id`.
+Le bouton **Dossier** ouvre l'arborescence du projet dans le dossier RW Sercora et reutilise les apercus PDF, Office et `.msg` du backend.
 
 Le bouton **Enregistrer sous nouvelle revision** clone:
 

@@ -32,6 +32,7 @@ Le menu Projets contient:
 - **Creation**: creation d'un projet, copie d'arborescence NAS, ajout de courriels `.msg` et televersement de fichiers.
 
 Dans **En Soumission**, chaque projet affiche le nombre de revisions et un bouton **Derniere revision** qui ouvre la derniere matrice disponible.
+Un bouton **Dossier** ouvre aussi l'arborescence NAS du projet avec apercu PDF, Office et `.msg`.
 
 ### Produits
 

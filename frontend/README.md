@@ -92,6 +92,7 @@ ImportationPage.tsx
 - liste des projets en soumission;
 - nombre de revisions;
 - bouton Derniere revision;
+- bouton Dossier avec navigation de l'arborescence projet et apercu PDF/Office/.msg;
 - modification de date de depot;
 - ajout de clients;
 - ajout de `.msg`;
