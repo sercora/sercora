@@ -375,7 +375,7 @@ function ConfigurationPage({
                     </div>
 
                     <div className="auth-muted">
-                        VoIP.ms: ID compte = API Username, Cle API = API Password. Si Secret / token API est aussi rempli, Cle API est utilisee en priorite.
+                        VoIP.ms: ID compte = username, Cle API = password, No expediteur SMS = from_phone. Les numeros VoIP.ms sont envoyes en chiffres seulement.
                     </div>
 
                     <div className="auth-form-grid">

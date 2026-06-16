@@ -519,6 +519,13 @@ def send_sms(
 
     provider = provider_key(settings.provider_name or "")
 
+    def voip_ms_phone(value: str):
+        return "".join(
+            character
+            for character in (value or "")
+            if character.isdigit()
+        )
+
     if provider == "twilio":
         if not settings.account_id or not settings.api_secret:
             raise HTTPException(
@@ -610,8 +617,8 @@ def send_sms(
             "api_username": settings.account_id,
             "api_password": voip_api_password,
             "method": "sendSMS",
-            "did": settings.from_number,
-            "dst": clean_destination,
+            "did": voip_ms_phone(settings.from_number),
+            "dst": voip_ms_phone(clean_destination),
             "message": clean_message
         }
         query_string = urlencode(form_values)
