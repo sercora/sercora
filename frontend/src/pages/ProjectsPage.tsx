@@ -29,6 +29,7 @@ import type {
 } from "../utils/matrixApi";
 
 import "../styles/business.css";
+import "../styles/grid.css";
 
 
 type ProjectsPageProps = {
@@ -1522,8 +1523,8 @@ function ProjectsPage({
                             </button>
                         </header>
 
-                        <div className="project-folder-toolbar">
-                            <div className="project-folder-breadcrumbs">
+                        <div className="estimate-folder-toolbar">
+                            <div className="estimate-folder-breadcrumbs">
                                 {projectFolderBreadcrumbs.map(
                                     (breadcrumb, index) => (
                                         <button
@@ -1534,6 +1535,7 @@ function ProjectsPage({
                                                     openProjectFolderPath(breadcrumb.path)
                                             }
                                         >
+                                            {index > 0 && "/ "}
                                             {breadcrumb.label}
                                         </button>
                                     )
@@ -1550,159 +1552,193 @@ function ProjectsPage({
                             />
                         </div>
 
-                        <div className="project-folder-content">
-                            <div className="project-folder-list-panel">
-                                {projectFolderPath && (
-                                    <button
-                                        type="button"
-                                        className="project-folder-back"
-                                        onClick={openProjectFolderParent}
-                                    >
-                                        Remonter
-                                    </button>
-                                )}
+                        <div className="estimate-folder-content">
+                            {projectFolderPath && (
+                                <button
+                                    type="button"
+                                    className="estimate-folder-back"
+                                    onClick={openProjectFolderParent}
+                                >
+                                    Remonter
+                                </button>
+                            )}
 
-                                {projectFolderError && (
-                                    <div className="business-error">
-                                        {projectFolderError}
-                                    </div>
-                                )}
+                            {projectFolderError && (
+                                <div className="estimate-folder-error">
+                                    {projectFolderError}
+                                </div>
+                            )}
 
-                                {isProjectFolderLoading && (
-                                    <div className="project-folder-empty">
-                                        Chargement...
-                                    </div>
-                                )}
+                            {isProjectFolderLoading && (
+                                <div className="estimate-folder-empty">
+                                    Chargement...
+                                </div>
+                            )}
 
-                                {!isProjectFolderLoading && !projectFolderError && (
-                                    <div className="project-folder-list">
-                                        {filteredProjectFolderItems.length ? (
-                                            filteredProjectFolderItems.map(
-                                                item => (
-                                                    <button
-                                                        key={item.relative_path}
-                                                        type="button"
-                                                        className={
-                                                            [
-                                                                "project-folder-item",
-                                                                item.is_dir ? "directory" : "file",
-                                                                item.relative_path === projectPreviewPath ?
-                                                                    "selected" :
-                                                                    ""
-                                                            ].filter(Boolean).join(" ")
-                                                        }
-                                                        onClick={
-                                                            () =>
-                                                                openProjectFolderItem(item)
-                                                        }
-                                                    >
-                                                        <span className="project-folder-icon">
-                                                            {item.is_dir ? "DIR" : "DOC"}
-                                                        </span>
-                                                        <span className="project-folder-name">
-                                                            {item.name}
-                                                        </span>
-                                                        <span className="project-folder-meta">
-                                                            {item.is_dir ?
-                                                                "Dossier" :
-                                                                formatFileSize(item.size)}
-                                                        </span>
-                                                        <span className="project-folder-date">
-                                                            {formatFileDate(item.modified_at)}
-                                                        </span>
-                                                    </button>
-                                                )
+                            {!isProjectFolderLoading && !projectFolderError && (
+                                <div className="estimate-folder-browser">
+                                    <div className="estimate-folder-list">
+                                        {filteredProjectFolderItems.map(
+                                            item => (
+                                                <button
+                                                    key={item.relative_path}
+                                                    type="button"
+                                                    className={
+                                                        [
+                                                            item.is_dir ?
+                                                                "estimate-folder-item directory" :
+                                                                "estimate-folder-item file",
+                                                            item.relative_path === projectPreviewPath ?
+                                                                "selected" :
+                                                                ""
+                                                        ].filter(Boolean).join(" ")
+                                                    }
+                                                    onClick={
+                                                        () =>
+                                                            openProjectFolderItem(item)
+                                                    }
+                                                >
+                                                    <span className="estimate-folder-icon">
+                                                        {item.is_dir ? "Dossier" : "Fichier"}
+                                                    </span>
+                                                    <span className="estimate-folder-name">
+                                                        {item.name}
+                                                    </span>
+                                                    <span className="estimate-folder-meta">
+                                                        {item.is_dir ?
+                                                            "" :
+                                                            formatFileSize(item.size)}
+                                                    </span>
+                                                    <span className="estimate-folder-date">
+                                                        {formatFileDate(item.modified_at)}
+                                                    </span>
+                                                </button>
                                             )
-                                        ) : (
-                                            <div className="project-folder-empty">
-                                                Aucun fichier.
+                                        )}
+
+                                        {filteredProjectFolderItems.length === 0 && (
+                                            <div className="estimate-folder-empty">
+                                                Aucun élément à afficher.
                                             </div>
                                         )}
                                     </div>
-                                )}
-                            </div>
 
-                            <aside className="project-file-preview">
-                                <header>
-                                    <strong>
-                                        {projectPreviewPath ?
-                                            projectPreviewPath.split("/").at(-1) :
-                                            "Aperçu"}
-                                    </strong>
-                                    {projectPreviewPath && (
-                                        <a
-                                            href={projectFileUrl(
-                                                folderProject.id,
-                                                projectPreviewPath
+                                    {!projectFilePreview && !projectPreviewError && !isProjectPreviewLoading ? (
+                                        <aside className="estimate-file-preview empty">
+                                            Sélectionner un PDF, Word, Excel ou courriel .msg.
+                                        </aside>
+                                    ) : (
+                                        <aside className="estimate-file-preview">
+                                            <header>
+                                                <strong>
+                                                    {projectFilePreview?.name || "Prévisualisation"}
+                                                </strong>
+                                                <div>
+                                                    {projectPreviewPath && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={
+                                                                () =>
+                                                                    window.open(
+                                                                        projectFileUrl(
+                                                                            folderProject.id,
+                                                                            projectPreviewPath
+                                                                        ),
+                                                                        "_blank",
+                                                                        "noopener,noreferrer"
+                                                                    )
+                                                            }
+                                                        >
+                                                            Ouvrir
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={
+                                                            () => {
+                                                                setProjectFilePreview(null);
+                                                                setProjectPreviewPath("");
+                                                                setProjectPdfPreviewUrl("");
+                                                                setProjectPreviewError("");
+                                                            }
+                                                        }
+                                                    >
+                                                        Fermer
+                                                    </button>
+                                                </div>
+                                            </header>
+
+                                            {isProjectPreviewLoading && (
+                                                <div className="estimate-file-preview-empty">
+                                                    Chargement...
+                                                </div>
                                             )}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                        >
-                                            Ouvrir
-                                        </a>
+
+                                            {projectPreviewError && (
+                                                <div className="estimate-folder-error">
+                                                    {projectPreviewError}
+                                                </div>
+                                            )}
+
+                                            {projectFilePreview?.type === "pdf" && projectPdfPreviewUrl && (
+                                                <object
+                                                    className="estimate-pdf-object"
+                                                    data={projectPdfPreviewUrl}
+                                                    type="application/pdf"
+                                                >
+                                                    <div className="estimate-file-preview-empty">
+                                                        Prévisualisation non disponible dans ce navigateur.
+                                                    </div>
+                                                </object>
+                                            )}
+
+                                            {projectFilePreview?.type === "msg" && (
+                                                <div className="msg-preview">
+                                                    <h2>{projectFilePreview.subject}</h2>
+                                                    <dl>
+                                                        <dt>De</dt>
+                                                        <dd>{projectFilePreview.from || "-"}</dd>
+                                                        <dt>À</dt>
+                                                        <dd>{projectFilePreview.to || "-"}</dd>
+                                                        {projectFilePreview.cc && (
+                                                            <>
+                                                                <dt>CC</dt>
+                                                                <dd>{projectFilePreview.cc}</dd>
+                                                            </>
+                                                        )}
+                                                        <dt>Date</dt>
+                                                        <dd>{projectFilePreview.date || "-"}</dd>
+                                                    </dl>
+                                                    {projectFilePreview.attachments.length > 0 && (
+                                                        <div className="msg-attachments">
+                                                            <strong>Pièces jointes</strong>
+                                                            {projectFilePreview.attachments.map(
+                                                                attachment => (
+                                                                    <span key={attachment}>
+                                                                        {attachment}
+                                                                    </span>
+                                                                )
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    {projectFilePreview.html ? (
+                                                        <iframe
+                                                            className="msg-html-frame"
+                                                            title={projectFilePreview.subject || projectFilePreview.name}
+                                                            sandbox=""
+                                                            srcDoc={projectFilePreview.html}
+                                                        />
+                                                    ) : (
+                                                        <pre>
+                                                            {projectFilePreview.body || "Aucun contenu texte."}
+                                                        </pre>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </aside>
                                     )}
-                                </header>
-
-                                {!projectPreviewPath && (
-                                    <div className="project-file-preview-empty">
-                                        Sélectionne un PDF, un fichier Office ou un courriel .msg.
-                                    </div>
-                                )}
-
-                                {isProjectPreviewLoading && (
-                                    <div className="project-file-preview-empty">
-                                        Chargement de l'aperçu...
-                                    </div>
-                                )}
-
-                                {projectPreviewError && (
-                                    <div className="business-error">
-                                        {projectPreviewError}
-                                    </div>
-                                )}
-
-                                {!isProjectPreviewLoading && projectFilePreview?.type === "pdf" && (
-                                    <iframe
-                                        title={projectFilePreview.name}
-                                        src={projectPdfPreviewUrl}
-                                    />
-                                )}
-
-                                {!isProjectPreviewLoading && projectFilePreview?.type === "msg" && (
-                                    <div className="project-msg-preview">
-                                        <div>
-                                            <strong>Objet</strong>
-                                            <span>{projectFilePreview.subject || "-"}</span>
-                                        </div>
-                                        <div>
-                                            <strong>De</strong>
-                                            <span>{projectFilePreview.from || "-"}</span>
-                                        </div>
-                                        <div>
-                                            <strong>À</strong>
-                                            <span>{projectFilePreview.to || "-"}</span>
-                                        </div>
-                                        <div>
-                                            <strong>Date</strong>
-                                            <span>{projectFilePreview.date || "-"}</span>
-                                        </div>
-                                        {projectFilePreview.html ? (
-                                            <div
-                                                className="project-msg-html"
-                                                dangerouslySetInnerHTML={
-                                                    {
-                                                        __html: projectFilePreview.html
-                                                    }
-                                                }
-                                            />
-                                        ) : (
-                                            <pre>
-                                                {projectFilePreview.body || "Aucun contenu texte."}
-                                            </pre>
-                                        )}
-                                    </div>
-                                )}
-                            </aside>
+                                </div>
+                            )}
                         </div>
                     </section>
                 </div>
