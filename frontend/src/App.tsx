@@ -651,7 +651,24 @@ function App() {
             </div>
 
             <footer className="build-footer">
-                {__SERCORA_BUILD_DATE__}
+                <span>Crédits : Simon Mathieu 2026</span>
+                <nav aria-label="Liens projet">
+                    <a
+                        href="https://github.com/sercora/sercora/tree/codex"
+                        target="_blank"
+                        rel="noreferrer"
+                    >
+                        GitHub codex
+                    </a>
+                    <a
+                        href="https://github.com/sercora/sercora/tree/codex/docs"
+                        target="_blank"
+                        rel="noreferrer"
+                    >
+                        Documentation
+                    </a>
+                </nav>
+                <span>{__SERCORA_BUILD_DATE__}</span>
             </footer>
 
         </div>

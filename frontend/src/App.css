@@ -549,6 +549,14 @@
 
 .build-footer {
 
+    display: flex;
+
+    align-items: center;
+
+    justify-content: flex-end;
+
+    gap: 14px;
+
     flex: 0 0 22px;
 
     height: 22px;
@@ -565,9 +573,36 @@
 
     line-height: 21px;
 
-    text-align: right;
-
     white-space: nowrap;
+
+}
+
+
+.build-footer nav {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+}
+
+
+.build-footer a {
+
+    color: #2f5f39;
+
+    font-weight: 700;
+
+    text-decoration: none;
+
+}
+
+
+.build-footer a:hover {
+
+    text-decoration: underline;
 
 }
 
