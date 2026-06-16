@@ -595,27 +595,49 @@ def send_sms(
         return response
 
     if provider in ("voipms", "voip"):
-        if not settings.account_id or not settings.api_secret:
+        bearer_token = settings.api_key or settings.api_secret
+        use_bearer_auth = bool(
+            bearer_token and
+            not settings.account_id
+        )
+
+        if not use_bearer_auth and (
+            not settings.account_id or
+            not settings.api_secret
+        ):
             raise HTTPException(
                 status_code=400,
                 detail="VoIP.ms requiert l'ID compte et le secret/token API"
             )
 
-        query_string = urlencode(
-            {
-                "api_username": settings.account_id,
-                "api_password": settings.api_secret,
+        form_values = {
                 "method": "sendSMS",
                 "did": settings.from_number,
                 "dst": clean_destination,
                 "message": clean_message
             }
-        )
+        request_headers = sms_headers()
+
+        if use_bearer_auth:
+            request_headers = sms_headers(
+                {
+                    "Authorization": "Bearer " + bearer_token
+                }
+            )
+        else:
+            form_values.update(
+                {
+                    "api_username": settings.account_id,
+                    "api_password": settings.api_secret
+                }
+            )
+
+        query_string = urlencode(form_values)
 
         response = sms_http_request(
             Request(
                 "https://voip.ms/api/v1/rest.php?" + query_string,
-                headers=sms_headers(),
+                headers=request_headers,
                 method="GET"
             )
         )

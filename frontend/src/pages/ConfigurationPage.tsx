@@ -374,6 +374,10 @@ function ConfigurationPage({
                         Ces paramètres serviront aux alertes SMS des estimateurs 30 minutes avant une tombée BSDQ.
                     </div>
 
+                    <div className="auth-muted">
+                        VoIP.ms: pour un token Bearer, laisse ID compte vide et mets le token dans Cle API ou Secret / token API.
+                    </div>
+
                     <div className="auth-form-grid">
                         <label className="field-stack">
                             <span>Fournisseur</span>
