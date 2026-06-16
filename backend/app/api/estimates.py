@@ -18,6 +18,10 @@ NAS_ESTIMATE_ROOTS = {
 
 
 ESTIMATE_FOLDER_STATUS_PATTERN = "^(in_progress|sent|rejected)$"
+PREVIEW_EXTENSIONS = {
+    ".pdf",
+    ".msg"
+}
 
 
 def estimate_root(
@@ -79,6 +83,50 @@ def folder_item_payload(
         "is_dir": entry.is_dir(),
         "size": stat.st_size,
         "modified_at": stat.st_mtime
+    }
+
+
+def msg_preview_payload(
+    target: Path
+):
+
+    try:
+        import extract_msg
+    except ImportError as error:
+        raise HTTPException(
+            status_code=503,
+            detail="MSG preview support is not installed"
+        ) from error
+
+    try:
+        message = extract_msg.Message(str(target))
+        message_sender = message.sender or ""
+        message_to = message.to or ""
+        message_cc = message.cc or ""
+        message_date = str(message.date or "")
+        message_subject = message.subject or target.name
+        message_body = message.body or ""
+        attachments = [
+            attachment.longFilename or attachment.shortFilename or "Pièce jointe"
+            for attachment in message.attachments
+        ]
+        message.close()
+    except Exception as error:
+        raise HTTPException(
+            status_code=422,
+            detail="MSG file could not be read"
+        ) from error
+
+    return {
+        "type": "msg",
+        "name": target.name,
+        "subject": message_subject,
+        "from": message_sender,
+        "to": message_to,
+        "cc": message_cc,
+        "date": message_date,
+        "body": message_body,
+        "attachments": attachments
     }
 
 
@@ -148,6 +196,42 @@ def get_estimate_file(
         target,
         filename=target.name
     )
+
+
+@router.get("/estimate-file-preview")
+def get_estimate_file_preview(
+    status: str = Query(..., pattern=ESTIMATE_FOLDER_STATUS_PATTERN),
+    path: str = Query(..., min_length=1)
+):
+
+    _root, target = resolve_estimate_path(
+        status,
+        path
+    )
+
+    if not target.exists() or not target.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="NAS file not found"
+        )
+
+    extension = target.suffix.lower()
+
+    if extension not in PREVIEW_EXTENSIONS:
+        raise HTTPException(
+            status_code=415,
+            detail="Preview is not supported for this file type"
+        )
+
+    if extension == ".pdf":
+        return FileResponse(
+            target,
+            media_type="application/pdf",
+            filename=target.name,
+            content_disposition_type="inline"
+        )
+
+    return msg_preview_payload(target)
 
 
 @router.get("/estimates")

@@ -23,6 +23,24 @@ export type EstimateFolderResponse = {
 };
 
 
+export type EstimateFilePreview =
+    {
+        type: "pdf";
+        name: string;
+    } |
+    {
+        type: "msg";
+        name: string;
+        subject: string;
+        from: string;
+        to: string;
+        cc: string;
+        date: string;
+        body: string;
+        attachments: string[];
+    };
+
+
 export type EstimateMatrixSummary = {
     project: {
         id: number;
@@ -210,6 +228,48 @@ export function estimateFileUrl(
     return API_URL +
         "/estimate-files?" +
         params.toString();
+
+}
+
+
+export function estimateFilePreviewUrl(
+    status: EstimateFolderStatus,
+    path: string
+) {
+
+    const params = new URLSearchParams(
+        {
+            status,
+            path
+        }
+    );
+
+    return API_URL +
+        "/estimate-file-preview?" +
+        params.toString();
+
+}
+
+
+export function fetchEstimateFilePreview(
+    status: EstimateFolderStatus,
+    path: string
+): Promise<EstimateFilePreview> {
+
+    const params = new URLSearchParams(
+        {
+            status,
+            path
+        }
+    );
+
+    return fetch(
+        API_URL +
+        "/estimate-file-preview?" +
+        params.toString()
+    )
+
+    .then(parseResponse);
 
 }
 

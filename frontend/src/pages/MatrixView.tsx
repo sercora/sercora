@@ -26,7 +26,9 @@ import {
     createEstimateRoom,
     deleteEstimateLine,
     deleteEstimateRoom,
+    estimateFilePreviewUrl,
     estimateFileUrl,
+    fetchEstimateFilePreview,
     fetchEstimateMatrix,
     fetchEstimateFolders,
     fetchSurfaceTypes,
@@ -39,6 +41,7 @@ import {
 } from "../utils/matrixApi";
 import type {
     EstimateFolderItem,
+    EstimateFilePreview,
     EstimateLineInput,
     EstimateLineUpdateInput,
     EstimateMatrixResponse,
@@ -390,6 +393,10 @@ function MatrixView({
     const [folderSearch, setFolderSearch] = useState("");
     const [isFolderLoading, setIsFolderLoading] = useState(false);
     const [folderError, setFolderError] = useState("");
+    const [filePreview, setFilePreview] = useState<EstimateFilePreview | null>(null);
+    const [previewPath, setPreviewPath] = useState("");
+    const [previewError, setPreviewError] = useState("");
+    const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
 
     const folderStatus = useMemo(
@@ -5546,6 +5553,14 @@ function MatrixView({
 
         if (item.is_dir) {
             setFolderPath(item.relative_path);
+            setFilePreview(null);
+            setPreviewPath("");
+            setPreviewError("");
+            return;
+        }
+
+        if (isPreviewableFile(item.name)) {
+            openFilePreview(item);
             return;
         }
 
@@ -5556,6 +5571,176 @@ function MatrixView({
             ),
             "_blank",
             "noopener,noreferrer"
+        );
+
+    }
+
+
+    function isPreviewableFile(
+        fileName: string
+    ) {
+
+        return /\.(pdf|msg)$/i.test(fileName);
+
+    }
+
+
+    function openFilePreview(
+        item: EstimateFolderItem
+    ) {
+
+        if (!folderStatus)
+            return;
+
+        setPreviewPath(item.relative_path);
+        setPreviewError("");
+
+        if (/\.pdf$/i.test(item.name)) {
+            setFilePreview(
+                {
+                    type: "pdf",
+                    name: item.name
+                }
+            );
+            return;
+        }
+
+        setIsPreviewLoading(true);
+        setFilePreview(null);
+
+        fetchEstimateFilePreview(
+            folderStatus,
+            item.relative_path
+        )
+
+        .then(
+            preview =>
+                setFilePreview(preview)
+        )
+
+        .catch(
+            () => {
+                setPreviewError(
+                    "Impossible de lire ce courriel .msg."
+                );
+            }
+        )
+
+        .finally(
+            () =>
+                setIsPreviewLoading(false)
+        );
+
+    }
+
+
+    function renderFilePreview() {
+
+        if (!folderStatus)
+            return null;
+
+        if (!filePreview && !previewError && !isPreviewLoading)
+            return (
+                <aside className="estimate-file-preview empty">
+                    Sélectionner un PDF ou un courriel .msg.
+                </aside>
+            );
+
+        return (
+            <aside className="estimate-file-preview">
+                <header>
+                    <strong>
+                        {filePreview?.name || "Prévisualisation"}
+                    </strong>
+                    <div>
+                        {previewPath && (
+                            <button
+                                type="button"
+                                onClick={
+                                    () =>
+                                        window.open(
+                                            estimateFileUrl(
+                                                folderStatus,
+                                                previewPath
+                                            ),
+                                            "_blank",
+                                            "noopener,noreferrer"
+                                        )
+                                }
+                            >
+                                Ouvrir
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={
+                                () => {
+                                    setFilePreview(null);
+                                    setPreviewPath("");
+                                    setPreviewError("");
+                                }
+                            }
+                        >
+                            Fermer
+                        </button>
+                    </div>
+                </header>
+
+                {isPreviewLoading && (
+                    <div className="estimate-file-preview-empty">
+                        Chargement...
+                    </div>
+                )}
+
+                {previewError && (
+                    <div className="estimate-folder-error">
+                        {previewError}
+                    </div>
+                )}
+
+                {filePreview?.type === "pdf" && previewPath && (
+                    <iframe
+                        title={filePreview.name}
+                        src={estimateFilePreviewUrl(
+                            folderStatus,
+                            previewPath
+                        )}
+                    />
+                )}
+
+                {filePreview?.type === "msg" && (
+                    <div className="msg-preview">
+                        <h2>{filePreview.subject}</h2>
+                        <dl>
+                            <dt>De</dt>
+                            <dd>{filePreview.from || "-"}</dd>
+                            <dt>À</dt>
+                            <dd>{filePreview.to || "-"}</dd>
+                            {filePreview.cc && (
+                                <>
+                                    <dt>CC</dt>
+                                    <dd>{filePreview.cc}</dd>
+                                </>
+                            )}
+                            <dt>Date</dt>
+                            <dd>{filePreview.date || "-"}</dd>
+                        </dl>
+                        {filePreview.attachments.length > 0 && (
+                            <div className="msg-attachments">
+                                <strong>Pièces jointes</strong>
+                                {filePreview.attachments.map(
+                                    attachment => (
+                                        <span key={attachment}>
+                                            {attachment}
+                                        </span>
+                                    )
+                                )}
+                            </div>
+                        )}
+                        <pre>{filePreview.body || "Aucun contenu texte."}</pre>
+                    </div>
+                )}
+            </aside>
         );
 
     }
@@ -5691,45 +5876,54 @@ function MatrixView({
                     )}
 
                     {!isFolderLoading && !folderError && (
-                        <div className="estimate-folder-list">
-                            {filteredFolderItems.map(
-                                item => (
-                                    <button
-                                        key={item.relative_path}
-                                        type="button"
-                                        className={
-                                            item.is_dir ?
-                                                "estimate-folder-item directory" :
-                                                "estimate-folder-item file"
-                                        }
-                                        onClick={
-                                            () =>
-                                                openFolderItem(item)
-                                        }
-                                    >
-                                        <span className="estimate-folder-icon">
-                                            {item.is_dir ? "Dossier" : "Fichier"}
-                                        </span>
-                                        <span className="estimate-folder-name">
-                                            {item.name}
-                                        </span>
-                                        <span className="estimate-folder-meta">
-                                            {item.is_dir ?
-                                                "" :
-                                                formatFileSize(item.size)}
-                                        </span>
-                                        <span className="estimate-folder-date">
-                                            {formatModifiedAt(item.modified_at)}
-                                        </span>
-                                    </button>
-                                )
-                            )}
+                        <div className="estimate-folder-browser">
+                            <div className="estimate-folder-list">
+                                {filteredFolderItems.map(
+                                    item => (
+                                        <button
+                                            key={item.relative_path}
+                                            type="button"
+                                            className={
+                                                [
+                                                    item.is_dir ?
+                                                        "estimate-folder-item directory" :
+                                                        "estimate-folder-item file",
+                                                    item.relative_path === previewPath ?
+                                                        "selected" :
+                                                        ""
+                                                ].filter(Boolean).join(" ")
+                                            }
+                                            onClick={
+                                                () =>
+                                                    openFolderItem(item)
+                                            }
+                                        >
+                                            <span className="estimate-folder-icon">
+                                                {item.is_dir ? "Dossier" : "Fichier"}
+                                            </span>
+                                            <span className="estimate-folder-name">
+                                                {item.name}
+                                            </span>
+                                            <span className="estimate-folder-meta">
+                                                {item.is_dir ?
+                                                    "" :
+                                                    formatFileSize(item.size)}
+                                            </span>
+                                            <span className="estimate-folder-date">
+                                                {formatModifiedAt(item.modified_at)}
+                                            </span>
+                                        </button>
+                                    )
+                                )}
 
-                            {filteredFolderItems.length === 0 && (
-                                <div className="estimate-folder-empty">
-                                    Aucun élément à afficher.
-                                </div>
-                            )}
+                                {filteredFolderItems.length === 0 && (
+                                    <div className="estimate-folder-empty">
+                                        Aucun élément à afficher.
+                                    </div>
+                                )}
+                            </div>
+
+                            {renderFilePreview()}
                         </div>
                     )}
                 </div>
