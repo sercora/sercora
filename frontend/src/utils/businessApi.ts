@@ -31,6 +31,10 @@ export type ProjectSummary = {
     project_number: string | null;
     project_name: string;
     status: string | null;
+    submission_state: ProjectSubmissionState;
+    submission_state_user_id: number | null;
+    submission_state_user_name: string | null;
+    submission_state_updated_at: string | null;
     start_date: string | null;
     end_date: string | null;
     bid_due_date: string | null;
@@ -51,6 +55,9 @@ export type ProjectSummary = {
     addenda: string | null;
     created_at: string | null;
 };
+
+
+export type ProjectSubmissionState = "NEW" | "UNDECIDED" | "REFUSED";
 
 
 export type ProjectInvitation = {
@@ -217,7 +224,8 @@ export function updateClient(
 
 
 export function fetchProjects(
-    scope: "all" | "current" | "submission" = "all"
+    scope: "all" | "current" | "submission" = "all",
+    submissionState: "new" | "undecided" | "refused" = "new"
 ): Promise<ProjectSummary[]> {
 
     const params = new URLSearchParams(
@@ -226,10 +234,43 @@ export function fetchProjects(
         }
     );
 
+    if (scope === "submission")
+        params.set(
+            "submission_state",
+            submissionState
+        );
+
     return fetch(
         API_URL +
         "/projects?" +
         params.toString()
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function updateProjectSubmissionState(
+    projectId: number,
+    submissionState: "new" | "undecided" | "refused",
+    userId: number | null
+) {
+
+    return fetch(
+        API_URL + "/projects/" + projectId + "/submission-state",
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(
+                {
+                    submission_state: submissionState,
+                    user_id: userId
+                }
+            )
+        }
     )
 
     .then(parseResponse);

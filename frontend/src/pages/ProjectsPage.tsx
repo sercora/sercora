@@ -10,7 +10,8 @@ import {
     createProjectWithFiles,
     fetchClients,
     fetchProjects,
-    updateProjectCurrent
+    updateProjectCurrent,
+    updateProjectSubmissionState
 } from "../utils/businessApi";
 import {
     fetchProjectFilePreview,
@@ -34,6 +35,8 @@ import "../styles/grid.css";
 
 type ProjectsPageProps = {
     projectMenu: "En cours" | "En Soumission" | "Création";
+    projectSubmissionState: ProjectSubmissionMenuKey;
+    currentUserId: number;
     onOpenEstimate: (estimateId: number) => void;
 };
 
@@ -94,6 +97,44 @@ const MONTH_LABEL_FORMATTER = new Intl.DateTimeFormat(
 
 
 type ProjectViewMode = "Liste" | "Calendrier";
+type ProjectSubmissionMenuKey = "Nouveaux" | "Indécis" | "Refusé";
+type ProjectSubmissionApiState = "new" | "undecided" | "refused";
+
+
+const PROJECT_SUBMISSION_API_STATE: Record<
+    ProjectSubmissionMenuKey,
+    ProjectSubmissionApiState
+> = {
+    Nouveaux: "new",
+    Indécis: "undecided",
+    Refusé: "refused"
+};
+
+
+const PROJECT_SUBMISSION_LABELS: Record<string, string> = {
+    NEW: "Nouveau",
+    UNDECIDED: "Indécis",
+    REFUSED: "Refusé"
+};
+
+
+const PROJECT_SUBMISSION_STATE_VALUES: Record<
+    string,
+    ProjectSubmissionApiState
+> = {
+    NEW: "new",
+    UNDECIDED: "undecided",
+    REFUSED: "refused"
+};
+
+
+function submissionStateLabel(
+    state: string | null
+) {
+
+    return PROJECT_SUBMISSION_LABELS[state || "NEW"] || "Nouveau";
+
+}
 
 
 function nullableValue(
@@ -264,6 +305,8 @@ function formatFileDate(
 
 function ProjectsPage({
     projectMenu,
+    projectSubmissionState,
+    currentUserId,
     onOpenEstimate
 }: ProjectsPageProps) {
 
@@ -419,7 +462,8 @@ function ProjectsPage({
         fetchProjects(
             projectMenu === "En Soumission" ?
                 "submission" :
-                "current"
+                "current",
+            PROJECT_SUBMISSION_API_STATE[projectSubmissionState]
         )
             .then(setProjects)
             .catch(
@@ -429,6 +473,37 @@ function ProjectsPage({
             .finally(
                 () =>
                     setIsLoading(false)
+            );
+
+    }
+
+
+    function saveProjectSubmissionState(
+        projectId: number,
+        submissionState: ProjectSubmissionApiState
+    ) {
+
+        setStatus("");
+        setError("");
+
+        updateProjectSubmissionState(
+            projectId,
+            submissionState,
+            currentUserId
+        )
+            .then(
+                () => {
+                    setStatus("Etat du projet enregistré.");
+                    loadProjects();
+                }
+            )
+            .catch(
+                error =>
+                    setError(
+                        error instanceof Error ?
+                            error.message :
+                            "Impossible d'enregistrer l'état du projet."
+                    )
             );
 
     }
@@ -1108,10 +1183,14 @@ function ProjectsPage({
 
     useEffect(
         () => {
+            calendarInitializedRef.current = false;
             loadProjects();
             loadClients();
         },
-        []
+        [
+            projectMenu,
+            projectSubmissionState
+        ]
     );
 
 
@@ -1504,7 +1583,16 @@ function ProjectsPage({
                     <strong>{projects.length}</strong>
                     <span>
                         {projectMenu === "En Soumission" ?
-                            "projets en soumission" :
+                            (
+                                "projets " +
+                                submissionStateLabel(
+                                    Object.keys(PROJECT_SUBMISSION_STATE_VALUES).find(
+                                        state =>
+                                            PROJECT_SUBMISSION_STATE_VALUES[state] ===
+                                            PROJECT_SUBMISSION_API_STATE[projectSubmissionState]
+                                    ) || "NEW"
+                                ).toLowerCase()
+                            ) :
                             "projets en cours"}
                     </span>
                 </div>
@@ -1512,6 +1600,10 @@ function ProjectsPage({
 
             {error && (
                 <div className="business-error">{error}</div>
+            )}
+
+            {status && (
+                <div className="business-status">{status}</div>
             )}
 
             {projectMenu === "En Soumission" && (
@@ -1688,6 +1780,12 @@ function ProjectsPage({
                                 <th>Dépôt</th>
                                 <th>Échéancier</th>
                                 <th>Révisions</th>
+                                {projectMenu === "En Soumission" && (
+                                    <>
+                                        <th>État</th>
+                                        <th>Enregistré par</th>
+                                    </>
+                                )}
                                 <th>Statut</th>
                                 <th>Action</th>
                             </tr>
@@ -1695,11 +1793,15 @@ function ProjectsPage({
                         <tbody>
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={9}>Chargement...</td>
+                                    <td colSpan={projectMenu === "En Soumission" ? 11 : 9}>
+                                        Chargement...
+                                    </td>
                                 </tr>
                             ) : projects.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9}>Aucun projet en cours.</td>
+                                    <td colSpan={projectMenu === "En Soumission" ? 11 : 9}>
+                                        Aucun projet à afficher.
+                                    </td>
                                 </tr>
                             ) : (
                                 projects.map(
@@ -1716,6 +1818,40 @@ function ProjectsPage({
                                                 {project.end_date || "-"}
                                             </td>
                                             <td>{project.revision_count}</td>
+                                            {projectMenu === "En Soumission" && (
+                                                <>
+                                                    <td>
+                                                        <select
+                                                            value={
+                                                                PROJECT_SUBMISSION_STATE_VALUES[
+                                                                    project.submission_state || "NEW"
+                                                                ] || "new"
+                                                            }
+                                                            onChange={
+                                                                event =>
+                                                                    saveProjectSubmissionState(
+                                                                        project.id,
+                                                                        event.target.value as ProjectSubmissionApiState
+                                                                    )
+                                                            }
+                                                        >
+                                                            <option value="new">Nouveau</option>
+                                                            <option value="undecided">Indécis</option>
+                                                            <option value="refused">Refusé</option>
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        {project.submission_state_user_name || "-"}
+                                                        {project.submission_state_updated_at && (
+                                                            <small className="business-muted-line">
+                                                                {new Date(
+                                                                    project.submission_state_updated_at
+                                                                ).toLocaleDateString("fr-CA")}
+                                                            </small>
+                                                        )}
+                                                    </td>
+                                                </>
+                                            )}
                                             <td>{project.status || "-"}</td>
                                             <td>
                                                 {projectMenu === "En Soumission" && (

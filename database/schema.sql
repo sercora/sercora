@@ -160,6 +160,12 @@ CREATE TABLE project (
 
     status VARCHAR(50) DEFAULT 'PENDING',
 
+    submission_state VARCHAR(30) DEFAULT 'NEW',
+
+    submission_state_user_id BIGINT,
+
+    submission_state_updated_at TIMESTAMP,
+
     address_line1 VARCHAR(255),
 
     address_line2 VARCHAR(255),

@@ -5,6 +5,7 @@ from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from pydantic import BaseModel
 from sqlalchemy import text
 
 from app.database.database import SessionLocal
@@ -28,6 +29,16 @@ PROJECT_TEMPLATE_PARENT = Path("/NAS/Soumissions en cours")
 PROJECT_INVITATION_DIR = Path("Soumission") / "Invitations a soumissionner"
 UPLOAD_CHUNK_SIZE = 1024 * 1024
 UPLOAD_MAX_BYTES = 500 * 1024 * 1024
+SUBMISSION_STATES = {
+    "new": "NEW",
+    "undecided": "UNDECIDED",
+    "refused": "REFUSED"
+}
+
+
+class ProjectSubmissionStateUpdate(BaseModel):
+    submission_state: str
+    user_id: int | None = None
 
 
 def ensure_project_columns(
@@ -47,6 +58,40 @@ def ensure_project_columns(
             """
             ALTER TABLE project
             ADD COLUMN IF NOT EXISTS addenda TEXT
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE project
+            ADD COLUMN IF NOT EXISTS submission_state VARCHAR(30)
+                DEFAULT 'NEW'
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE project
+            ADD COLUMN IF NOT EXISTS submission_state_user_id BIGINT
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE project
+            ADD COLUMN IF NOT EXISTS submission_state_updated_at TIMESTAMP
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            UPDATE project
+            SET submission_state = 'NEW'
+            WHERE submission_state IS NULL
             """
         )
     )
@@ -760,13 +805,18 @@ def insert_project_record(
 
 @router.get("/projects")
 def get_projects(
-    scope: str = Query("all", pattern="^(all|current|submission)$")
+    scope: str = Query("all", pattern="^(all|current|submission)$"),
+    submission_state: str | None = Query(
+        None,
+        pattern="^(new|undecided|refused)$"
+    )
 ):
 
     db = SessionLocal()
     ensure_project_columns(db)
 
     filters = []
+    params = {}
 
     if scope == "current":
         filters.append(
@@ -787,6 +837,14 @@ def get_projects(
             COALESCE(p.status, 'PENDING') = 'PENDING'
             """
         )
+        filters.append(
+            """
+            COALESCE(p.submission_state, 'NEW') = :submission_state
+            """
+        )
+        params["submission_state"] = SUBMISSION_STATES[
+            submission_state or "new"
+        ]
 
     where_clause = (
         "WHERE " + " AND ".join(filters)
@@ -802,6 +860,10 @@ def get_projects(
                 p.project_number,
                 p.project_name,
                 p.status,
+                COALESCE(p.submission_state, 'NEW') AS submission_state,
+                p.submission_state_updated_at,
+                state_user.id AS submission_state_user_id,
+                state_user.full_name AS submission_state_user_name,
                 p.start_date,
                 p.end_date,
                 p.bid_due_date,
@@ -871,12 +933,18 @@ def get_projects(
                 ON pc.project_id = p.id
             LEFT JOIN client c
                 ON c.id = pc.client_id
+            LEFT JOIN app_user state_user
+                ON state_user.id = p.submission_state_user_id
             {where_clause}
             GROUP BY
                 p.id,
                 p.project_number,
                 p.project_name,
                 p.status,
+                p.submission_state,
+                p.submission_state_updated_at,
+                state_user.id,
+                state_user.full_name,
                 p.start_date,
                 p.end_date,
                 p.bid_due_date,
@@ -893,7 +961,8 @@ def get_projects(
                 p.bid_due_date NULLS LAST,
                 p.project_name
             """
-        )
+        ),
+        params
     ).mappings().all()
 
     projects = []
@@ -905,6 +974,10 @@ def get_projects(
                 "project_number": row["project_number"],
                 "project_name": row["project_name"],
                 "status": row["status"],
+                "submission_state": row["submission_state"],
+                "submission_state_user_id": row["submission_state_user_id"],
+                "submission_state_user_name": row["submission_state_user_name"],
+                "submission_state_updated_at": row["submission_state_updated_at"],
                 "start_date": row["start_date"],
                 "end_date": row["end_date"],
                 "bid_due_date": row["bid_due_date"],
@@ -933,6 +1006,106 @@ def get_projects(
     db.close()
 
     return projects
+
+
+@router.put("/projects/{project_id}/submission-state")
+def update_project_submission_state(
+    project_id: int,
+    update: ProjectSubmissionStateUpdate
+):
+
+    normalized_state = (update.submission_state or "").lower()
+
+    if normalized_state not in SUBMISSION_STATES:
+        raise HTTPException(
+            status_code=422,
+            detail="Etat de soumission invalide"
+        )
+
+    db = SessionLocal()
+
+    try:
+        ensure_project_columns(db)
+
+        project_row = db.execute(
+            text(
+                """
+                SELECT id
+                FROM project
+                WHERE id = :project_id
+                """
+            ),
+            {
+                "project_id": project_id
+            }
+        ).fetchone()
+
+        if project_row is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Projet introuvable"
+            )
+
+        user_row = None
+
+        if update.user_id is not None:
+            user_row = db.execute(
+                text(
+                    """
+                    SELECT id, full_name
+                    FROM app_user
+                    WHERE id = :user_id
+                        AND active = TRUE
+                    """
+                ),
+                {
+                    "user_id": update.user_id
+                }
+            ).fetchone()
+
+            if user_row is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Usager introuvable ou inactif"
+                )
+
+        row = db.execute(
+            text(
+                """
+                UPDATE project
+                SET submission_state = :submission_state,
+                    submission_state_user_id = :user_id,
+                    submission_state_updated_at = CURRENT_TIMESTAMP
+                WHERE id = :project_id
+                RETURNING
+                    id,
+                    submission_state,
+                    submission_state_user_id,
+                    submission_state_updated_at
+                """
+            ),
+            {
+                "project_id": project_id,
+                "submission_state": SUBMISSION_STATES[normalized_state],
+                "user_id": update.user_id
+            }
+        ).fetchone()
+        db.commit()
+
+        return {
+            "id": row.id,
+            "submission_state": row.submission_state,
+            "submission_state_user_id": row.submission_state_user_id,
+            "submission_state_user_name": (
+                user_row.full_name
+                if user_row
+                else None
+            ),
+            "submission_state_updated_at": row.submission_state_updated_at
+        }
+
+    finally:
+        db.close()
 
 
 @router.get("/projects/{project_id}")

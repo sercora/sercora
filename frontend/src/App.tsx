@@ -24,6 +24,7 @@ import "./App.css";
 type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura" | "Olympia";
 type ProjectMenuKey = "En cours" | "En Soumission" | "Création";
+type ProjectSubmissionMenuKey = "Nouveaux" | "Indécis" | "Refusé";
 type EstimateMenuKey = "En cours" | "Envoyées" | "Refusé" | "Template";
 type ToolsMenuKey = "Disponible" | "Déployé";
 type ConfigurationMenuKey = "Courriel" | "Importation";
@@ -63,6 +64,13 @@ const PROJECT_MENU_ITEMS: ProjectMenuKey[] = [
 
 const DISABLED_PROJECT_MENU_ITEMS: ProjectMenuKey[] = [
     "En cours"
+];
+
+
+const PROJECT_SUBMISSION_MENU_ITEMS: ProjectSubmissionMenuKey[] = [
+    "Nouveaux",
+    "Indécis",
+    "Refusé"
 ];
 
 
@@ -117,6 +125,8 @@ function App() {
     const [activePage, setActivePage] = useState<PageKey>("Soumissions");
     const [activeProductMenu, setActiveProductMenu] = useState<ProductMenuKey>("Tous");
     const [activeProjectMenu, setActiveProjectMenu] = useState<ProjectMenuKey>("En Soumission");
+    const [activeProjectSubmissionMenu, setActiveProjectSubmissionMenu] =
+        useState<ProjectSubmissionMenuKey>("Nouveaux");
     const [activeEstimateMenu, setActiveEstimateMenu] = useState<EstimateMenuKey>("En cours");
     const [activeEstimateId, setActiveEstimateId] = useState<number | null>(null);
     const [activeToolsMenu, setActiveToolsMenu] = useState<ToolsMenuKey>("Disponible");
@@ -278,6 +288,9 @@ function App() {
                         {activePage === "Projets" && (
                             " - " + activeProjectMenu
                         )}
+                        {activePage === "Projets" && activeProjectMenu === "En Soumission" && (
+                            " - " + activeProjectSubmissionMenu
+                        )}
                         {activePage === "Soumissions" && (
                             " - " + activeEstimateMenu
                         )}
@@ -355,6 +368,9 @@ function App() {
 
                                             if (item === "Projets")
                                                 setActiveProjectMenu("En Soumission");
+
+                                            if (item === "Projets")
+                                                setActiveProjectSubmissionMenu("Nouveaux");
 
                                             if (item === "Soumissions")
                                                 setActiveEstimateMenu("En cours");
@@ -447,35 +463,72 @@ function App() {
                                                     DISABLED_PROJECT_MENU_ITEMS.includes(projectMenuItem);
 
                                                 return (
-                                                    <button
+                                                    <div
                                                         key={projectMenuItem}
-                                                        type="button"
-                                                        className={
-                                                            (
-                                                                activePage === "Projets" &&
-                                                                activeProjectMenu === projectMenuItem
-                                                            ) ?
-                                                                "nav-subitem active" :
-                                                                "nav-subitem"
-                                                        }
-                                                        disabled={isProjectMenuDisabled}
-                                                        title={
-                                                            isProjectMenuDisabled ?
-                                                                "Disponible plus tard pour les projets obtenus par bon de commande." :
-                                                                undefined
-                                                        }
-                                                        onClick={
-                                                            () => {
-                                                                if (isProjectMenuDisabled)
-                                                                    return;
-
-                                                                setActiveProjectMenu(projectMenuItem);
-                                                                setActivePage("Projets");
-                                                            }
-                                                        }
+                                                        className="nav-subgroup"
                                                     >
-                                                        {projectMenuItem}
-                                                    </button>
+                                                        <button
+                                                            type="button"
+                                                            className={
+                                                                (
+                                                                    activePage === "Projets" &&
+                                                                    activeProjectMenu === projectMenuItem
+                                                                ) ?
+                                                                    "nav-subitem active" :
+                                                                    "nav-subitem"
+                                                            }
+                                                            disabled={isProjectMenuDisabled}
+                                                            title={
+                                                                isProjectMenuDisabled ?
+                                                                    "Disponible plus tard pour les projets obtenus par bon de commande." :
+                                                                    undefined
+                                                            }
+                                                            onClick={
+                                                                () => {
+                                                                    if (isProjectMenuDisabled)
+                                                                        return;
+
+                                                                    setActiveProjectMenu(projectMenuItem);
+                                                                    if (projectMenuItem === "En Soumission")
+                                                                        setActiveProjectSubmissionMenu("Nouveaux");
+                                                                    setActivePage("Projets");
+                                                                }
+                                                            }
+                                                        >
+                                                            {projectMenuItem}
+                                                        </button>
+
+                                                        {projectMenuItem === "En Soumission" && (
+                                                            <div className="nav-submenu nested">
+                                                                {PROJECT_SUBMISSION_MENU_ITEMS.map(
+                                                                    submissionMenuItem => (
+                                                                        <button
+                                                                            key={submissionMenuItem}
+                                                                            type="button"
+                                                                            className={
+                                                                                (
+                                                                                    activePage === "Projets" &&
+                                                                                    activeProjectMenu === "En Soumission" &&
+                                                                                    activeProjectSubmissionMenu === submissionMenuItem
+                                                                                ) ?
+                                                                                    "nav-subitem nested active" :
+                                                                                    "nav-subitem nested"
+                                                                            }
+                                                                            onClick={
+                                                                                () => {
+                                                                                    setActiveProjectMenu("En Soumission");
+                                                                                    setActiveProjectSubmissionMenu(submissionMenuItem);
+                                                                                    setActivePage("Projets");
+                                                                                }
+                                                                            }
+                                                                        >
+                                                                            {submissionMenuItem}
+                                                                        </button>
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 );
                                             }
                                         )}
@@ -583,8 +636,10 @@ function App() {
 
                     {activePage === "Projets" && (
                         <ProjectsPage
-                            key={activeProjectMenu}
+                            key={`${activeProjectMenu}-${activeProjectSubmissionMenu}`}
                             projectMenu={activeProjectMenu}
+                            projectSubmissionState={activeProjectSubmissionMenu}
+                            currentUserId={currentUser.id}
                             onOpenEstimate={
                                 estimateId => {
                                     setActiveEstimateId(estimateId);
