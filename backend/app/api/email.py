@@ -341,6 +341,21 @@ def sms_http_request(
         ) from error
 
 
+def sms_headers(
+    extra_headers: dict | None = None
+):
+
+    headers = {
+        "User-Agent": "Sercora/1.0 (+https://sercora.serco.pro)",
+        "Accept": "application/json,text/plain,*/*"
+    }
+
+    if extra_headers:
+        headers.update(extra_headers)
+
+    return headers
+
+
 def send_sms(
     settings,
     destination: str,
@@ -386,10 +401,12 @@ def send_sms(
             Request(
                 f"https://api.twilio.com/2010-04-01/Accounts/{settings.account_id}/Messages.json",
                 data=data,
-                headers={
+                headers=sms_headers(
+                    {
                     "Authorization": "Basic " + auth_token,
                     "Content-Type": "application/x-www-form-urlencoded"
-                },
+                    }
+                ),
                 method="POST"
             )
         )
@@ -415,10 +432,12 @@ def send_sms(
             Request(
                 "https://api.telnyx.com/v2/messages",
                 data=data,
-                headers={
+                headers=sms_headers(
+                    {
                     "Authorization": "Bearer " + api_token,
                     "Content-Type": "application/json"
-                },
+                    }
+                ),
                 method="POST"
             )
         )
@@ -430,7 +449,7 @@ def send_sms(
                 detail="VoIP.ms requiert l'ID compte et le secret/token API"
             )
 
-        data = urlencode(
+        query_string = urlencode(
             {
                 "api_username": settings.account_id,
                 "api_password": settings.api_secret,
@@ -439,16 +458,13 @@ def send_sms(
                 "dst": clean_destination,
                 "message": clean_message
             }
-        ).encode("utf-8")
+        )
 
         return sms_http_request(
             Request(
-                "https://voip.ms/api/v1/rest.php",
-                data=data,
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded"
-                },
-                method="POST"
+                "https://voip.ms/api/v1/rest.php?" + query_string,
+                headers=sms_headers(),
+                method="GET"
             )
         )
 
