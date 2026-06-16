@@ -21,7 +21,7 @@ import "../styles/business.css";
 
 
 type ProjectsPageProps = {
-    projectMenu: "En cours" | "Création";
+    projectMenu: "En cours" | "En Soumission" | "Création";
 };
 
 
@@ -110,7 +110,11 @@ function ProjectsPage({
         setIsLoading(true);
         setError("");
 
-        fetchProjects("current")
+        fetchProjects(
+            projectMenu === "En Soumission" ?
+                "submission" :
+                "current"
+        )
             .then(setProjects)
             .catch(
                 () =>
@@ -737,7 +741,11 @@ function ProjectsPage({
                 </button>
                 <div className="business-summary">
                     <strong>{projects.length}</strong>
-                    <span>projets en cours</span>
+                    <span>
+                        {projectMenu === "En Soumission" ?
+                            "projets en soumission" :
+                            "projets en cours"}
+                    </span>
                 </div>
             </div>
 

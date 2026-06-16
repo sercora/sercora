@@ -215,7 +215,7 @@ export function updateClient(
 
 
 export function fetchProjects(
-    scope: "all" | "current" = "all"
+    scope: "all" | "current" | "submission" = "all"
 ): Promise<ProjectSummary[]> {
 
     const params = new URLSearchParams(

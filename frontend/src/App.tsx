@@ -23,7 +23,7 @@ import "./App.css";
 
 type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura" | "Olympia";
-type ProjectMenuKey = "En cours" | "Création";
+type ProjectMenuKey = "En cours" | "En Soumission" | "Création";
 type EstimateMenuKey = "En cours" | "Envoyées" | "Refusé" | "Template";
 type ToolsMenuKey = "Disponible" | "Déployé";
 type ConfigurationMenuKey = "Courriel" | "Importation";
@@ -56,6 +56,7 @@ const TILE_SUPPLIER_MENU_ITEMS: ProductMenuKey[] = [
 
 const PROJECT_MENU_ITEMS: ProjectMenuKey[] = [
     "En cours",
+    "En Soumission",
     "Création"
 ];
 
@@ -93,6 +94,17 @@ const PAGE_CONTEXT: Record<PageKey, string> = {
 
 
 const AUTH_TOKEN_KEY = "sercora_auth_token";
+
+
+function pageLabel(
+    page: PageKey
+) {
+
+    return page === "Soumissions" ?
+        "Soumissions LEGACY" :
+        page;
+
+}
 
 
 function App() {
@@ -253,7 +265,7 @@ function App() {
                         {PAGE_CONTEXT[activePage]}
                     </span>
                     <h1>
-                        {activePage}
+                        {pageLabel(activePage)}
                         {activePage === "Produits" && activeProductMenu !== "Tous" && (
                             " - " + activeProductMenu
                         )}
@@ -349,7 +361,7 @@ function App() {
                                         }
                                     }
                                 >
-                                    {item}
+                                    {pageLabel(item)}
                                 </button>
 
                                 {item === "Produits" && (

@@ -760,7 +760,7 @@ def insert_project_record(
 
 @router.get("/projects")
 def get_projects(
-    scope: str = Query("all", pattern="^(all|current)$")
+    scope: str = Query("all", pattern="^(all|current|submission)$")
 ):
 
     db = SessionLocal()
@@ -778,6 +778,13 @@ def get_projects(
                 'ARCHIVED',
                 'SENT'
             )
+            """
+        )
+
+    if scope == "submission":
+        filters.append(
+            """
+            COALESCE(p.status, 'PENDING') = 'PENDING'
             """
         )
 
