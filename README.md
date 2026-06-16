@@ -125,6 +125,7 @@ Le menu Configuration est reserve aux admins.
 Sous-menus:
 
 - **Courriel**: configuration SMTP, adresse d'expediteur, reply-to forgeable, test d'envoi, invitations et rafraichissements de mot de passe.
+- **VoIP/SMS**: configuration du fournisseur SMS, test manuel et base des alertes BSDQ 30 minutes avant la tombee.
 - **Importation**: mises a jour de prix et catalogues fournisseurs.
 
 ## Integrations
@@ -183,6 +184,21 @@ La configuration SMTP permet:
 - reply-to configurable.
 
 Migadu est le fournisseur SMTP vise, mais le code reste generique.
+
+### VoIP/SMS
+
+La configuration VoIP/SMS permet de preparer les alertes aux estimateurs avant les depots BSDQ.
+
+Configuration VoIP.ms validee:
+
+- fournisseur: `VoIP.ms`;
+- `ID compte`: adresse courriel du compte VoIP.ms;
+- `Cle API`: cle API creee dans le menu API de VoIP.ms;
+- `Secret / token API`: laisser vide;
+- `No expediteur SMS`: DID VoIP.ms autorise SMS/A2P;
+- `Alerte avant depot BSDQ`: `30` minutes par defaut.
+
+Le bouton **Tester SMS** envoie un message manuel vers un numero de destination. Pour VoIP.ms, Sercora envoie les numeros en chiffres seulement, sans `+`, espaces ou tirets.
 
 ## Technologies
 

@@ -55,6 +55,7 @@ email.py
 - creation/modification;
 - roles;
 - derniere connexion.
+- numero de telephone pour alertes SMS.
 
 Roles:
 
@@ -75,6 +76,20 @@ entrepot
 - invitations;
 - reset de mot de passe;
 - creation de mot de passe via token.
+- configuration VoIP/SMS;
+- test SMS manuel;
+- validation de la reponse fournisseur SMS.
+
+Pour VoIP.ms, `email.py` utilise:
+
+```text
+api_username = adresse courriel du compte VoIP.ms
+api_password = cle API du menu API VoIP.ms
+method       = sendSMS
+did          = DID expediteur
+dst          = destination
+message      = message
+```
 
 ## Projets
 

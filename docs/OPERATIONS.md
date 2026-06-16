@@ -165,6 +165,44 @@ Fonctions:
 
 Apres une modification SMTP, utiliser le bouton de test dans l'interface avant d'envoyer des invitations.
 
+## VoIP/SMS
+
+La configuration SMS est disponible dans **Configuration > VoIP/SMS** pour les admins.
+
+Objectif:
+
+- envoyer des tests SMS manuels;
+- fournir la configuration des futures alertes BSDQ aux estimateurs;
+- alerter par defaut 30 minutes avant la tombee BSDQ.
+
+Configuration VoIP.ms validee:
+
+```text
+Fournisseur: VoIP.ms
+ID compte: adresse courriel du compte VoIP.ms
+Cle API: cle API du menu API VoIP.ms
+Secret / token API: vide
+No expediteur SMS: DID VoIP.ms autorise SMS/A2P
+Alerte avant depot BSDQ: 30
+```
+
+Avant de sauvegarder, verifier que le DID est autorise pour SMS/A2P dans VoIP.ms. Le compte peut avoir une limite A2P par defaut, par exemple 100 SMS par jour.
+
+Apres sauvegarde:
+
+1. entrer une destination test;
+2. entrer un message court;
+3. cliquer **Tester SMS**;
+4. lire le detail fournisseur affiche dans Sercora.
+
+Pour VoIP.ms, Sercora normalise `No expediteur SMS` et `Destination test` en chiffres seulement avant l'appel API. Un numero comme `+1 514 555 1212` est envoye comme `15145551212`.
+
+Si le test retourne `Username or Password is incorrect`, verifier:
+
+- que `ID compte` est bien l'adresse courriel du compte VoIP.ms;
+- que `Cle API` est bien la cle du menu API VoIP.ms;
+- que `Secret / token API` est vide pour VoIP.ms.
+
 ## Snipe-IT
 
 Verifier:

@@ -44,6 +44,7 @@ entrepot
 ```
 
 La liste des usagers retourne aussi la date de creation et la derniere connexion.
+Les payloads usagers et profil contiennent aussi `phone_number`, utilise pour les alertes SMS.
 
 ## Courriel
 
@@ -57,6 +58,46 @@ POST /user-invitations
 ```
 
 La configuration inclut SMTP, expediteur et reply-to.
+
+## VoIP/SMS
+
+Endpoints admin:
+
+```text
+GET  /admin/sms-settings
+PUT  /admin/sms-settings
+POST /admin/sms-settings/test
+```
+
+Champs principaux:
+
+```text
+provider_name
+account_id
+api_key
+api_secret
+from_number
+alert_minutes_before
+active
+```
+
+Configuration VoIP.ms:
+
+- `provider_name`: `VoIP.ms`;
+- `account_id`: adresse courriel du compte VoIP.ms;
+- `api_key`: cle API du menu API VoIP.ms;
+- `api_secret`: vide;
+- `from_number`: DID VoIP.ms autorise SMS/A2P;
+- `alert_minutes_before`: delai des alertes BSDQ, normalement `30`.
+
+`POST /admin/sms-settings/test` accepte:
+
+```text
+destination
+message
+```
+
+La reponse inclut le fournisseur, le code HTTP fournisseur et le detail retourne par le fournisseur. Sercora ne considere pas un SMS comme accepte tant que la reponse fournisseur ne confirme pas explicitement le succes.
 
 ## Clients
 

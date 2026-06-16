@@ -15,6 +15,7 @@ Le backend sert a:
 - naviguer les dossiers NAS;
 - convertir ou previsualiser des fichiers;
 - appliquer les imports fournisseurs.
+- configurer SMTP et VoIP/SMS pour invitations, resets et alertes.
 
 ## Technologies
 
@@ -90,8 +91,8 @@ cd backend
 ## Domaines API
 
 ```text
-auth.py                 login, profil, usagers, roles
-email.py                SMTP, invitations, reset mot de passe
+auth.py                 login, profil, usagers, roles, telephones
+email.py                SMTP, VoIP/SMS, invitations, reset mot de passe
 clients.py             clients et types
 projects.py            projets, creation, invitations, addenda, NAS
 products.py            produits, fournisseurs, imports catalogues, escomptes
@@ -174,6 +175,30 @@ Il sauvegarde aussi le resume:
 - outils deployes;
 - recherche, tri et pagination;
 - images via proxy.
+
+## Courriel Et VoIP/SMS
+
+`email.py` gere deux familles de configuration admin:
+
+- SMTP: expediteur, reply-to, test, invitations, resets de mot de passe;
+- VoIP/SMS: fournisseur SMS, test manuel et base des alertes BSDQ.
+
+Endpoints SMS:
+
+```text
+GET  /admin/sms-settings
+PUT  /admin/sms-settings
+POST /admin/sms-settings/test
+```
+
+Configuration VoIP.ms validee:
+
+- `account_id`: adresse courriel du compte VoIP.ms;
+- `api_key`: cle API du menu API VoIP.ms;
+- `api_secret`: vide;
+- `from_number`: DID VoIP.ms autorise SMS/A2P.
+
+Le connecteur VoIP.ms envoie `api_username`, `api_password`, `method=sendSMS`, `did`, `dst` et `message`. Les numeros sont normalises en chiffres seulement.
 
 ## Fichiers NAS
 

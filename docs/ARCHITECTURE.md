@@ -68,6 +68,7 @@ frontend/src/styles/
 - page active;
 - redirection depuis Projets vers la derniere revision de matrice;
 - footer avec liens GitHub, documentation et credits.
+- rafraichissement de la vue quand un menu ou sous-menu actif est reclique.
 
 Menus principaux:
 
@@ -134,6 +135,14 @@ email.py
 
 Le backend utilise surtout des requetes SQL explicites avec SQLAlchemy. Ce choix garde les comportements proches du schema et facilite le debogage.
 
+`email.py` couvre les notifications:
+
+- SMTP;
+- invitations et resets;
+- configuration VoIP/SMS;
+- test SMS manuel;
+- connecteurs Twilio, Telnyx et VoIP.ms.
+
 ## Base De Donnees
 
 PostgreSQL stocke les donnees internes.
@@ -150,6 +159,7 @@ Domaines principaux:
 - lignes;
 - quantites;
 - courriel SMTP;
+- VoIP/SMS;
 - invitations;
 - exclusions et addenda;
 - fiches techniques et options de couverture.

@@ -157,7 +157,23 @@ ImportationPage.tsx
 `ConfigurationPage.tsx` affiche les sous-pages admin:
 
 - Courriel;
+- VoIP/SMS;
 - Importation.
+
+La sous-page VoIP/SMS gere:
+
+- fournisseur SMS;
+- numero expediteur;
+- identifiants fournisseur;
+- delai d'alerte BSDQ;
+- test SMS manuel avec destination et message.
+
+Configuration VoIP.ms dans l'interface:
+
+- `ID compte`: adresse courriel du compte VoIP.ms;
+- `Cle API`: cle API du menu API VoIP.ms;
+- `Secret / token API`: vide;
+- `No expediteur SMS`: DID VoIP.ms autorise SMS/A2P.
 
 `ImportationPage.tsx` gere les mises a jour de prix et catalogues.
 

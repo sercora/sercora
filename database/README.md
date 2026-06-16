@@ -28,6 +28,7 @@ migrations/
 - quantites;
 - soumissions fournisseurs;
 - configuration SMTP;
+- configuration VoIP/SMS;
 - exclusions;
 - addenda.
 
@@ -35,6 +36,8 @@ migrations/
 
 ```text
 app_user
+app_email_settings
+app_sms_settings
 client
 client_type
 supplier
@@ -54,9 +57,10 @@ room
 estimate_line
 estimate_quantity
 estimate_supplier_quote
-email_settings
-password_setup_token
+app_user_token
 ```
+
+`app_user.phone_number` sert aux alertes SMS par usager.
 
 ## Modele Projet
 
@@ -129,7 +133,7 @@ Les migrations sont numerotees:
 ```text
 002_clients_suppliers.sql
 ...
-021_project_exclusions.sql
+025_app_user_phone_number.sql
 ```
 
 Regles:
@@ -139,6 +143,11 @@ Regles:
 - eviter les suppressions destructives;
 - garder `schema.sql` coherent avec les migrations;
 - documenter les changements dans `docs/API.md` si l'API est affectee.
+
+Migrations recentes liees aux notifications:
+
+- `024_sms_settings.sql`: table `app_sms_settings`;
+- `025_app_user_phone_number.sql`: colonne `app_user.phone_number`.
 
 ## Verifications Utiles
 
