@@ -97,6 +97,7 @@ const NUMERIC_MATRIX_FIELDS = new Set(
 type AddendaRow = {
     name: string;
     date: string;
+    included: boolean;
     plans: boolean;
     specs: boolean;
     description: string;
@@ -395,6 +396,7 @@ function MatrixView({
     const [folderError, setFolderError] = useState("");
     const [filePreview, setFilePreview] = useState<EstimateFilePreview | null>(null);
     const [previewPath, setPreviewPath] = useState("");
+    const [pdfPreviewUrl, setPdfPreviewUrl] = useState("");
     const [previewError, setPreviewError] = useState("");
     const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
@@ -3220,6 +3222,7 @@ function MatrixView({
         return {
             name: "",
             date: "",
+            included: false,
             plans: false,
             specs: false,
             description: ""
@@ -3247,6 +3250,8 @@ function MatrixView({
                             String(row.name || ""),
                         date:
                             String(row.date || ""),
+                        included:
+                            Boolean(row.included),
                         plans:
                             Boolean(row.plans),
                         specs:
@@ -3283,6 +3288,8 @@ function MatrixView({
                         row.name.trim(),
                     date:
                         row.date,
+                    included:
+                        row.included,
                     plans:
                         row.plans,
                     specs:
@@ -5281,6 +5288,7 @@ function MatrixView({
                                     <div className="addenda-grid">
                                         <div className="plan-pages-header">Nom</div>
                                         <div className="plan-pages-header">Date</div>
+                                        <div className="plan-pages-header">Inclus</div>
                                         <div className="plan-pages-header">Plans</div>
                                         <div className="plan-pages-header">Devis</div>
                                         <div className="plan-pages-header">Description</div>
@@ -5314,6 +5322,20 @@ function MatrixView({
                                                                 )
                                                         }
                                                     />
+                                                    <label className="addenda-checkbox">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={row.included}
+                                                            onChange={
+                                                                event =>
+                                                                    updateAddendaRow(
+                                                                        rowIndex,
+                                                                        "included",
+                                                                        event.target.checked
+                                                                    )
+                                                            }
+                                                        />
+                                                    </label>
                                                     <label className="addenda-checkbox">
                                                         <input
                                                             type="checkbox"
@@ -5555,6 +5577,7 @@ function MatrixView({
             setFolderPath(item.relative_path);
             setFilePreview(null);
             setPreviewPath("");
+            setPdfPreviewUrl("");
             setPreviewError("");
             return;
         }
@@ -5594,6 +5617,7 @@ function MatrixView({
 
         setPreviewPath(item.relative_path);
         setPreviewError("");
+        setPdfPreviewUrl("");
 
         if (/\.(pdf|doc|docx|xls|xlsm|xlsx)$/i.test(item.name)) {
             setFilePreview(
@@ -5601,6 +5625,43 @@ function MatrixView({
                     type: "pdf",
                     name: item.name
                 }
+            );
+            setIsPreviewLoading(true);
+
+            fetch(
+                estimateFilePreviewUrl(
+                    folderStatus,
+                    item.relative_path
+                )
+            )
+
+            .then(
+                response => {
+                    if (!response.ok)
+                        throw new Error("Preview failed");
+
+                    return response.blob();
+                }
+            )
+
+            .then(
+                blob =>
+                    setPdfPreviewUrl(
+                        URL.createObjectURL(blob)
+                    )
+            )
+
+            .catch(
+                () => {
+                    setPreviewError(
+                        "Impossible de lire ce fichier."
+                    );
+                }
+            )
+
+            .finally(
+                () =>
+                    setIsPreviewLoading(false)
             );
             return;
         }
@@ -5677,6 +5738,7 @@ function MatrixView({
                                 () => {
                                     setFilePreview(null);
                                     setPreviewPath("");
+                                    setPdfPreviewUrl("");
                                     setPreviewError("");
                                 }
                             }
@@ -5698,14 +5760,16 @@ function MatrixView({
                     </div>
                 )}
 
-                {filePreview?.type === "pdf" && previewPath && (
-                    <iframe
-                        title={filePreview.name}
-                        src={estimateFilePreviewUrl(
-                            folderStatus,
-                            previewPath
-                        )}
-                    />
+                {filePreview?.type === "pdf" && pdfPreviewUrl && (
+                    <object
+                        className="estimate-pdf-object"
+                        data={pdfPreviewUrl}
+                        type="application/pdf"
+                    >
+                        <div className="estimate-file-preview-empty">
+                            Prévisualisation non disponible dans ce navigateur.
+                        </div>
+                    </object>
                 )}
 
                 {filePreview?.type === "msg" && (
@@ -5823,6 +5887,19 @@ function MatrixView({
         [
             folderPath,
             folderStatus
+        ]
+    );
+
+
+    useEffect(
+        () => {
+            return () => {
+                if (pdfPreviewUrl)
+                    URL.revokeObjectURL(pdfPreviewUrl);
+            };
+        },
+        [
+            pdfPreviewUrl
         ]
     );
 

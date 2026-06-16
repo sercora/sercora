@@ -480,6 +480,61 @@
 }
 
 
+.business-invitation-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 6px;
+
+    max-height: 150px;
+
+    margin: 0;
+
+    padding: 0;
+
+    overflow: auto;
+
+    list-style: none;
+
+}
+
+
+.business-invitation-list li {
+
+    display: grid;
+
+    grid-template-columns: minmax(140px, 1fr) 94px minmax(180px, 1.4fr);
+
+    gap: 8px;
+
+    align-items: center;
+
+    padding: 7px 9px;
+
+    border: 1px solid #d0d7de;
+
+    background-color: #ffffff;
+
+    color: #29323b;
+
+    font-size: 12px;
+
+}
+
+
+.business-invitation-list span {
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+}
+
+
 .business-upload-grid {
 
     display: grid;
@@ -636,6 +691,13 @@
 
     .business-form-grid.compact,
     .business-checkbox-grid {
+
+        grid-template-columns: 1fr;
+
+    }
+
+
+    .business-invitation-list li {
 
         grid-template-columns: 1fr;
 

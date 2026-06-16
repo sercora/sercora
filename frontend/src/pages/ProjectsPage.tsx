@@ -94,6 +94,7 @@ function ProjectsPage({
     const [editingProject, setEditingProject] = useState<ProjectSummary | null>(null);
     const [editBidDueDate, setEditBidDueDate] = useState("");
     const [editClientIds, setEditClientIds] = useState<number[]>([]);
+    const [editInvitationClientId, setEditInvitationClientId] = useState<number | null>(null);
     const [editAddenda, setEditAddenda] = useState(EMPTY_ADDENDA);
     const [isMsgDragActive, setIsMsgDragActive] = useState(false);
     const [isEditMsgDragActive, setIsEditMsgDragActive] = useState(false);
@@ -202,6 +203,7 @@ function ProjectsPage({
         setEditingProject(project);
         setEditBidDueDate(project.bid_due_date || "");
         setEditClientIds(project.client_ids || []);
+        setEditInvitationClientId(project.client_ids?.[0] || null);
         setEditMsgFiles([]);
         setEditAddenda(EMPTY_ADDENDA);
         setStatus("");
@@ -230,6 +232,13 @@ function ProjectsPage({
                     ]
         );
 
+        setEditInvitationClientId(
+            currentClientId =>
+                currentClientId === clientId ?
+                    null :
+                    currentClientId || clientId
+        );
+
     }
 
 
@@ -251,6 +260,7 @@ function ProjectsPage({
             {
                 bid_due_date: editBidDueDate || null,
                 client_ids: editClientIds,
+                invitation_client_id: editInvitationClientId,
                 msgFiles: editMsgFiles,
                 addenda: editAddenda
             }
@@ -986,6 +996,32 @@ function ProjectsPage({
                                 <span>Courriels clients</span>
                                 <h3>Glisser des .msg</h3>
                             </div>
+                            <label className="business-field">
+                                <span>Client de l'invitation</span>
+                                <select
+                                    value={editInvitationClientId || ""}
+                                    onChange={
+                                        event =>
+                                            setEditInvitationClientId(
+                                                event.target.value ?
+                                                    Number(event.target.value) :
+                                                    null
+                                            )
+                                    }
+                                >
+                                    <option value="">Client non précisé</option>
+                                    {clients.map(
+                                        client => (
+                                            <option
+                                                key={client.id}
+                                                value={client.id}
+                                            >
+                                                {client.name}
+                                            </option>
+                                        )
+                                    )}
+                                </select>
+                            </label>
                             <button
                                 type="button"
                                 onClick={
@@ -1012,6 +1048,38 @@ function ProjectsPage({
                                         (file, index) => (
                                             <li key={`${file.name}-${index}`}>
                                                 {file.name}
+                                            </li>
+                                        )
+                                    )}
+                                </ul>
+                            )}
+                        </section>
+
+                        <section className="business-edit-section">
+                            <div className="business-section-heading">
+                                <div>
+                                    <span>Invitations</span>
+                                    <h2>Clients reçus</h2>
+                                </div>
+                            </div>
+                            {editingProject.invitations.length === 0 ? (
+                                <div className="business-upload-count">
+                                    Aucune invitation enregistrée.
+                                </div>
+                            ) : (
+                                <ul className="business-invitation-list">
+                                    {editingProject.invitations.map(
+                                        invitation => (
+                                            <li key={invitation.id}>
+                                                <strong>
+                                                    {invitation.client_name || "Client non précisé"}
+                                                </strong>
+                                                <span>
+                                                    {invitation.invited_on || "-"}
+                                                </span>
+                                                <span>
+                                                    {invitation.msg_filename}
+                                                </span>
                                             </li>
                                         )
                                     )}

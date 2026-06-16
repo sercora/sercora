@@ -197,7 +197,7 @@
 
     display: grid;
 
-    grid-template-columns: minmax(90px, 1fr) 116px 54px 54px minmax(160px, 1.4fr);
+    grid-template-columns: minmax(90px, 1fr) 116px 58px 54px 54px minmax(160px, 1.4fr);
 
 }
 
@@ -2187,9 +2187,12 @@
 }
 
 
-.estimate-file-preview iframe {
+.estimate-file-preview iframe,
+.estimate-pdf-object {
 
     flex: 1 1 auto;
+
+    width: 100%;
 
     min-height: 620px;
 

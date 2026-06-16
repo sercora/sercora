@@ -45,8 +45,19 @@ export type ProjectSummary = {
     client_names: string;
     client_ids: number[];
     revision_zero_estimate_id: number | null;
+    invitations: ProjectInvitation[];
     addenda: string | null;
     created_at: string | null;
+};
+
+
+export type ProjectInvitation = {
+    id: number;
+    client_id: number | null;
+    client_name: string | null;
+    invited_on: string;
+    msg_filename: string;
+    msg_relative_path: string;
 };
 
 
@@ -88,6 +99,7 @@ export type ProjectCreateResponse = {
 export type ProjectCurrentEditInput = {
     bid_due_date: string | null;
     client_ids: number[];
+    invitation_client_id: number | null;
     msgFiles: File[];
     addenda: {
         name: string;
@@ -338,6 +350,12 @@ export function updateProjectCurrent(
                 "client_ids",
                 clientId
             )
+    );
+
+    appendProjectFormValue(
+        formData,
+        "invitation_client_id",
+        input.invitation_client_id
     );
 
     appendProjectFormValue(formData, "addenda_name", input.addenda.name);

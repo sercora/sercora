@@ -50,6 +50,30 @@ def ensure_project_columns(
             """
         )
     )
+    db.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS project_invitation (
+                id BIGSERIAL PRIMARY KEY,
+                project_id BIGINT NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+                client_id BIGINT REFERENCES client(id) ON DELETE SET NULL,
+                invited_on DATE NOT NULL DEFAULT CURRENT_DATE,
+                project_folder_name TEXT NOT NULL,
+                msg_filename TEXT NOT NULL,
+                msg_relative_path TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            CREATE INDEX IF NOT EXISTS idx_project_invitation_project
+                ON project_invitation(project_id, invited_on, id)
+            """
+        )
+    )
     db.commit()
 
 
@@ -224,6 +248,7 @@ def parse_addenda_rows(
             {
                 "name": "",
                 "date": "",
+                "included": False,
                 "plans": False,
                 "specs": False,
                 "description": value
@@ -243,6 +268,7 @@ def parse_addenda_rows(
             {
                 "name": str(row.get("name") or ""),
                 "date": str(row.get("date") or ""),
+                "included": bool(row.get("included")),
                 "plans": bool(row.get("plans")),
                 "specs": bool(row.get("specs")),
                 "description": str(row.get("description") or "")
@@ -510,6 +536,114 @@ async def save_msg_uploads(
     return saved_count
 
 
+def client_name_for_invitation(
+    db,
+    client_id: int | None
+):
+
+    if not client_id:
+        return "Client"
+
+    row = db.execute(
+        text(
+            """
+            SELECT name
+            FROM client
+            WHERE id = :client_id
+            """
+        ),
+        {
+            "client_id": client_id
+        }
+    ).fetchone()
+
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Client d'invitation introuvable"
+        )
+
+    return row.name
+
+
+async def save_project_invitation_uploads(
+    db,
+    project_id: int,
+    project_folder: Path,
+    project_folder_name: str,
+    client_id: int | None,
+    uploads: list[UploadFile] | None
+):
+
+    saved_count = 0
+    invitation_date = date.today()
+    client_name = client_name_for_invitation(
+        db,
+        client_id
+    )
+    invitation_dir = project_folder / PROJECT_INVITATION_DIR
+
+    for upload in uploads or []:
+        filename = upload.filename or ""
+
+        if not filename:
+            continue
+
+        if not filename.lower().endswith(".msg"):
+            raise HTTPException(
+                status_code=422,
+                detail="Seuls les fichiers .msg sont acceptes ici"
+            )
+
+        msg_filename = (
+            f"{invitation_date.strftime('%Y %m %d')}, "
+            f"Invitation {safe_name(client_name, 'Client')}.msg"
+        )
+        destination = unique_path(
+            invitation_dir / msg_filename
+        )
+        relative_path = destination.relative_to(project_folder)
+
+        await save_upload_file(
+            upload,
+            destination
+        )
+
+        db.execute(
+            text(
+                """
+                INSERT INTO project_invitation (
+                    project_id,
+                    client_id,
+                    invited_on,
+                    project_folder_name,
+                    msg_filename,
+                    msg_relative_path
+                )
+                VALUES (
+                    :project_id,
+                    :client_id,
+                    :invited_on,
+                    :project_folder_name,
+                    :msg_filename,
+                    :msg_relative_path
+                )
+                """
+            ),
+            {
+                "project_id": project_id,
+                "client_id": client_id,
+                "invited_on": invitation_date,
+                "project_folder_name": project_folder_name,
+                "msg_filename": destination.name,
+                "msg_relative_path": str(relative_path)
+            }
+        )
+        saved_count += 1
+
+    return saved_count
+
+
 async def save_folder_uploads(
     project_folder: Path,
     uploads: list[UploadFile] | None
@@ -690,6 +824,26 @@ def get_projects(
                     ORDER BY e.id
                     LIMIT 1
                 ) AS revision_zero_estimate_id,
+                COALESCE(
+                    (
+                        SELECT JSON_AGG(
+                            JSON_BUILD_OBJECT(
+                                'id', pi.id,
+                                'client_id', pi.client_id,
+                                'client_name', c_inv.name,
+                                'invited_on', pi.invited_on,
+                                'msg_filename', pi.msg_filename,
+                                'msg_relative_path', pi.msg_relative_path
+                            )
+                            ORDER BY pi.invited_on DESC, pi.id DESC
+                        )
+                        FROM project_invitation pi
+                        LEFT JOIN client c_inv
+                            ON c_inv.id = pi.client_id
+                        WHERE pi.project_id = p.id
+                    ),
+                    '[]'::json
+                ) AS invitations,
                 p.addenda
             FROM project p
             LEFT JOIN project_client pc
@@ -747,6 +901,7 @@ def get_projects(
                     for client_id in row["client_ids"]
                 ],
                 "revision_zero_estimate_id": row["revision_zero_estimate_id"],
+                "invitations": row["invitations"] or [],
                 "addenda": row["addenda"],
                 "created_at": row["created_at"]
             }
@@ -943,6 +1098,7 @@ async def update_current_project(
     project_id: int,
     bid_due_date: str | None = Form(None),
     client_ids: list[int] | None = Form(None),
+    invitation_client_id: int | None = Form(None),
     addenda_name: str | None = Form(None),
     addenda_date: str | None = Form(None),
     addenda_plans: bool = Form(False),
@@ -994,12 +1150,36 @@ async def update_current_project(
                 detail="Projet introuvable"
             )
 
+        next_client_ids = list(
+            dict.fromkeys(client_ids or [])
+        )
+
+        if invitation_client_id and invitation_client_id not in next_client_ids:
+            next_client_ids.append(invitation_client_id)
+
         folder_result = ensure_project_folder_for_update(
             project_row,
             next_bid_due_date
         )
-        msg_file_count = await save_msg_uploads(
+        db.execute(
+            text(
+                """
+                UPDATE project_invitation
+                SET project_folder_name = :project_folder_name
+                WHERE project_id = :project_id
+                """
+            ),
+            {
+                "project_id": project_id,
+                "project_folder_name": folder_result["folder_name"]
+            }
+        )
+        msg_file_count = await save_project_invitation_uploads(
+            db,
+            project_id,
             Path(folder_result["folder_path"]),
+            folder_result["folder_name"],
+            invitation_client_id,
             msg_files
         )
 
@@ -1023,6 +1203,7 @@ async def update_current_project(
                 {
                     "name": clean_optional_text(addenda_name) or "",
                     "date": addenda_date or "",
+                    "included": False,
                     "plans": addenda_plans,
                     "specs": addenda_specs,
                     "description": clean_optional_text(addenda_description) or ""
@@ -1049,7 +1230,7 @@ async def update_current_project(
             }
         )
 
-        for client_id in client_ids or []:
+        for client_id in next_client_ids:
             db.execute(
                 text(
                     """
