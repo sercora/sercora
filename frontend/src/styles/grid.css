@@ -202,6 +202,32 @@
 }
 
 
+.samples-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 2px;
+
+    align-items: stretch;
+
+}
+
+
+.samples-list div {
+
+    min-height: 16px;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+}
+
+
 .estimate-summary-rates {
 
     display: flex;

@@ -3269,16 +3269,31 @@ function MatrixView({
                         </div>
 
                         <div className="estimate-summary-tiles">
-                            <div className="summary-label strong">Tuiles à demander</div>
-                            <div className="summary-value">
+                            <div className="summary-label strong">Échantillons</div>
+                            <div className="summary-value samples-list">
                                 {matrixSummary.tile_requests.length ?
                                     matrixSummary.tile_requests.map(
-                                        tile => [
-                                            tile.manufacturer_name,
-                                            tile.name,
-                                            tile.size_name
-                                        ].filter(Boolean).join(" - ")
-                                    ).join(" | ") :
+                                        (tile, index) => (
+                                            <div
+                                                key={[
+                                                    tile.supplier_names,
+                                                    tile.manufacturer_name,
+                                                    tile.name,
+                                                    tile.size_name,
+                                                    tile.supplier_product_code,
+                                                    index
+                                                ].filter(Boolean).join("-")}
+                                            >
+                                                {[
+                                                    tile.supplier_names,
+                                                    tile.manufacturer_name,
+                                                    tile.name,
+                                                    tile.size_name,
+                                                    tile.supplier_product_code
+                                                ].filter(Boolean).join(" - ")}
+                                            </div>
+                                        )
+                                    ) :
                                     "Aucune tuile dans la matrice."}
                             </div>
                         </div>

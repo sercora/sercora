@@ -205,6 +205,7 @@ def estimate_summary(
                 p.name,
                 p.manufacturer_name,
                 p.size_name,
+                supplier_info.supplier_names,
                 supplier_info.supplier_product_code
             FROM estimate_line l
             JOIN product p
@@ -212,14 +213,23 @@ def estimate_summary(
             LEFT JOIN product_type pt
                 ON pt.id = p.product_type_id
             LEFT JOIN LATERAL (
-                SELECT min(ps.supplier_product_code) AS supplier_product_code
+                SELECT
+                    string_agg(s.name, ', ' ORDER BY s.name)
+                        AS supplier_names,
+                    min(ps.supplier_product_code) AS supplier_product_code
                 FROM product_supplier ps
+                JOIN supplier s
+                    ON s.id = ps.supplier_id
                 WHERE ps.product_id = p.id
             ) supplier_info
                 ON TRUE
             WHERE l.estimate_id = :estimate_id
                 AND lower(coalesce(pt.name, '')) = 'tuile'
-            ORDER BY p.name
+            ORDER BY
+                supplier_info.supplier_names NULLS LAST,
+                p.manufacturer_name NULLS LAST,
+                p.name,
+                p.size_name NULLS LAST
             """
         ),
         {
@@ -293,6 +303,7 @@ def estimate_summary(
                 "name": row.name,
                 "manufacturer_name": row.manufacturer_name,
                 "size_name": row.size_name,
+                "supplier_names": row.supplier_names,
                 "supplier_product_code": row.supplier_product_code
             }
             for row in tile_rows

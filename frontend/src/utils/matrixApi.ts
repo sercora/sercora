@@ -69,6 +69,7 @@ export type EstimateMatrixSummary = {
         name: string;
         manufacturer_name: string | null;
         size_name: string | null;
+        supplier_names: string | null;
         supplier_product_code: string | null;
     }>;
 };
