@@ -50,7 +50,50 @@ PRODUCT_SELECT_FIELDS = """
     p.price_updated_at,
     supplier_info.supplier_names,
     supplier_info.supplier_product_code,
+    COALESCE(document_info.technical_document_count, 0)
+        AS technical_document_count,
+    document_info.first_technical_document_url,
+    document_info.first_technical_document_title,
     p.active
+"""
+
+
+DOCUMENT_INFO_JOIN = """
+    LEFT JOIN LATERAL (
+        SELECT
+            count(*) AS technical_document_count,
+            (
+                array_agg(
+                    pd.url
+                    ORDER BY
+                        CASE
+                            WHEN pd.language = 'FR' THEN 0
+                            WHEN pd.language = 'EN' THEN 1
+                            ELSE 2
+                        END,
+                        pd.title,
+                        pd.id
+                )
+            )[1] AS first_technical_document_url,
+            (
+                array_agg(
+                    pd.title
+                    ORDER BY
+                        CASE
+                            WHEN pd.language = 'FR' THEN 0
+                            WHEN pd.language = 'EN' THEN 1
+                            ELSE 2
+                        END,
+                        pd.title,
+                        pd.id
+                )
+            )[1] AS first_technical_document_title
+        FROM product_document pd
+        WHERE pd.product_id = p.id
+            AND pd.active = TRUE
+            AND pd.document_type = 'TDS'
+    ) document_info
+        ON TRUE
 """
 
 
@@ -131,6 +174,9 @@ def product_payload(row):
         ),
         "supplier_names": row.supplier_names,
         "supplier_product_code": row.supplier_product_code,
+        "technical_document_count": row.technical_document_count,
+        "first_technical_document_url": row.first_technical_document_url,
+        "first_technical_document_title": row.first_technical_document_title,
         "active": row.active
     }
 
@@ -619,6 +665,7 @@ def get_products(
                 ON u.id = p.default_unit_id
             LEFT JOIN supplier_info
                 ON supplier_info.product_id = p.id
+            """ + DOCUMENT_INFO_JOIN + """
         """
         pagination_clause = (
             """
@@ -638,11 +685,20 @@ def get_products(
                 """ + where_clause + """
                 ORDER BY
                     p.active DESC,
+                    CASE
+                        WHEN :product_menu = 'Mapei'
+                            AND COALESCE(document_info.technical_document_count, 0) > 0
+                        THEN 0
+                        ELSE 1
+                    END,
                     p.name
                 """ + pagination_clause + """
                 """
             ),
-            params
+            {
+                **params,
+                "product_menu": product_menu
+            }
         )
 
         products = [
@@ -1103,6 +1159,7 @@ def get_product(product_id: int):
                     WHERE ps.product_id = p.id
                 ) supplier_info
                     ON TRUE
+                """ + DOCUMENT_INFO_JOIN + """
                 WHERE p.id = :id
                 """
             ),

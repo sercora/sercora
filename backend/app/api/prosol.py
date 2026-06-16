@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 
 from app.api.products import (
+    DOCUMENT_INFO_JOIN,
     PRODUCT_SELECT_FIELDS,
     product_payload,
     sync_product_supplier
@@ -859,6 +860,7 @@ def select_local_product(db, product_id: int):
                 WHERE ps.product_id = p.id
             ) supplier_info
                 ON TRUE
+            """ + DOCUMENT_INFO_JOIN + """
             WHERE p.id = :id
             """
         ),

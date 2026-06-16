@@ -4,7 +4,10 @@ import {
     useMemo,
     useState
 } from "react";
-import type { ChangeEvent } from "react";
+import type {
+    ChangeEvent,
+    MouseEvent
+} from "react";
 
 import {
     createProduct,
@@ -1174,6 +1177,29 @@ function ProductsPage({
     }
 
 
+    function openTechnicalSheet(
+        product: Product,
+        event: MouseEvent<HTMLButtonElement>
+    ) {
+
+        event.stopPropagation();
+
+        if (product.first_technical_document_url) {
+            window.open(
+                product.first_technical_document_url,
+                "_blank",
+                "noopener,noreferrer"
+            );
+            return;
+        }
+
+        setStatusMessage(
+            "Aucune fiche technique disponible pour ce produit."
+        );
+
+    }
+
+
     return (
 
         <section
@@ -1258,6 +1284,7 @@ function ProductsPage({
                                 <th>Prix</th>
                                 <th>MSRP</th>
                                 <th>Maj prix</th>
+                                <th>Fiche</th>
                                 <th>Unité</th>
                                 <th>État</th>
                             </tr>
@@ -1307,6 +1334,32 @@ function ProductsPage({
                                         <td>{moneyValue(product.default_purchase_price)}</td>
                                         <td>{moneyValue(product.msrp_price)}</td>
                                         <td>{dateValue(product.price_updated_at)}</td>
+                                        <td>
+                                            {product.technical_document_count > 0 ? (
+                                                <button
+                                                    type="button"
+                                                    className="technical-sheet-button"
+                                                    title={
+                                                        product.first_technical_document_title ||
+                                                        "Fiche technique"
+                                                    }
+                                                    onClick={
+                                                        event =>
+                                                            openTechnicalSheet(
+                                                                product,
+                                                                event
+                                                            )
+                                                    }
+                                                >
+                                                    Fiche
+                                                    {product.technical_document_count > 1 && (
+                                                        " (" + product.technical_document_count + ")"
+                                                    )}
+                                                </button>
+                                            ) : (
+                                                ""
+                                            )}
+                                        </td>
                                         <td>{product.default_unit_symbol || ""}</td>
                                         <td>
                                             <span

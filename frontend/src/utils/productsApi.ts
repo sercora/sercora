@@ -27,6 +27,9 @@ export type Product = {
     price_updated_at: string | null;
     supplier_names: string | null;
     supplier_product_code: string | null;
+    technical_document_count: number;
+    first_technical_document_url: string | null;
+    first_technical_document_title: string | null;
     technical_documents?: ProductDocument[];
     coverage_options?: ProductCoverageOption[];
     active: boolean;
