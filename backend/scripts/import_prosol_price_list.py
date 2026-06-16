@@ -293,6 +293,9 @@ def unit_id_for(db, uom):
         "ea": "unité",
         "each": "unité",
         "unit": "unité",
+        "mcx": "unité",
+        "ctn": "unité",
+        "feuille": "unité",
         "lf": "pi lin",
         "linear foot": "pi lin",
         "sf": "pi²",
@@ -351,6 +354,9 @@ def unit_id_from_map(unit_ids, uom):
         "ea": "unité",
         "each": "unité",
         "unit": "unité",
+        "mcx": "unité",
+        "ctn": "unité",
+        "feuille": "unité",
         "lf": "pi lin",
         "linear foot": "pi lin",
         "sf": "pi²",
@@ -466,7 +472,18 @@ def product_type_id_from_map(
     ):
         candidates.append("Scellant")
 
-    if "tile" in category_text or "tuile" in category_text:
+    if any(
+        keyword in category_text
+        for keyword in (
+            "tile",
+            "tuile",
+            "carreau",
+            "carreaux",
+            "céramique",
+            "ceramique",
+            "porcelaine"
+        )
+    ):
         candidates.append("Tuile")
 
     candidates.extend(
@@ -557,6 +574,8 @@ def product_values(
         row_value(
             row,
             "LIST PRICE",
+            "PRIX MCX",
+            "PRIX PC",
             "RETAIL PRICE \nAPRIL 1, 2026 /\nPRIX DE DÉTAIL \n1 AVRIL 2026\nCAD"
         )
     )
@@ -574,19 +593,35 @@ def product_values(
             discount_percent
         )
 
-    name = (
+    description_name = (
         row_value(
             row,
             "DESCRIPTION FR",
-            "DESCRIPTION (FR)"
+            "DESCRIPTION (FR)",
+            "DESCRIPTION"
         ) or
         row_value(
             row,
             "DESCRIPTION EN",
             "DESCRIPTION (EN)"
-        ) or
-        code
+        )
     )
+    series_name = row_value(row, "SÉRIE")
+    color_name = row_value(
+        row,
+        "COLOR",
+        "COULEUR"
+    )
+    size_name = row_value(row, "FORMAT")
+    name = description_name or " - ".join(
+        value
+        for value in (
+            series_name,
+            color_name,
+            size_name
+        )
+        if value
+    ) or code
     product = {
         "name": name,
         "manufacturer_name": row_value(
@@ -596,13 +631,15 @@ def product_values(
         "collection_name": row_value(
             row,
             "COLLECTION",
+            "SÉRIE",
             "PRODUCT GROUP 2 / \nGROUPE PRODUIT 2"
         ) or None,
-        "color_name": row_value(row, "COLOR") or None,
-        "size_name": extract_size_from_name(name) or None,
+        "color_name": color_name or None,
+        "size_name": size_name or extract_size_from_name(name) or None,
         "category_name": row_value(
             row,
             "CATEGORY",
+            "CATÉGORIE",
             "PRODUCT GROUP 1 / \nGROUPE PRODUIT 1"
         ) or None,
         "manufacturer_sku": code,
@@ -615,14 +652,21 @@ def product_values(
         "msrp_price": list_price,
         "default_unit_id": unit_id_from_map(
             unit_ids,
-            row.get("UOM (UNIT OF MEASURE)")
+            row_value(
+                row,
+                "UOM (UNIT OF MEASURE)",
+                "UNITÉ"
+            )
         ),
         "active": True
     }
-    product["product_type_id"] = product_type_id_from_map(
-        product_type_ids,
-        product
-    )
+    if supplier_name == "Centura" and "Tuile" in product_type_ids:
+        product["product_type_id"] = product_type_ids["Tuile"]
+    else:
+        product["product_type_id"] = product_type_id_from_map(
+            product_type_ids,
+            product
+        )
 
     return product
 
