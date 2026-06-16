@@ -134,7 +134,20 @@ def office_preview_pdf_response(
     target: Path
 ):
 
-    libreoffice_path = shutil.which("libreoffice") or shutil.which("soffice")
+    libreoffice_path = (
+        shutil.which("libreoffice")
+        or shutil.which("soffice")
+        or (
+            "/usr/bin/libreoffice"
+            if Path("/usr/bin/libreoffice").exists()
+            else ""
+        )
+        or (
+            "/usr/bin/soffice"
+            if Path("/usr/bin/soffice").exists()
+            else ""
+        )
+    )
 
     if not libreoffice_path:
         raise HTTPException(
