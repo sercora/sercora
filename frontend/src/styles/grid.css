@@ -2365,6 +2365,78 @@
 }
 
 
+.matrix-revision-toolbar {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    height: 36px;
+
+    padding: 4px 8px;
+
+    box-sizing: border-box;
+
+    border-bottom: 1px solid #c9ced6;
+
+    background-color: #ffffff;
+
+    color: #4f5963;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+}
+
+
+.matrix-revision-toolbar button {
+
+    height: 26px;
+
+    padding: 0 10px;
+
+    border: 1px solid #5f86c7;
+
+    border-radius: 3px;
+
+    background-color: #dbe9ff;
+
+    color: #1f3557;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+}
+
+
+.matrix-revision-toolbar button:disabled {
+
+    border-color: #c4ccd6;
+
+    background-color: #eef1f4;
+
+    color: #7b858f;
+
+    cursor: not-allowed;
+
+}
+
+
+.matrix-revision-status {
+
+    color: #27652c;
+
+}
+
+
 .matrix-toolbar button {
 
     height: 26px;

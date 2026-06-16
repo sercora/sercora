@@ -118,6 +118,7 @@ function App() {
     const [activeProductMenu, setActiveProductMenu] = useState<ProductMenuKey>("Tous");
     const [activeProjectMenu, setActiveProjectMenu] = useState<ProjectMenuKey>("En Soumission");
     const [activeEstimateMenu, setActiveEstimateMenu] = useState<EstimateMenuKey>("En cours");
+    const [activeEstimateId, setActiveEstimateId] = useState<number | null>(null);
     const [activeToolsMenu, setActiveToolsMenu] = useState<ToolsMenuKey>("Disponible");
     const [activeConfigurationMenu, setActiveConfigurationMenu] = useState<ConfigurationMenuKey>("Courriel");
     const [token, setToken] = useState<string | null>(
@@ -358,6 +359,9 @@ function App() {
                                             if (item === "Soumissions")
                                                 setActiveEstimateMenu("En cours");
 
+                                            if (item === "Soumissions")
+                                                setActiveEstimateId(null);
+
                                             if (item === "Outils")
                                                 setActiveToolsMenu("Disponible");
 
@@ -496,6 +500,7 @@ function App() {
                                                     onClick={
                                                         () => {
                                                             setActiveEstimateMenu(estimateMenuItem);
+                                                            setActiveEstimateId(null);
                                                             setActivePage("Soumissions");
                                                         }
                                                     }
@@ -580,6 +585,13 @@ function App() {
                         <ProjectsPage
                             key={activeProjectMenu}
                             projectMenu={activeProjectMenu}
+                            onOpenEstimate={
+                                estimateId => {
+                                    setActiveEstimateId(estimateId);
+                                    setActiveEstimateMenu("Template");
+                                    setActivePage("Soumissions");
+                                }
+                            }
                         />
                     )}
 
@@ -605,8 +617,10 @@ function App() {
 
                     {activePage === "Soumissions" && (
                         <MatrixView
-                            key={activeEstimateMenu}
+                            key={`${activeEstimateMenu}-${activeEstimateId || "legacy"}`}
                             estimateMenu={activeEstimateMenu}
+                            estimateId={activeEstimateId}
+                            onEstimateChange={setActiveEstimateId}
                         />
                     )}
 

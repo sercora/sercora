@@ -22,6 +22,7 @@ import "../styles/business.css";
 
 type ProjectsPageProps = {
     projectMenu: "En cours" | "En Soumission" | "Création";
+    onOpenEstimate: (estimateId: number) => void;
 };
 
 
@@ -79,7 +80,8 @@ function fileDisplayName(
 
 
 function ProjectsPage({
-    projectMenu
+    projectMenu,
+    onOpenEstimate
 }: ProjectsPageProps) {
 
     const msgInputRef = useRef<HTMLInputElement | null>(null);
@@ -792,6 +794,21 @@ function ProjectsPage({
                                         </td>
                                         <td>{project.status || "-"}</td>
                                         <td>
+                                            {projectMenu === "En Soumission" && (
+                                                <button
+                                                    type="button"
+                                                    className="business-table-action"
+                                                    disabled={!project.revision_zero_estimate_id}
+                                                    onClick={
+                                                        () => {
+                                                            if (project.revision_zero_estimate_id)
+                                                                onOpenEstimate(project.revision_zero_estimate_id);
+                                                        }
+                                                    }
+                                                >
+                                                    Template
+                                                </button>
+                                            )}
                                             <button
                                                 type="button"
                                                 className="business-table-action"

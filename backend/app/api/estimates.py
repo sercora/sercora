@@ -1,5 +1,6 @@
 import base64
 import ipaddress
+import json
 import os
 import re
 import shutil
@@ -675,6 +676,416 @@ def get_estimate(estimate_id: int):
         "estimate_type": row.estimate_type,
         "description": row.description
     }
+
+
+def mapped_json_id_list(
+    value,
+    line_id_map: dict[int, int]
+):
+
+    if not value:
+        return []
+
+    raw_ids = value
+
+    if isinstance(value, str):
+        try:
+            raw_ids = json.loads(value)
+        except json.JSONDecodeError:
+            return []
+
+    if not isinstance(raw_ids, list):
+        return []
+
+    mapped_ids = []
+
+    for raw_id in raw_ids:
+        try:
+            source_id = int(raw_id)
+        except (TypeError, ValueError):
+            continue
+
+        next_id = line_id_map.get(source_id)
+
+        if next_id:
+            mapped_ids.append(next_id)
+
+    return mapped_ids
+
+
+@router.post("/estimates/{estimate_id}/revisions")
+def create_estimate_revision(estimate_id: int):
+
+    db = SessionLocal()
+
+    try:
+        source = db.execute(
+            text(
+                """
+                SELECT
+                    id,
+                    project_id,
+                    estimate_type,
+                    used_hourly_rate,
+                    global_profit_percent,
+                    description
+                FROM estimate
+                WHERE id = :estimate_id
+                """
+            ),
+            {
+                "estimate_id": estimate_id
+            }
+        ).fetchone()
+
+        if source is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Estimate not found"
+            )
+
+        next_revision = db.execute(
+            text(
+                """
+                SELECT COALESCE(MAX(revision_number), -1) + 1
+                FROM estimate
+                WHERE project_id = :project_id
+                """
+            ),
+            {
+                "project_id": source.project_id
+            }
+        ).scalar_one()
+
+        new_estimate = db.execute(
+            text(
+                """
+                INSERT INTO estimate (
+                    project_id,
+                    parent_estimate_id,
+                    revision_number,
+                    estimate_type,
+                    used_hourly_rate,
+                    global_profit_percent,
+                    description
+                )
+                VALUES (
+                    :project_id,
+                    :parent_estimate_id,
+                    :revision_number,
+                    :estimate_type,
+                    :used_hourly_rate,
+                    :global_profit_percent,
+                    :description
+                )
+                RETURNING id
+                """
+            ),
+            {
+                "project_id": source.project_id,
+                "parent_estimate_id": source.id,
+                "revision_number": next_revision,
+                "estimate_type": source.estimate_type,
+                "used_hourly_rate": source.used_hourly_rate,
+                "global_profit_percent": source.global_profit_percent,
+                "description": source.description
+            }
+        ).fetchone()
+
+        room_id_map: dict[int, int] = {}
+
+        room_rows = db.execute(
+            text(
+                """
+                SELECT
+                    id,
+                    phase_name,
+                    phase_label,
+                    floor_name,
+                    floor_label,
+                    room_name,
+                    sort_order
+                FROM room
+                WHERE estimate_id = :estimate_id
+                ORDER BY sort_order, id
+                """
+            ),
+            {
+                "estimate_id": estimate_id
+            }
+        ).mappings().all()
+
+        for row in room_rows:
+            copied_room = db.execute(
+                text(
+                    """
+                    INSERT INTO room (
+                        estimate_id,
+                        phase_name,
+                        phase_label,
+                        floor_name,
+                        floor_label,
+                        room_name,
+                        sort_order
+                    )
+                    VALUES (
+                        :estimate_id,
+                        :phase_name,
+                        :phase_label,
+                        :floor_name,
+                        :floor_label,
+                        :room_name,
+                        :sort_order
+                    )
+                    RETURNING id
+                    """
+                ),
+                {
+                    "estimate_id": new_estimate.id,
+                    "phase_name": row["phase_name"],
+                    "phase_label": row["phase_label"],
+                    "floor_name": row["floor_name"],
+                    "floor_label": row["floor_label"],
+                    "room_name": row["room_name"],
+                    "sort_order": row["sort_order"]
+                }
+            ).fetchone()
+            room_id_map[int(row["id"])] = int(copied_room.id)
+
+        line_id_map: dict[int, int] = {}
+        source_line_links = []
+
+        line_rows = db.execute(
+            text(
+                """
+                SELECT
+                    id,
+                    product_id,
+                    surface_type_id,
+                    unit_id,
+                    plan_code,
+                    grout_color,
+                    loss_percent,
+                    purchase_price,
+                    profit_percent,
+                    profit_forced,
+                    installation_cost,
+                    installation_link_source_line_id,
+                    installation_link_multiplier,
+                    quantity_link_source_line_ids,
+                    quantity_link_multiplier,
+                    manpower_multiplier,
+                    sort_order,
+                    notes
+                FROM estimate_line
+                WHERE estimate_id = :estimate_id
+                ORDER BY sort_order, id
+                """
+            ),
+            {
+                "estimate_id": estimate_id
+            }
+        ).mappings().all()
+
+        for row in line_rows:
+            copied_line = db.execute(
+                text(
+                    """
+                    INSERT INTO estimate_line (
+                        estimate_id,
+                        product_id,
+                        surface_type_id,
+                        unit_id,
+                        plan_code,
+                        grout_color,
+                        loss_percent,
+                        purchase_price,
+                        profit_percent,
+                        profit_forced,
+                        installation_cost,
+                        installation_link_source_line_id,
+                        installation_link_multiplier,
+                        quantity_link_source_line_ids,
+                        quantity_link_multiplier,
+                        manpower_multiplier,
+                        sort_order,
+                        notes
+                    )
+                    VALUES (
+                        :estimate_id,
+                        :product_id,
+                        :surface_type_id,
+                        :unit_id,
+                        :plan_code,
+                        :grout_color,
+                        :loss_percent,
+                        :purchase_price,
+                        :profit_percent,
+                        :profit_forced,
+                        :installation_cost,
+                        NULL,
+                        :installation_link_multiplier,
+                        '[]'::jsonb,
+                        :quantity_link_multiplier,
+                        :manpower_multiplier,
+                        :sort_order,
+                        :notes
+                    )
+                    RETURNING id
+                    """
+                ),
+                {
+                    "estimate_id": new_estimate.id,
+                    "product_id": row["product_id"],
+                    "surface_type_id": row["surface_type_id"],
+                    "unit_id": row["unit_id"],
+                    "plan_code": row["plan_code"],
+                    "grout_color": row["grout_color"],
+                    "loss_percent": row["loss_percent"],
+                    "purchase_price": row["purchase_price"],
+                    "profit_percent": row["profit_percent"],
+                    "profit_forced": row["profit_forced"],
+                    "installation_cost": row["installation_cost"],
+                    "installation_link_multiplier": row["installation_link_multiplier"],
+                    "quantity_link_multiplier": row["quantity_link_multiplier"],
+                    "manpower_multiplier": row["manpower_multiplier"],
+                    "sort_order": row["sort_order"],
+                    "notes": row["notes"]
+                }
+            ).fetchone()
+            line_id_map[int(row["id"])] = int(copied_line.id)
+            source_line_links.append(row)
+
+        for row in source_line_links:
+            new_line_id = line_id_map[int(row["id"])]
+            source_installation_line_id = (
+                int(row["installation_link_source_line_id"])
+                if row["installation_link_source_line_id"]
+                else None
+            )
+            mapped_installation_line_id = (
+                line_id_map.get(source_installation_line_id)
+                if source_installation_line_id
+                else None
+            )
+            mapped_quantity_line_ids = mapped_json_id_list(
+                row["quantity_link_source_line_ids"],
+                line_id_map
+            )
+
+            db.execute(
+                text(
+                    """
+                    UPDATE estimate_line
+                    SET
+                        installation_link_source_line_id = :installation_link_source_line_id,
+                        quantity_link_source_line_ids = CAST(:quantity_link_source_line_ids AS JSONB)
+                    WHERE id = :line_id
+                    """
+                ),
+                {
+                    "line_id": new_line_id,
+                    "installation_link_source_line_id": mapped_installation_line_id,
+                    "quantity_link_source_line_ids": json.dumps(mapped_quantity_line_ids)
+                }
+            )
+
+        quantity_rows = db.execute(
+            text(
+                """
+                SELECT
+                    q.estimate_line_id,
+                    q.room_id,
+                    q.quantity
+                FROM estimate_quantity q
+                JOIN estimate_line l
+                    ON l.id = q.estimate_line_id
+                WHERE l.estimate_id = :estimate_id
+                """
+            ),
+            {
+                "estimate_id": estimate_id
+            }
+        ).mappings().all()
+
+        for row in quantity_rows:
+            if not row["estimate_line_id"] or not row["room_id"]:
+                continue
+
+            next_line_id = line_id_map.get(int(row["estimate_line_id"]))
+            next_room_id = room_id_map.get(int(row["room_id"]))
+
+            if not next_line_id or not next_room_id:
+                continue
+
+            db.execute(
+                text(
+                    """
+                    INSERT INTO estimate_quantity (
+                        estimate_line_id,
+                        room_id,
+                        quantity
+                    )
+                    VALUES (
+                        :estimate_line_id,
+                        :room_id,
+                        :quantity
+                    )
+                    """
+                ),
+                {
+                    "estimate_line_id": next_line_id,
+                    "room_id": next_room_id,
+                    "quantity": row["quantity"]
+                }
+            )
+
+        db.execute(
+            text(
+                """
+                INSERT INTO estimate_supplier_quote (
+                    estimate_id,
+                    supplier_id,
+                    supplier_name,
+                    expires_on,
+                    quote_reference,
+                    notes,
+                    active
+                )
+                SELECT
+                    :new_estimate_id,
+                    supplier_id,
+                    supplier_name,
+                    expires_on,
+                    quote_reference,
+                    notes,
+                    active
+                FROM estimate_supplier_quote
+                WHERE estimate_id = :source_estimate_id
+                """
+            ),
+            {
+                "new_estimate_id": new_estimate.id,
+                "source_estimate_id": estimate_id
+            }
+        )
+
+        db.commit()
+
+        return {
+            "id": new_estimate.id,
+            "project_id": source.project_id,
+            "parent_estimate_id": source.id,
+            "revision_number": next_revision,
+            "estimate_type": source.estimate_type,
+            "description": source.description
+        }
+
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
 
 @router.post("/estimates")

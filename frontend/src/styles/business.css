@@ -90,6 +90,24 @@
 }
 
 
+.business-table-action + .business-table-action {
+
+    margin-left: 6px;
+
+}
+
+
+.business-table-action:disabled {
+
+    background-color: #eef1f4;
+
+    color: #7b858f;
+
+    cursor: not-allowed;
+
+}
+
+
 .business-summary {
 
     display: flex;

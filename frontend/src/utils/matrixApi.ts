@@ -298,16 +298,47 @@ export function fetchEstimateFolders(
 }
 
 
-export function fetchEstimateMatrix(): Promise<EstimateMatrixResponse> {
+export type EstimateRevisionResponse = {
+    id: number;
+    project_id: number;
+    parent_estimate_id: number;
+    revision_number: number;
+    estimate_type: string | null;
+    description: string | null;
+};
+
+
+export function fetchEstimateMatrix(
+    estimateId = 1
+): Promise<EstimateMatrixResponse> {
 
     return fetch(
         API_URL +
-        "/estimates/1/matrix"
+        "/estimates/" +
+        estimateId +
+        "/matrix"
     )
 
-    .then(
-        response => response.json()
-    );
+    .then(parseResponse);
+
+}
+
+
+export function createEstimateRevision(
+    estimateId: number
+): Promise<EstimateRevisionResponse> {
+
+    return fetch(
+        API_URL +
+        "/estimates/" +
+        estimateId +
+        "/revisions",
+        {
+            method: "POST"
+        }
+    )
+
+    .then(parseResponse);
 
 }
 

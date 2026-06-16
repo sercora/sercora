@@ -22,6 +22,7 @@ import {
 } from "../utils/matrixCalculations";
 
 import {
+    createEstimateRevision,
     createEstimateLine,
     createEstimateRoom,
     deleteEstimateLine,
@@ -157,6 +158,8 @@ type EstimateMenuKey = "En cours" | "Envoyées" | "Refusé" | "Template";
 
 type MatrixViewProps = {
     estimateMenu: EstimateMenuKey;
+    estimateId?: number | null;
+    onEstimateChange?: (estimateId: number) => void;
 };
 
 
@@ -305,10 +308,13 @@ function normalizeProductForm(
 
 
 function MatrixView({
-    estimateMenu
+    estimateMenu,
+    estimateId,
+    onEstimateChange
 }: MatrixViewProps) {
 
     const gridRef = useRef<any>(null);
+    const currentEstimateId = estimateId || 1;
 
     const [columnDefs, setColumnDefs] = useState<any[]>([]);
 
@@ -362,6 +368,8 @@ function MatrixView({
     const [isLinkSaving, setIsLinkSaving] = useState(false);
     const [matrixActionStatus, setMatrixActionStatus] = useState("");
     const [isMatrixActionLoading, setIsMatrixActionLoading] = useState(false);
+    const [revisionStatus, setRevisionStatus] = useState("");
+    const [isRevisionSaving, setIsRevisionSaving] = useState(false);
     const [units, setUnits] = useState<Unit[]>([]);
     const [editingProductId, setEditingProductId] = useState<number | null>(null);
     const [productForm, setProductForm] = useState<ProductInput | null>(null);
@@ -2997,7 +3005,7 @@ function MatrixView({
 
         return Promise.all(
             [
-                fetchEstimateMatrix(),
+                fetchEstimateMatrix(currentEstimateId),
                 fetchSurfaceTypes()
             ]
         )
@@ -3016,6 +3024,44 @@ function MatrixView({
                     surfaceRows
                 );
             }
+        );
+
+    }
+
+
+    function saveAsNewRevision() {
+
+        if (!matrixSummary)
+            return;
+
+        setIsRevisionSaving(true);
+        setRevisionStatus("");
+
+        createEstimateRevision(
+            matrixSummary.estimate.id
+        )
+
+        .then(
+            revision => {
+                setRevisionStatus(
+                    "Révision " +
+                    revision.revision_number +
+                    " créée."
+                );
+
+                if (onEstimateChange)
+                    onEstimateChange(revision.id);
+            }
+        )
+
+        .catch(
+            () =>
+                setRevisionStatus("Impossible de créer la nouvelle révision.")
+        )
+
+        .finally(
+            () =>
+                setIsRevisionSaving(false)
         );
 
     }
@@ -5832,6 +5878,7 @@ function MatrixView({
         },
 
         [
+            currentEstimateId,
             folderStatus
         ]
 
@@ -6037,6 +6084,29 @@ function MatrixView({
             {renderRoomEditor()}
 
             {renderProductEditor()}
+
+            <div className="matrix-revision-toolbar">
+                <button
+                    type="button"
+                    onClick={saveAsNewRevision}
+                    disabled={!matrixSummary || isRevisionSaving}
+                >
+                    {isRevisionSaving ?
+                        "Création..." :
+                        "Enregistrer sous nouvelle révision"}
+                </button>
+                {matrixSummary && (
+                    <span>
+                        Révision affichée:{" "}
+                        {matrixSummary.estimate.revision_number ?? "-"}
+                    </span>
+                )}
+                {revisionStatus && (
+                    <span className="matrix-revision-status">
+                        {revisionStatus}
+                    </span>
+                )}
+            </div>
 
             <ZoomToolbar
                 zoom={zoom}
