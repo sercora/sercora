@@ -726,6 +726,26 @@ function MatrixView({
     }
 
 
+    function onCellClicked(
+        params: any
+    ) {
+
+        const field =
+            params.column.getColId();
+
+        if (
+            field !== "product_name" ||
+            !params.data?.product_id
+        )
+            return;
+
+        openProductEditor(
+            Number(params.data.product_id)
+        );
+
+    }
+
+
     function deleteSelectedLines() {
 
         if (!selectedLineIds.length) {
@@ -977,6 +997,9 @@ function MatrixView({
 
                     surface_type_id:
                         line.surface_type_id,
+
+                    product_id:
+                        line.product_id,
 
                     surface_name:
                         line.surface_name,
@@ -1251,7 +1274,10 @@ function MatrixView({
                         width: 300,
                         minWidth: 220,
                         pinned: "left",
-                        cellClass: getSupplierClass
+                        cellClass: (params: any) => [
+                            getSupplierClass(params),
+                            "product-link-cell"
+                        ].filter(Boolean)
                     },
                     {
                         field: "unit_name",
@@ -3183,6 +3209,7 @@ function MatrixView({
                 rowData={rowData}
                 columnDefs={columnDefs}
                 onCellValueChanged={onCellValueChanged}
+                onCellClicked={onCellClicked}
                 onSelectionChanged={onSelectionChanged}
                 zoomScale={ZOOM_LEVELS[zoom] || 1}
                 localeText={GRID_LOCALE_TEXT}

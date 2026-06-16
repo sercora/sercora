@@ -361,6 +361,8 @@ def get_matrix(estimate_id: int):
 
                 l.surface_type_id,
 
+                p.id AS product_id,
+
                 p.name AS product_name,
 
                 p.manufacturer_name,
@@ -455,6 +457,8 @@ def get_matrix(estimate_id: int):
                 "sort_order": row.sort_order,
 
                 "surface_type_id": row.surface_type_id,
+
+                "product_id": row.product_id,
 
                 "product_name": row.product_name,
 

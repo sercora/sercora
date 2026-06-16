@@ -1690,6 +1690,17 @@ Couleurs fournisseurs
 }
 
 
+.sercora-grid .product-link-cell {
+
+    cursor: pointer;
+
+    text-decoration: underline;
+
+    text-underline-offset: 2px;
+
+}
+
+
 /*
 --------------------------------------------------
 Alignement numerique
