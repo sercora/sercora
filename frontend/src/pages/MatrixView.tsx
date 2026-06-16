@@ -886,12 +886,16 @@ function MatrixView({
 
         const field =
             columnDefinition.field || "";
+        const columnId =
+            column?.getColId?.() || "";
 
         if (
+            NUMERIC_MATRIX_FIELDS.has(columnId) ||
             NUMERIC_MATRIX_FIELDS.has(field) ||
             roomColumns.some(
                 room =>
-                    room.key === field
+                    room.key === field ||
+                    room.key === columnId
             )
         )
             return true;
@@ -937,6 +941,115 @@ function MatrixView({
     }
 
 
+    function matrixCellValue(
+        column: any,
+        row: any
+    ) {
+
+        const columnDefinition =
+            column?.getColDef?.() || {};
+        const columnId =
+            column?.getColId?.() || "";
+        const field =
+            columnDefinition.field || columnId;
+        const roomFields =
+            roomColumns.map(
+                room =>
+                    room.key
+            );
+        const params =
+            {
+                data:
+                    row
+            };
+        const hourlyRate =
+            Number(
+                matrixSummary?.rates.used_hourly_rate ||
+                matrixSummary?.rates.current.civil ||
+                matrixSummary?.rates.current.day ||
+                0
+            );
+
+        if (
+            roomColumns.some(
+                room =>
+                    room.key === field
+            )
+        )
+            return numericCellValue(row[field]);
+
+        switch (field) {
+            case "line_number":
+            case "loss_percent":
+            case "purchase_price":
+            case "profit_percent":
+            case "installation_cost":
+            case "manpower_multiplier":
+                return numericCellValue(row[field]);
+
+            case "quantity_total":
+                return getQtyTotal(
+                    params,
+                    roomFields
+                );
+
+            case "loss_quantity":
+                return getLossQuantity(
+                    params,
+                    roomFields
+                );
+
+            case "quantity_with_loss":
+                return getQtyWithLoss(
+                    params,
+                    roomFields
+                );
+
+            case "profit_unit":
+                return getUnitProfit(params);
+
+            case "profit_total":
+                return getProfit(
+                    params,
+                    roomFields
+                );
+
+            case "material_unit_sell":
+                return getUnitSellPrice(params);
+
+            case "material_sell_total":
+                return getMaterialSellTotal(
+                    params,
+                    roomFields
+                );
+
+            case "installation_total":
+                return getInstallTotal(
+                    params,
+                    roomFields
+                );
+
+            case "install_hours":
+                return getInstallHours(
+                    params,
+                    roomFields,
+                    hourlyRate
+                );
+
+            case "allocated_install_hours":
+                return getAllocatedInstallHours(
+                    params,
+                    roomFields,
+                    hourlyRate
+                );
+
+            default:
+                return null;
+        }
+
+    }
+
+
     function onRangeSelectionChanged(
         params: any
     ) {
@@ -954,6 +1067,8 @@ function MatrixView({
 
         let sum = 0;
         let count = 0;
+        const countedCells =
+            new Set<string>();
 
         ranges.forEach(
             (range: any) => {
@@ -977,6 +1092,9 @@ function MatrixView({
                         isNumericMatrixColumn(column)
                 ).forEach(
                     (column: any) => {
+                        const columnId =
+                            column?.getColId?.() || "";
+
                         for (
                             let rowIndex = firstIndex;
                             rowIndex <= lastIndex;
@@ -991,12 +1109,18 @@ function MatrixView({
                             )
                                 continue;
 
+                            const cellKey =
+                                rowNode.id + ":" + columnId;
+
+                            if (countedCells.has(cellKey))
+                                continue;
+
+                            countedCells.add(cellKey);
+
                             const value =
-                                numericCellValue(
-                                    params.api.getValue(
-                                        column,
-                                        rowNode
-                                    )
+                                matrixCellValue(
+                                    column,
+                                    rowNode.data
                                 );
 
                             if (value === null)
@@ -2527,6 +2651,7 @@ function MatrixView({
                 marryChildren: true,
                 children: [
                     {
+                        colId: "quantity_total",
                         headerName: "TOTAL",
                         width: 82,
                         minWidth: 72,
@@ -2555,6 +2680,7 @@ function MatrixView({
                         cellClass: numericEditableClass
                     },
                     {
+                        colId: "loss_quantity",
                         headerName: "PERTE EN UNITÉ",
                         width: 96,
                         minWidth: 84,
@@ -2572,6 +2698,7 @@ function MatrixView({
                                 )
                     },
                     {
+                        colId: "quantity_with_loss",
                         headerName: "QUANTITÉ AVEC PERTE",
                         width: 112,
                         minWidth: 96,
@@ -2613,6 +2740,7 @@ function MatrixView({
                         cellClass: numericEditableClass
                     },
                     {
+                        colId: "profit_unit",
                         headerName: "PROFIT UNITAIRE",
                         width: 94,
                         minWidth: 82,
@@ -2622,6 +2750,7 @@ function MatrixView({
                                 getUnitProfit(params).toFixed(2)
                     },
                     {
+                        colId: "profit_total",
                         headerName: "PROFIT TOTAL",
                         width: 94,
                         minWidth: 82,
@@ -2639,6 +2768,7 @@ function MatrixView({
                                 )
                     },
                     {
+                        colId: "material_unit_sell",
                         headerName: "VENDANT UNITAIRE",
                         width: 102,
                         minWidth: 90,
@@ -2648,6 +2778,7 @@ function MatrixView({
                                 getUnitSellPrice(params).toFixed(2)
                     },
                     {
+                        colId: "material_sell_total",
                         headerName: "VENDANT TOTAL",
                         width: 100,
                         minWidth: 88,
@@ -2721,6 +2852,7 @@ function MatrixView({
                         ].filter(Boolean)
                     },
                     {
+                        colId: "installation_total",
                         headerName: "TOTAL VENDANT",
                         width: 104,
                         minWidth: 92,
@@ -2753,6 +2885,7 @@ function MatrixView({
                         cellClass: numericEditableClass
                     },
                     {
+                        colId: "install_hours",
                         headerName: "HEURES",
                         width: 82,
                         minWidth: 74,
@@ -2771,6 +2904,7 @@ function MatrixView({
                                 )
                     },
                     {
+                        colId: "allocated_install_hours",
                         headerName: "HRS ALLOUÉES",
                         width: 98,
                         minWidth: 88,
