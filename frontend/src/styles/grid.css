@@ -17,13 +17,7 @@
 
 .estimate-summary-sheet {
 
-    display: flex;
-
-    flex-direction: column;
-
     flex: 0 0 auto;
-
-    gap: 10px;
 
     padding: 10px 14px;
 
@@ -34,6 +28,34 @@
     font-family: Calibri, Arial, sans-serif;
 
     font-size: 13px;
+
+}
+
+
+.estimate-summary-layout {
+
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 28px;
+
+    min-width: 0;
+
+    overflow-x: auto;
+
+}
+
+
+.estimate-summary-left {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 10px;
+
+    flex: 0 0 auto;
 
 }
 
@@ -176,6 +198,215 @@
     grid-template-columns: 150px minmax(240px, 490px);
 
     width: min(640px, 100%);
+
+}
+
+
+.estimate-summary-rates {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 10px;
+
+    flex: 0 0 430px;
+
+    min-width: 430px;
+
+}
+
+
+.rates-grid {
+
+    display: grid;
+
+    grid-template-columns: 150px 116px 40px;
+
+    align-items: center;
+
+    width: 306px;
+
+}
+
+
+.rates-label,
+.rates-value,
+.rates-unit,
+.rates-grid input {
+
+    min-height: 20px;
+
+    padding: 1px 6px;
+
+    border: 1px solid transparent;
+
+    background-color: transparent;
+
+    color: #111111;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 13px;
+
+    line-height: 17px;
+
+}
+
+
+.rates-label {
+
+    font-weight: 700;
+
+    text-align: right;
+
+}
+
+
+.rates-label.strong,
+.rates-value.strong {
+
+    font-weight: 700;
+
+}
+
+
+.rates-label.used {
+
+    color: #ff0000;
+
+}
+
+
+.rates-value {
+
+    font-weight: 700;
+
+    text-align: right;
+
+}
+
+
+.rates-value.green {
+
+    color: #00b050;
+
+}
+
+
+.rates-value.yellow {
+
+    color: #ffff00;
+
+}
+
+
+.rates-value.red {
+
+    color: #ff0000;
+
+}
+
+
+.rates-value.dark-red {
+
+    color: #c00000;
+
+}
+
+
+.used-rates input {
+
+    border-color: #fff200;
+
+    background-color: #fff200;
+
+    color: #ff0000;
+
+    font-weight: 700;
+
+    text-align: right;
+
+}
+
+
+.project-settings {
+
+    grid-template-columns: 150px 116px;
+
+}
+
+
+.project-settings input {
+
+    border-color: #1f1f1f;
+
+    background-color: #ffffff;
+
+    text-align: center;
+
+}
+
+
+.project-settings input:last-child {
+
+    background-color: #fff200;
+
+}
+
+
+.summary-rates-actions {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    margin-left: 150px;
+
+}
+
+
+.summary-rates-actions button {
+
+    height: 28px;
+
+    padding: 0 10px;
+
+    border: 1px solid #31a826;
+
+    border-radius: 4px;
+
+    background-color: #31a826;
+
+    color: #ffffff;
+
+    font-family: Calibri, Arial, sans-serif;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+}
+
+
+.summary-rates-actions button:disabled {
+
+    cursor: default;
+
+    opacity: 0.55;
+
+}
+
+
+.summary-rates-actions span {
+
+    color: #5c6670;
+
+    font-size: 12px;
 
 }
 

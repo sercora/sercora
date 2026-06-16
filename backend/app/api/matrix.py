@@ -1,9 +1,28 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from app.database.database import SessionLocal
 
 router = APIRouter()
+
+
+CURRENT_RATE_INFO = {
+    "date": "2025-01-29",
+    "day": 100.00,
+    "evening": 112.00,
+    "night": 112.00,
+    "civil": 105.00,
+    "tm": 105.00
+}
+
+
+class MatrixSummaryUpdate(BaseModel):
+    used_hourly_rate: float | None = Field(default=None, ge=0)
+    global_profit_percent: float | None = Field(default=None, ge=0)
+    probable_schedule: str | None = None
+    tile_holdback_percent: float | None = Field(default=None, ge=0)
+    warranty_years: int | None = Field(default=None, ge=0)
 
 
 def iso_date(value):
@@ -43,6 +62,8 @@ def estimate_summary(
                 e.id,
                 e.revision_number,
                 e.estimate_type,
+                e.used_hourly_rate,
+                e.global_profit_percent,
                 e.description,
                 e.created_at,
                 p.id AS project_id,
@@ -53,6 +74,9 @@ def estimate_summary(
                 p.city,
                 p.province,
                 p.postal_code,
+                p.probable_schedule,
+                p.tile_holdback_percent,
+                p.warranty_years,
                 (
                     SELECT max(created_at)
                     FROM estimate
@@ -155,9 +179,39 @@ def estimate_summary(
             "id": estimate_row.id,
             "revision_number": estimate_row.revision_number,
             "type": estimate_row.estimate_type,
+            "used_hourly_rate": (
+                float(estimate_row.used_hourly_rate)
+                if estimate_row.used_hourly_rate is not None
+                else None
+            ),
+            "global_profit_percent": (
+                float(estimate_row.global_profit_percent)
+                if estimate_row.global_profit_percent is not None
+                else None
+            ),
             "description": estimate_row.description,
             "created_at": iso_date(estimate_row.created_at),
             "last_revision_at": iso_date(estimate_row.last_revision_at)
+        },
+        "rates": {
+            "current": CURRENT_RATE_INFO,
+            "used_hourly_rate": (
+                float(estimate_row.used_hourly_rate)
+                if estimate_row.used_hourly_rate is not None
+                else None
+            ),
+            "global_profit_percent": (
+                float(estimate_row.global_profit_percent)
+                if estimate_row.global_profit_percent is not None
+                else None
+            ),
+            "probable_schedule": estimate_row.probable_schedule,
+            "tile_holdback_percent": (
+                float(estimate_row.tile_holdback_percent)
+                if estimate_row.tile_holdback_percent is not None
+                else None
+            ),
+            "warranty_years": estimate_row.warranty_years
         },
         "clients": [
             {
@@ -327,3 +381,101 @@ def get_matrix(estimate_id: int):
         "lines": list(matrix.values())
 
     }
+
+
+@router.put("/estimates/{estimate_id}/matrix-summary")
+def update_matrix_summary(
+    estimate_id: int,
+    update: MatrixSummaryUpdate
+):
+
+    db = SessionLocal()
+
+    try:
+        estimate_row = db.execute(
+            text(
+                """
+                SELECT project_id
+                FROM estimate
+                WHERE id = :estimate_id
+                """
+            ),
+            {
+                "estimate_id": estimate_id
+            }
+        ).fetchone()
+
+        if estimate_row is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Estimate not found"
+            )
+
+        db.execute(
+            text(
+                """
+                UPDATE estimate
+                SET
+                    used_hourly_rate = :used_hourly_rate,
+                    global_profit_percent = :global_profit_percent
+                WHERE id = :estimate_id
+                """
+            ),
+            {
+                "estimate_id": estimate_id,
+                "used_hourly_rate": update.used_hourly_rate,
+                "global_profit_percent": update.global_profit_percent
+            }
+        )
+
+        db.execute(
+            text(
+                """
+                UPDATE project
+                SET
+                    probable_schedule = :probable_schedule,
+                    tile_holdback_percent = :tile_holdback_percent,
+                    warranty_years = :warranty_years
+                WHERE id = :project_id
+                """
+            ),
+            {
+                "project_id": estimate_row.project_id,
+                "probable_schedule": update.probable_schedule,
+                "tile_holdback_percent": update.tile_holdback_percent,
+                "warranty_years": update.warranty_years
+            }
+        )
+
+        updated_lines = 0
+
+        if update.global_profit_percent is not None:
+            result = db.execute(
+                text(
+                    """
+                    UPDATE estimate_line
+                    SET profit_percent = :global_profit_percent
+                    WHERE estimate_id = :estimate_id
+                        AND COALESCE(profit_forced, FALSE) = FALSE
+                    """
+                ),
+                {
+                    "estimate_id": estimate_id,
+                    "global_profit_percent": update.global_profit_percent
+                }
+            )
+            updated_lines = result.rowcount
+
+        db.commit()
+
+        return {
+            "message": "Matrix summary updated",
+            "updated_lines": updated_lines,
+            "summary": estimate_summary(
+                db,
+                estimate_id
+            )
+        }
+
+    finally:
+        db.close()

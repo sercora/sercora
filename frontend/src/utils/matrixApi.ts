@@ -34,9 +34,26 @@ export type EstimateMatrixSummary = {
         id: number;
         revision_number: number | null;
         type: string | null;
+        used_hourly_rate: number | null;
+        global_profit_percent: number | null;
         description: string | null;
         created_at: string | null;
         last_revision_at: string | null;
+    };
+    rates: {
+        current: {
+            date: string;
+            day: number;
+            evening: number;
+            night: number;
+            civil: number;
+            tm: number;
+        };
+        used_hourly_rate: number | null;
+        global_profit_percent: number | null;
+        probable_schedule: string | null;
+        tile_holdback_percent: number | null;
+        warranty_years: number | null;
     };
     clients: Array<{
         name: string;
@@ -54,6 +71,15 @@ export type EstimateMatrixSummary = {
         size_name: string | null;
         supplier_product_code: string | null;
     }>;
+};
+
+
+export type EstimateMatrixSummaryInput = {
+    used_hourly_rate: number | null;
+    global_profit_percent: number | null;
+    probable_schedule: string | null;
+    tile_holdback_percent: number | null;
+    warranty_years: number | null;
 };
 
 
@@ -126,6 +152,34 @@ export function fetchEstimateMatrix(): Promise<EstimateMatrixResponse> {
     .then(
         response => response.json()
     );
+
+}
+
+
+export function updateEstimateMatrixSummary(
+    estimateId: number,
+    summary: EstimateMatrixSummaryInput
+): Promise<{
+    message: string;
+    updated_lines: number;
+    summary: EstimateMatrixSummary;
+}> {
+
+    return fetch(
+        API_URL +
+        "/estimates/" +
+        estimateId +
+        "/matrix-summary",
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(summary)
+        }
+    )
+
+    .then(parseResponse);
 
 }
 

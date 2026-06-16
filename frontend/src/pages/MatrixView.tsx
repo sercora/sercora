@@ -21,11 +21,13 @@ import {
     estimateFileUrl,
     fetchEstimateMatrix,
     fetchEstimateFolders,
+    updateEstimateMatrixSummary,
     updateEstimateLine as saveEstimateLine,
     updateEstimateQuantity as saveEstimateQuantity
 } from "../utils/matrixApi";
 import type {
     EstimateFolderItem,
+    EstimateMatrixSummaryInput,
     EstimateMatrixSummary
 } from "../utils/matrixApi";
 
@@ -114,6 +116,15 @@ function MatrixView({
 
     const [zoom, setZoom] = useState("100");
     const [matrixSummary, setMatrixSummary] = useState<EstimateMatrixSummary | null>(null);
+    const [summaryForm, setSummaryForm] = useState({
+        used_hourly_rate: "",
+        global_profit_percent: "",
+        probable_schedule: "",
+        tile_holdback_percent: "",
+        warranty_years: ""
+    });
+    const [isSummarySaving, setIsSummarySaving] = useState(false);
+    const [summaryStatus, setSummaryStatus] = useState("");
     const [folderPath, setFolderPath] = useState("");
     const [rootName, setRootName] = useState("");
     const [folderItems, setFolderItems] = useState<EstimateFolderItem[]>([]);
@@ -474,6 +485,217 @@ function MatrixView({
     }
 
 
+    function formatRate(
+        value: number | null | undefined
+    ) {
+
+        if (value === null || value === undefined)
+            return "";
+
+        return value.toLocaleString(
+            "fr-CA",
+            {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }
+        ) + " $";
+
+    }
+
+
+    function nullableNumber(
+        value: string
+    ) {
+
+        const normalizedValue =
+            value.trim().replace(",", ".");
+
+        if (!normalizedValue)
+            return null;
+
+        const parsedValue =
+            Number(normalizedValue);
+
+        if (Number.isNaN(parsedValue))
+            return null;
+
+        return parsedValue;
+
+    }
+
+
+    function summaryInputPayload(): EstimateMatrixSummaryInput {
+
+        return {
+            used_hourly_rate:
+                nullableNumber(summaryForm.used_hourly_rate),
+            global_profit_percent:
+                nullableNumber(summaryForm.global_profit_percent),
+            probable_schedule:
+                summaryForm.probable_schedule.trim() || null,
+            tile_holdback_percent:
+                nullableNumber(summaryForm.tile_holdback_percent),
+            warranty_years:
+                nullableNumber(summaryForm.warranty_years)
+        };
+
+    }
+
+
+    function syncSummaryForm(
+        summary: EstimateMatrixSummary
+    ) {
+
+        setSummaryForm(
+            {
+                used_hourly_rate:
+                    summary.rates.used_hourly_rate?.toString() || "",
+                global_profit_percent:
+                    summary.rates.global_profit_percent?.toString() || "",
+                probable_schedule:
+                    summary.rates.probable_schedule || "",
+                tile_holdback_percent:
+                    summary.rates.tile_holdback_percent?.toString() || "",
+                warranty_years:
+                    summary.rates.warranty_years?.toString() || ""
+            }
+        );
+
+    }
+
+
+    function saveSummaryBlock() {
+
+        if (!matrixSummary)
+            return;
+
+        setIsSummarySaving(true);
+        setSummaryStatus("");
+
+        updateEstimateMatrixSummary(
+            matrixSummary.estimate.id,
+            summaryInputPayload()
+        )
+
+        .then(
+            response => {
+                setMatrixSummary(response.summary);
+                syncSummaryForm(response.summary);
+                setSummaryStatus(
+                    "Paramètres sauvegardés" +
+                    (
+                        response.updated_lines ?
+                            " - profit appliqué à " +
+                            response.updated_lines +
+                            " lignes" :
+                            ""
+                    )
+                );
+
+                return fetchEstimateMatrix();
+            }
+        )
+
+        .then(
+            matrix => {
+                setMatrixSummary(matrix.summary);
+                syncSummaryForm(matrix.summary);
+
+                const rows = matrix.lines.map(
+
+                    (line: any) => {
+
+                        const row: any = {
+
+                            line_id:
+                                line.line_id,
+
+                            surface_name:
+                                line.surface_name,
+
+                            product_name:
+                                line.product_name,
+
+                            manufacturer_name:
+                                line.manufacturer_name,
+
+                            unit_name:
+                                line.unit_name,
+
+                            grout_color:
+                                line.grout_color,
+
+                            loss_percent:
+                                line.loss_percent,
+
+                            purchase_price:
+                                line.purchase_price,
+
+                            profit_percent:
+                                line.profit_percent,
+
+                            installation_cost:
+                                line.installation_cost
+
+                        };
+
+                        matrix.rooms.forEach(
+
+                            (room: string) => {
+
+                                row[room] =
+                                    line.quantities[room]?.quantity ?? 0;
+
+                                row[
+                                    room + "_id"
+                                ] =
+                                    line.quantities[room]?.id;
+
+                            }
+
+                        );
+
+                        return row;
+
+                    }
+
+                );
+
+                setRowData(rows);
+            }
+        )
+
+        .catch(
+            () => {
+                setSummaryStatus("Sauvegarde impossible.");
+            }
+        )
+
+        .finally(
+            () => {
+                setIsSummarySaving(false);
+            }
+        );
+
+    }
+
+
+    function updateSummaryForm(
+        field: keyof typeof summaryForm,
+        value: string
+    ) {
+
+        setSummaryForm(
+            previousForm => ({
+                ...previousForm,
+                [field]:
+                    value
+            })
+        );
+
+    }
+
+
     function supplierQuoteRows(
         summary: EstimateMatrixSummary
     ) {
@@ -512,76 +734,197 @@ function MatrixView({
 
         return (
             <section className="estimate-summary-sheet">
-                <div className="estimate-summary-project">
-                    <div className="summary-label strong">Projet:</div>
-                    <div className="summary-value strong">
-                        {matrixSummary.project.name}
-                    </div>
-                    <div className="summary-label"># de projet:</div>
-                    <div className="summary-value">
-                        {matrixSummary.project.number || ""}
-                    </div>
-                    <div className="summary-label">adresse:</div>
-                    <div className="summary-value">
-                        {matrixSummary.project.address}
-                    </div>
-                    <div className="summary-label">Dernière révision:</div>
-                    <div className="summary-value revision-date">
-                        {formatDate(matrixSummary.estimate.last_revision_at)}
-                    </div>
-                </div>
-
-                <div className="estimate-summary-client">
-                    <div className="summary-label strong">Client</div>
-                    <div className="summary-value strong">
-                        {matrixSummary.clients.map(
-                            client => client.name
-                        ).join(", ")}
-                    </div>
-                    <div className="summary-label">type:</div>
-                    <div className="summary-value">
-                        {matrixSummary.clients.map(
-                            client => client.type
-                        ).filter(Boolean).join(", ")}
-                    </div>
-                    <div className="summary-label">courriel:</div>
-                    <div className="summary-value"></div>
-                    <div className="summary-label">tél:</div>
-                    <div className="summary-value"></div>
-                </div>
-
-                <div className="estimate-summary-suppliers">
-                    <div className="summary-supplier-title">Fournisseur</div>
-                    <div className="summary-expiration-title">EXPIRATION</div>
-                    {supplierQuoteRows(matrixSummary).map(
-                        (quote, index) => (
-                            <div
-                                key={index}
-                                className="summary-supplier-row"
-                            >
-                                <div className="summary-supplier-name">
-                                    {quote.supplier_name}
-                                </div>
-                                <div className="summary-supplier-expiration">
-                                    {formatDate(quote.expires_on)}
-                                </div>
+                <div className="estimate-summary-layout">
+                    <div className="estimate-summary-left">
+                        <div className="estimate-summary-project">
+                            <div className="summary-label strong">Projet:</div>
+                            <div className="summary-value strong">
+                                {matrixSummary.project.name}
                             </div>
-                        )
-                    )}
-                </div>
+                            <div className="summary-label"># de projet:</div>
+                            <div className="summary-value">
+                                {matrixSummary.project.number || ""}
+                            </div>
+                            <div className="summary-label">adresse:</div>
+                            <div className="summary-value">
+                                {matrixSummary.project.address}
+                            </div>
+                            <div className="summary-label">Dernière révision:</div>
+                            <div className="summary-value revision-date">
+                                {formatDate(matrixSummary.estimate.last_revision_at)}
+                            </div>
+                        </div>
 
-                <div className="estimate-summary-tiles">
-                    <div className="summary-label strong">Tuiles à demander</div>
-                    <div className="summary-value">
-                        {matrixSummary.tile_requests.length ?
-                            matrixSummary.tile_requests.map(
-                                tile => [
-                                    tile.manufacturer_name,
-                                    tile.name,
-                                    tile.size_name
-                                ].filter(Boolean).join(" - ")
-                            ).join(" | ") :
-                            "Aucune tuile dans la matrice."}
+                        <div className="estimate-summary-client">
+                            <div className="summary-label strong">Client</div>
+                            <div className="summary-value strong">
+                                {matrixSummary.clients.map(
+                                    client => client.name
+                                ).join(", ")}
+                            </div>
+                            <div className="summary-label">type:</div>
+                            <div className="summary-value">
+                                {matrixSummary.clients.map(
+                                    client => client.type
+                                ).filter(Boolean).join(", ")}
+                            </div>
+                            <div className="summary-label">courriel:</div>
+                            <div className="summary-value"></div>
+                            <div className="summary-label">tél:</div>
+                            <div className="summary-value"></div>
+                        </div>
+
+                        <div className="estimate-summary-suppliers">
+                            <div className="summary-supplier-title">Fournisseur</div>
+                            <div className="summary-expiration-title">EXPIRATION</div>
+                            {supplierQuoteRows(matrixSummary).map(
+                                (quote, index) => (
+                                    <div
+                                        key={index}
+                                        className="summary-supplier-row"
+                                    >
+                                        <div className="summary-supplier-name">
+                                            {quote.supplier_name}
+                                        </div>
+                                        <div className="summary-supplier-expiration">
+                                            {formatDate(quote.expires_on)}
+                                        </div>
+                                    </div>
+                                )
+                            )}
+                        </div>
+
+                        <div className="estimate-summary-tiles">
+                            <div className="summary-label strong">Tuiles à demander</div>
+                            <div className="summary-value">
+                                {matrixSummary.tile_requests.length ?
+                                    matrixSummary.tile_requests.map(
+                                        tile => [
+                                            tile.manufacturer_name,
+                                            tile.name,
+                                            tile.size_name
+                                        ].filter(Boolean).join(" - ")
+                                    ).join(" | ") :
+                                    "Aucune tuile dans la matrice."}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="estimate-summary-rates">
+                        <div className="rates-grid current-rates">
+                            <div className="rates-label strong">Taux Courants :</div>
+                            <div className="rates-value strong">
+                                {matrixSummary.rates.current.date}
+                            </div>
+                            <div className="rates-label">jour</div>
+                            <div className="rates-value green">
+                                {formatRate(matrixSummary.rates.current.day)}
+                            </div>
+                            <div className="rates-label">soir</div>
+                            <div className="rates-value yellow">
+                                {formatRate(matrixSummary.rates.current.evening)}
+                            </div>
+                            <div className="rates-label">fds/nuit</div>
+                            <div className="rates-value red">
+                                {formatRate(matrixSummary.rates.current.night)}
+                            </div>
+                            <div className="rates-label">civil</div>
+                            <div className="rates-value dark-red">
+                                {formatRate(matrixSummary.rates.current.civil)}
+                            </div>
+                            <div className="rates-label">T/M</div>
+                            <div className="rates-value">
+                                {formatRate(matrixSummary.rates.current.tm)}
+                            </div>
+                        </div>
+
+                        <div className="rates-grid used-rates">
+                            <div className="rates-label used">Taux utilisé :</div>
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={summaryForm.used_hourly_rate}
+                                onChange={
+                                    event =>
+                                        updateSummaryForm(
+                                            "used_hourly_rate",
+                                            event.target.value
+                                        )
+                                }
+                            />
+                            <div className="rates-unit">$/h</div>
+
+                            <div className="rates-label strong">Profit %</div>
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={summaryForm.global_profit_percent}
+                                onChange={
+                                    event =>
+                                        updateSummaryForm(
+                                            "global_profit_percent",
+                                            event.target.value
+                                        )
+                                }
+                            />
+                            <div className="rates-unit">%</div>
+                        </div>
+
+                        <div className="rates-grid project-settings">
+                            <div className="rates-label">Échéancier probable</div>
+                            <input
+                                type="text"
+                                value={summaryForm.probable_schedule}
+                                onChange={
+                                    event =>
+                                        updateSummaryForm(
+                                            "probable_schedule",
+                                            event.target.value
+                                        )
+                                }
+                            />
+
+                            <div className="rates-label">Remise fin de projet</div>
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={summaryForm.tile_holdback_percent}
+                                onChange={
+                                    event =>
+                                        updateSummaryForm(
+                                            "tile_holdback_percent",
+                                            event.target.value
+                                        )
+                                }
+                            />
+
+                            <div className="rates-label">Période de garantie</div>
+                            <input
+                                type="number"
+                                step="1"
+                                value={summaryForm.warranty_years}
+                                onChange={
+                                    event =>
+                                        updateSummaryForm(
+                                            "warranty_years",
+                                            event.target.value
+                                        )
+                                }
+                            />
+                        </div>
+
+                        <div className="summary-rates-actions">
+                            <button
+                                type="button"
+                                onClick={saveSummaryBlock}
+                                disabled={isSummarySaving}
+                            >
+                                Sauvegarder
+                            </button>
+                            {summaryStatus && (
+                                <span>{summaryStatus}</span>
+                            )}
+                        </div>
                     </div>
                 </div>
             </section>
@@ -891,6 +1234,9 @@ function MatrixView({
                         cols
                     );
                     setMatrixSummary(
+                        matrix.summary
+                    );
+                    syncSummaryForm(
                         matrix.summary
                     );
 

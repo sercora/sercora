@@ -158,6 +158,8 @@ CREATE TABLE project (
 
     postal_code VARCHAR(20),
 
+    probable_schedule VARCHAR(255),
+
     start_date DATE,
     end_date DATE,
 
@@ -178,6 +180,10 @@ CREATE TABLE estimate (
     revision_number INTEGER,
 
     estimate_type VARCHAR(50),
+
+    used_hourly_rate NUMERIC(12,2),
+
+    global_profit_percent NUMERIC(6,2),
 
     description TEXT,
 
@@ -216,6 +222,8 @@ CREATE TABLE estimate_line (
     purchase_price NUMERIC(12,2),
 
     profit_percent NUMERIC(6,2),
+
+    profit_forced BOOLEAN DEFAULT FALSE,
 
     installation_cost NUMERIC(12,2),
 
