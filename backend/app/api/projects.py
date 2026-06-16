@@ -831,6 +831,20 @@ def get_projects(
                     ORDER BY e.id
                     LIMIT 1
                 ) AS revision_zero_estimate_id,
+                (
+                    SELECT e.id
+                    FROM estimate e
+                    WHERE e.project_id = p.id
+                    ORDER BY
+                        e.revision_number DESC NULLS LAST,
+                        e.id DESC
+                    LIMIT 1
+                ) AS latest_estimate_id,
+                (
+                    SELECT COUNT(*)
+                    FROM estimate e
+                    WHERE e.project_id = p.id
+                ) AS revision_count,
                 COALESCE(
                     (
                         SELECT JSON_AGG(
@@ -908,6 +922,8 @@ def get_projects(
                     for client_id in row["client_ids"]
                 ],
                 "revision_zero_estimate_id": row["revision_zero_estimate_id"],
+                "latest_estimate_id": row["latest_estimate_id"],
+                "revision_count": row["revision_count"],
                 "invitations": row["invitations"] or [],
                 "addenda": row["addenda"],
                 "created_at": row["created_at"]

@@ -45,6 +45,8 @@ export type ProjectSummary = {
     client_names: string;
     client_ids: number[];
     revision_zero_estimate_id: number | null;
+    latest_estimate_id: number | null;
+    revision_count: number;
     invitations: ProjectInvitation[];
     addenda: string | null;
     created_at: string | null;

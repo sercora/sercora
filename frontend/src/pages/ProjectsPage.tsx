@@ -765,6 +765,7 @@ function ProjectsPage({
                             <th>Adresse</th>
                             <th>Dépôt</th>
                             <th>Échéancier</th>
+                            <th>Révisions</th>
                             <th>Statut</th>
                             <th>Action</th>
                         </tr>
@@ -772,11 +773,11 @@ function ProjectsPage({
                     <tbody>
                         {isLoading ? (
                             <tr>
-                                <td colSpan={8}>Chargement...</td>
+                                <td colSpan={9}>Chargement...</td>
                             </tr>
                         ) : projects.length === 0 ? (
                             <tr>
-                                <td colSpan={8}>Aucun projet en cours.</td>
+                                <td colSpan={9}>Aucun projet en cours.</td>
                             </tr>
                         ) : (
                             projects.map(
@@ -792,21 +793,22 @@ function ProjectsPage({
                                             {" à "}
                                             {project.end_date || "-"}
                                         </td>
+                                        <td>{project.revision_count}</td>
                                         <td>{project.status || "-"}</td>
                                         <td>
                                             {projectMenu === "En Soumission" && (
                                                 <button
                                                     type="button"
                                                     className="business-table-action"
-                                                    disabled={!project.revision_zero_estimate_id}
+                                                    disabled={!project.latest_estimate_id}
                                                     onClick={
                                                         () => {
-                                                            if (project.revision_zero_estimate_id)
-                                                                onOpenEstimate(project.revision_zero_estimate_id);
+                                                            if (project.latest_estimate_id)
+                                                                onOpenEstimate(project.latest_estimate_id);
                                                         }
                                                     }
                                                 >
-                                                    Template
+                                                    Dernière révision
                                                 </button>
                                             )}
                                             <button
