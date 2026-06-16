@@ -1,10 +1,149 @@
-from fastapi import APIRouter, HTTPException
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import FileResponse
 from sqlalchemy import text
 
 from app.database.database import SessionLocal
 from app.schemas.estimate import EstimateCreate
 
 router = APIRouter()
+
+
+NAS_ESTIMATE_ROOTS = {
+    "in_progress": Path("/NAS/Soumissions en cours"),
+    "sent": Path("/NAS/Soumissions envoyées")
+}
+
+
+def estimate_root(
+    status: str
+):
+
+    root = NAS_ESTIMATE_ROOTS.get(status)
+
+    if root is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Unknown estimate folder status"
+        )
+
+    if not root.exists():
+        raise HTTPException(
+            status_code=503,
+            detail="NAS estimate folder is not mounted"
+        )
+
+    return root
+
+
+def resolve_estimate_path(
+    status: str,
+    relative_path: str | None
+):
+
+    root = estimate_root(status).resolve()
+    clean_path = (relative_path or "").strip("/")
+
+    if Path(clean_path).is_absolute() or ".." in Path(clean_path).parts:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid NAS path"
+        )
+
+    target = (root / clean_path).resolve()
+
+    if root != target and root not in target.parents:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid NAS path"
+        )
+
+    return root, target
+
+
+def folder_item_payload(
+    root: Path,
+    entry: Path
+):
+
+    stat = entry.stat()
+
+    return {
+        "name": entry.name,
+        "relative_path": str(entry.relative_to(root)),
+        "is_dir": entry.is_dir(),
+        "size": stat.st_size,
+        "modified_at": stat.st_mtime
+    }
+
+
+@router.get("/estimate-folders")
+def get_estimate_folders(
+    status: str = Query(..., pattern="^(in_progress|sent)$"),
+    path: str = ""
+):
+
+    root, target = resolve_estimate_path(
+        status,
+        path
+    )
+
+    if not target.exists() or not target.is_dir():
+        raise HTTPException(
+            status_code=404,
+            detail="NAS folder not found"
+        )
+
+    items = []
+
+    for entry in target.iterdir():
+        try:
+            items.append(
+                folder_item_payload(
+                    root,
+                    entry
+                )
+            )
+        except OSError:
+            continue
+
+    items.sort(
+        key=lambda item: (
+            not item["is_dir"],
+            item["name"].lower()
+        )
+    )
+
+    return {
+        "status": status,
+        "path": str(target.relative_to(root)) if target != root else "",
+        "root_name": root.name,
+        "items": items
+    }
+
+
+@router.get("/estimate-files")
+def get_estimate_file(
+    status: str = Query(..., pattern="^(in_progress|sent)$"),
+    path: str = Query(..., min_length=1)
+):
+
+    _root, target = resolve_estimate_path(
+        status,
+        path
+    )
+
+    if not target.exists() or not target.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="NAS file not found"
+        )
+
+    return FileResponse(
+        target,
+        filename=target.name
+    )
 
 
 @router.get("/estimates")

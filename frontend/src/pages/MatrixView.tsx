@@ -1,4 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import {
+    useEffect,
+    useMemo,
+    useRef,
+    useState
+} from "react";
 
 import MatrixGrid from "../components/MatrixGrid";
 import ZoomToolbar from "../components/ZoomToolbar";
@@ -13,9 +18,14 @@ import {
 } from "../utils/matrixCalculations";
 
 import {
+    estimateFileUrl,
     fetchEstimateMatrix,
+    fetchEstimateFolders,
     updateEstimateLine as saveEstimateLine,
     updateEstimateQuantity as saveEstimateQuantity
+} from "../utils/matrixApi";
+import type {
+    EstimateFolderItem
 } from "../utils/matrixApi";
 
 import "../styles/grid.css";
@@ -102,6 +112,78 @@ function MatrixView({
     const [rowData, setRowData] = useState<any[]>([]);
 
     const [zoom, setZoom] = useState("100");
+    const [folderPath, setFolderPath] = useState("");
+    const [rootName, setRootName] = useState("");
+    const [folderItems, setFolderItems] = useState<EstimateFolderItem[]>([]);
+    const [folderSearch, setFolderSearch] = useState("");
+    const [isFolderLoading, setIsFolderLoading] = useState(false);
+    const [folderError, setFolderError] = useState("");
+
+
+    const folderStatus = useMemo(
+        () => {
+            if (estimateMenu === "En cours")
+                return "in_progress";
+
+            if (estimateMenu === "Envoyées")
+                return "sent";
+
+            return null;
+        },
+        [
+            estimateMenu
+        ]
+    );
+
+
+    const filteredFolderItems = useMemo(
+        () => {
+            const normalizedSearch =
+                folderSearch.trim().toLowerCase();
+
+            if (!normalizedSearch)
+                return folderItems;
+
+            return folderItems.filter(
+                item =>
+                    item.name.toLowerCase().includes(normalizedSearch)
+            );
+        },
+        [
+            folderItems,
+            folderSearch
+        ]
+    );
+
+
+    const breadcrumbs = useMemo(
+        () => {
+            const parts =
+                folderPath ?
+                    folderPath.split("/") :
+                    [];
+
+            return [
+                {
+                    label: rootName || "Soumissions",
+                    path: ""
+                },
+                ...parts.map(
+                    (_part, index) => ({
+                        label: parts[index],
+                        path: parts.slice(
+                            0,
+                            index + 1
+                        ).join("/")
+                    })
+                )
+            ];
+        },
+        [
+            folderPath,
+            rootName
+        ]
+    );
 
 
     function refreshGrid() {
@@ -326,9 +408,87 @@ function MatrixView({
     }
 
 
+    function parentFolderPath() {
+
+        if (!folderPath)
+            return "";
+
+        const parts =
+            folderPath.split("/");
+
+        return parts.slice(
+            0,
+            -1
+        ).join("/");
+
+    }
+
+
+    function formatFileSize(
+        size: number
+    ) {
+
+        if (!size)
+            return "";
+
+        if (size < 1024)
+            return size + " o";
+
+        if (size < 1024 * 1024)
+            return Math.round(size / 1024) + " Ko";
+
+        return (
+            size /
+            1024 /
+            1024
+        ).toFixed(1) + " Mo";
+
+    }
+
+
+    function formatModifiedAt(
+        timestamp: number
+    ) {
+
+        if (!timestamp)
+            return "";
+
+        return new Date(
+            timestamp * 1000
+        ).toLocaleDateString("fr-CA");
+
+    }
+
+
+    function openFolderItem(
+        item: EstimateFolderItem
+    ) {
+
+        if (!folderStatus)
+            return;
+
+        if (item.is_dir) {
+            setFolderPath(item.relative_path);
+            return;
+        }
+
+        window.open(
+            estimateFileUrl(
+                folderStatus,
+                item.relative_path
+            ),
+            "_blank",
+            "noopener,noreferrer"
+        );
+
+    }
+
+
     useEffect(
 
         () => {
+            if (folderStatus)
+                return;
 
             fetchEstimateMatrix()
 
@@ -674,9 +834,171 @@ function MatrixView({
 
         },
 
-        []
+        [
+            folderStatus
+        ]
 
     );
+
+
+    useEffect(
+        () => {
+            setFolderPath("");
+            setFolderSearch("");
+        },
+        [
+            estimateMenu
+        ]
+    );
+
+
+    useEffect(
+        () => {
+            if (!folderStatus)
+                return;
+
+            setIsFolderLoading(true);
+            setFolderError("");
+
+            fetchEstimateFolders(
+                folderStatus,
+                folderPath
+            )
+
+            .then(
+                response => {
+                    setRootName(response.root_name);
+                    setFolderItems(response.items);
+                }
+            )
+
+            .catch(
+                () => {
+                    setFolderError(
+                        "Impossible de charger le répertoire NAS."
+                    );
+                    setFolderItems([]);
+                }
+            )
+
+            .finally(
+                () => {
+                    setIsFolderLoading(false);
+                }
+            );
+        },
+        [
+            folderPath,
+            folderStatus
+        ]
+    );
+
+
+    if (folderStatus) {
+        return (
+            <div className="matrix-page estimate-folder-page">
+                <div className="estimate-folder-toolbar">
+                    <div className="estimate-folder-breadcrumbs">
+                        {breadcrumbs.map(
+                            (breadcrumb, index) => (
+                                <button
+                                    key={breadcrumb.path || "root"}
+                                    type="button"
+                                    onClick={
+                                        () =>
+                                            setFolderPath(breadcrumb.path)
+                                    }
+                                >
+                                    {index > 0 && "/ "}
+                                    {breadcrumb.label}
+                                </button>
+                            )
+                        )}
+                    </div>
+
+                    <input
+                        type="search"
+                        value={folderSearch}
+                        onChange={
+                            event =>
+                                setFolderSearch(event.target.value)
+                        }
+                        placeholder="Rechercher"
+                    />
+                </div>
+
+                <div className="estimate-folder-content">
+                    {folderPath && (
+                        <button
+                            type="button"
+                            className="estimate-folder-back"
+                            onClick={
+                                () =>
+                                    setFolderPath(parentFolderPath())
+                            }
+                        >
+                            Remonter
+                        </button>
+                    )}
+
+                    {folderError && (
+                        <div className="estimate-folder-error">
+                            {folderError}
+                        </div>
+                    )}
+
+                    {isFolderLoading && (
+                        <div className="estimate-folder-empty">
+                            Chargement...
+                        </div>
+                    )}
+
+                    {!isFolderLoading && !folderError && (
+                        <div className="estimate-folder-list">
+                            {filteredFolderItems.map(
+                                item => (
+                                    <button
+                                        key={item.relative_path}
+                                        type="button"
+                                        className={
+                                            item.is_dir ?
+                                                "estimate-folder-item directory" :
+                                                "estimate-folder-item file"
+                                        }
+                                        onClick={
+                                            () =>
+                                                openFolderItem(item)
+                                        }
+                                    >
+                                        <span className="estimate-folder-icon">
+                                            {item.is_dir ? "Dossier" : "Fichier"}
+                                        </span>
+                                        <span className="estimate-folder-name">
+                                            {item.name}
+                                        </span>
+                                        <span className="estimate-folder-meta">
+                                            {item.is_dir ?
+                                                "" :
+                                                formatFileSize(item.size)}
+                                        </span>
+                                        <span className="estimate-folder-date">
+                                            {formatModifiedAt(item.modified_at)}
+                                        </span>
+                                    </button>
+                                )
+                            )}
+
+                            {filteredFolderItems.length === 0 && (
+                                <div className="estimate-folder-empty">
+                                    Aucun élément à afficher.
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
 
     return (
