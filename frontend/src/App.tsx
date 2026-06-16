@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 
+import ClientsPage from "./pages/ClientsPage";
 import ConfigurationPage from "./pages/ConfigurationPage";
 import LoginPage from "./pages/LoginPage";
 import MatrixView from "./pages/MatrixView";
 import ProfilePage from "./pages/ProfilePage";
+import ProjectsPage from "./pages/ProjectsPage";
 import ProductsPage from "./pages/ProductsPage";
 import SetPasswordPage from "./pages/SetPasswordPage";
 import ToolsPage from "./pages/ToolsPage";
@@ -21,6 +23,7 @@ import "./App.css";
 
 type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura" | "Olympia";
+type ProjectMenuKey = "En cours" | "Création";
 type EstimateMenuKey = "En cours" | "Envoyées" | "Refusé" | "Template";
 type ToolsMenuKey = "Disponible" | "Déployé";
 type ConfigurationMenuKey = "Courriel" | "Importation";
@@ -48,6 +51,12 @@ const PRODUCT_MENU_ITEMS: ProductMenuKey[] = [
 const TILE_SUPPLIER_MENU_ITEMS: ProductMenuKey[] = [
     "Centura",
     "Olympia"
+];
+
+
+const PROJECT_MENU_ITEMS: ProjectMenuKey[] = [
+    "En cours",
+    "Création"
 ];
 
 
@@ -90,6 +99,7 @@ function App() {
 
     const [activePage, setActivePage] = useState<PageKey>("Soumissions");
     const [activeProductMenu, setActiveProductMenu] = useState<ProductMenuKey>("Tous");
+    const [activeProjectMenu, setActiveProjectMenu] = useState<ProjectMenuKey>("En cours");
     const [activeEstimateMenu, setActiveEstimateMenu] = useState<EstimateMenuKey>("En cours");
     const [activeToolsMenu, setActiveToolsMenu] = useState<ToolsMenuKey>("Disponible");
     const [activeConfigurationMenu, setActiveConfigurationMenu] = useState<ConfigurationMenuKey>("Courriel");
@@ -247,6 +257,9 @@ function App() {
                         {activePage === "Produits" && activeProductMenu !== "Tous" && (
                             " - " + activeProductMenu
                         )}
+                        {activePage === "Projets" && (
+                            " - " + activeProjectMenu
+                        )}
                         {activePage === "Soumissions" && (
                             " - " + activeEstimateMenu
                         )}
@@ -315,16 +328,15 @@ function App() {
                                             "page" :
                                             undefined
                                     }
-                                    disabled={
-                                        item === "Clients" ||
-                                        item === "Projets"
-                                    }
                                     onClick={
                                         () => {
                                             setActivePage(item);
 
                                             if (item === "Produits")
                                                 setActiveProductMenu("Tous");
+
+                                            if (item === "Projets")
+                                                setActiveProjectMenu("En cours");
 
                                             if (item === "Soumissions")
                                                 setActiveEstimateMenu("En cours");
@@ -401,6 +413,35 @@ function App() {
                                                         </div>
                                                     )}
                                                 </div>
+                                            )
+                                        )}
+                                    </div>
+                                )}
+
+                                {item === "Projets" && (
+                                    <div className="nav-submenu">
+                                        {PROJECT_MENU_ITEMS.map(
+                                            projectMenuItem => (
+                                                <button
+                                                    key={projectMenuItem}
+                                                    type="button"
+                                                    className={
+                                                        (
+                                                            activePage === "Projets" &&
+                                                            activeProjectMenu === projectMenuItem
+                                                        ) ?
+                                                            "nav-subitem active" :
+                                                            "nav-subitem"
+                                                    }
+                                                    onClick={
+                                                        () => {
+                                                            setActiveProjectMenu(projectMenuItem);
+                                                            setActivePage("Projets");
+                                                        }
+                                                    }
+                                                >
+                                                    {projectMenuItem}
+                                                </button>
                                             )
                                         )}
                                     </div>
@@ -500,6 +541,17 @@ function App() {
                 </nav>
 
                 <main className="app-content">
+                    {activePage === "Clients" && (
+                        <ClientsPage />
+                    )}
+
+                    {activePage === "Projets" && (
+                        <ProjectsPage
+                            key={activeProjectMenu}
+                            projectMenu={activeProjectMenu}
+                        />
+                    )}
+
                     {activePage === "Produits" && (
                         <ProductsPage
                             key={activeProductMenu}
