@@ -596,7 +596,7 @@
 .prosol-result strong,
 .prosol-result small {
 
-    overflow-y: auto;
+    overflow: hidden;
 
     text-overflow: ellipsis;
 
@@ -623,7 +623,7 @@
 
 .products-table-wrap {
 
-    flex: 0 0 auto;
+    flex: 1 1 auto;
 
     min-width: 0;
 
