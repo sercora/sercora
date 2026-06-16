@@ -341,6 +341,146 @@ def sms_http_request(
         ) from error
 
 
+def sms_json_body(
+    response
+):
+
+    body = response.get("body") or ""
+
+    try:
+        return json.loads(body)
+    except json.JSONDecodeError:
+        return None
+
+
+def sms_provider_detail(
+    response
+):
+
+    payload = sms_json_body(response)
+
+    if isinstance(payload, dict):
+        if payload.get("message"):
+            return str(payload["message"])
+
+        if payload.get("error_message"):
+            return str(payload["error_message"])
+
+        if payload.get("status"):
+            return "status=" + str(payload["status"])
+
+        if payload.get("sid"):
+            return "sid=" + str(payload["sid"])
+
+        data = payload.get("data")
+
+        if isinstance(data, dict):
+            if data.get("id"):
+                return "id=" + str(data["id"])
+
+            if data.get("record_type"):
+                return str(data["record_type"])
+
+        errors = payload.get("errors")
+
+        if isinstance(errors, list) and errors:
+            first_error = errors[0]
+
+            if isinstance(first_error, dict):
+                return str(
+                    first_error.get("detail") or
+                    first_error.get("title") or
+                    first_error
+                )
+
+    body = (response.get("body") or "").strip()
+
+    if body:
+        return body[:300]
+
+    return "Aucun detail fournisseur"
+
+
+def ensure_sms_provider_success(
+    provider: str,
+    response
+):
+
+    status_code = response.get("status_code")
+    payload = sms_json_body(response)
+    detail = sms_provider_detail(response)
+    body = (response.get("body") or "").strip().lower()
+
+    if provider == "twilio":
+        if status_code not in (200, 201):
+            raise HTTPException(
+                status_code=502,
+                detail=f"Twilio a refuse le SMS: {detail}"
+            )
+
+        if isinstance(payload, dict) and payload.get("sid"):
+            return detail
+
+        raise HTTPException(
+            status_code=502,
+            detail=f"Reponse Twilio inattendue: {detail}"
+        )
+
+    if provider == "telnyx":
+        if status_code not in (200, 202):
+            raise HTTPException(
+                status_code=502,
+                detail=f"Telnyx a refuse le SMS: {detail}"
+            )
+
+        if isinstance(payload, dict):
+            errors = payload.get("errors")
+
+            if errors:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Telnyx a refuse le SMS: {detail}"
+                )
+
+            data = payload.get("data")
+
+            if isinstance(data, dict) and data.get("id"):
+                return detail
+
+        raise HTTPException(
+            status_code=502,
+            detail=f"Reponse Telnyx inattendue: {detail}"
+        )
+
+    if provider in ("voipms", "voip"):
+        if status_code != 200:
+            raise HTTPException(
+                status_code=502,
+                detail=f"VoIP.ms a refuse le SMS: {detail}"
+            )
+
+        if isinstance(payload, dict):
+            provider_status = str(payload.get("status") or "").lower()
+
+            if provider_status == "success":
+                return detail
+
+            raise HTTPException(
+                status_code=502,
+                detail=f"VoIP.ms n'a pas accepte le SMS: {detail}"
+            )
+
+        if "success" in body and "error" not in body and "failed" not in body:
+            return detail
+
+        raise HTTPException(
+            status_code=502,
+            detail=f"Reponse VoIP.ms inattendue: {detail}"
+        )
+
+    return detail
+
+
 def sms_headers(
     extra_headers: dict | None = None
 ):
@@ -397,7 +537,7 @@ def send_sms(
             f"{settings.account_id}:{settings.api_secret}".encode("utf-8")
         ).decode("ascii")
 
-        return sms_http_request(
+        response = sms_http_request(
             Request(
                 f"https://api.twilio.com/2010-04-01/Accounts/{settings.account_id}/Messages.json",
                 data=data,
@@ -410,6 +550,12 @@ def send_sms(
                 method="POST"
             )
         )
+
+        response["detail"] = ensure_sms_provider_success(
+            provider,
+            response
+        )
+        return response
 
     if provider == "telnyx":
         api_token = settings.api_secret or settings.api_key
@@ -428,7 +574,7 @@ def send_sms(
             }
         ).encode("utf-8")
 
-        return sms_http_request(
+        response = sms_http_request(
             Request(
                 "https://api.telnyx.com/v2/messages",
                 data=data,
@@ -441,6 +587,12 @@ def send_sms(
                 method="POST"
             )
         )
+
+        response["detail"] = ensure_sms_provider_success(
+            provider,
+            response
+        )
+        return response
 
     if provider in ("voipms", "voip"):
         if not settings.account_id or not settings.api_secret:
@@ -460,13 +612,19 @@ def send_sms(
             }
         )
 
-        return sms_http_request(
+        response = sms_http_request(
             Request(
                 "https://voip.ms/api/v1/rest.php?" + query_string,
                 headers=sms_headers(),
                 method="GET"
             )
         )
+
+        response["detail"] = ensure_sms_provider_success(
+            provider,
+            response
+        )
+        return response
 
     raise HTTPException(
         status_code=400,
@@ -791,7 +949,8 @@ def test_sms_settings(
         return {
             "message": "Test SMS sent",
             "provider": settings.provider_name,
-            "provider_status": provider_response["status_code"]
+            "provider_status": provider_response["status_code"],
+            "provider_detail": provider_response.get("detail")
         }
 
     finally:

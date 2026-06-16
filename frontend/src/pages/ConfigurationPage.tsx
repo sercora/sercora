@@ -290,12 +290,23 @@ function ConfigurationPage({
         setIsSmsTesting(true);
 
         try {
-            await testSmsSettings(
+            const response = await testSmsSettings(
                 token,
                 smsTestDestination,
                 smsTestMessage
             );
-            setStatus("SMS de test envoye");
+            setStatus(
+                "SMS accepte par " +
+                response.provider +
+                " (" +
+                response.provider_status +
+                ")" +
+                (
+                    response.provider_detail ?
+                        " : " + response.provider_detail :
+                        ""
+                )
+            );
 
         } catch (testError) {
             setError(

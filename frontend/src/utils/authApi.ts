@@ -71,6 +71,14 @@ export type SmsSettings = {
 };
 
 
+export type SmsTestResponse = {
+    message: string;
+    provider: string;
+    provider_status: number;
+    provider_detail: string | null;
+};
+
+
 async function parseResponse(
     response: Response
 ) {
@@ -367,7 +375,7 @@ export function testSmsSettings(
     token: string,
     destination: string,
     message: string
-) {
+): Promise<SmsTestResponse> {
 
     return fetch(
         API_URL + "/admin/sms-settings/test",
