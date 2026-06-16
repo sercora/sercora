@@ -802,9 +802,19 @@ function MatrixView({
     ) {
 
         if (params.data?.is_summary_row)
-            return params.data?.is_grand_total_row ?
-                "matrix-grand-total-row" :
-                "matrix-summary-row";
+            return [
+                params.data?.is_grand_total_row ?
+                    "matrix-grand-total-row" :
+                    "matrix-summary-row",
+                params.data?.summary_kind === "material" ?
+                    "matrix-summary-material" :
+                    "matrix-summary-installation",
+                params.data?.surface_group === "CM" ?
+                    "matrix-summary-cm" :
+                    params.data?.surface_group === "CP" ?
+                        "matrix-summary-cp" :
+                        ""
+            ].filter(Boolean);
 
         const rowIndex =
             Number(params.node?.rowIndex || 0);
@@ -817,11 +827,38 @@ function MatrixView({
 
         if (
             previousRow &&
-            previousRow.surface_name !== params.data?.surface_name
+            surfaceGroupKey(previousRow.surface_name) !==
+                surfaceGroupKey(params.data?.surface_name)
         )
             return "surface-group-start";
 
         return "";
+
+    }
+
+
+    function surfaceGroupKey(
+        surfaceName: string | null | undefined
+    ) {
+
+        const normalized =
+            String(surfaceName || "").toLowerCase();
+
+        if (
+            normalized.includes("plancher") ||
+            normalized.includes("plinthe")
+        )
+            return "CP";
+
+        if (
+            normalized.includes("mur") ||
+            normalized.includes("colonne") ||
+            normalized.includes("meuble") ||
+            normalized.includes("vertical")
+        )
+            return "CM";
+
+        return normalized || "AUTRE";
 
     }
 
@@ -1324,13 +1361,18 @@ function MatrixView({
                 const surfaceName =
                     row.surface_name || "Sans surface";
 
-                if (!bySurface.has(surfaceName)) {
+                const surfaceGroup =
+                    surfaceGroupKey(surfaceName);
+
+                if (!bySurface.has(surfaceGroup)) {
                     bySurface.set(
-                        surfaceName,
+                        surfaceGroup,
                         {
                             is_summary_row: true,
-                            surface_name: surfaceName,
-                            product_name: surfaceName,
+                            surface_name:
+                                surfaceGroup,
+                            surface_group: surfaceGroup,
+                            product_name: surfaceGroup,
                             material_sell_total: 0,
                             installation_total: 0,
                             install_hours: 0,
@@ -1340,7 +1382,7 @@ function MatrixView({
                 }
 
                 const summaryRow =
-                    bySurface.get(surfaceName);
+                    bySurface.get(surfaceGroup);
 
                 const params =
                     {
@@ -1488,19 +1530,22 @@ function MatrixView({
             isGrandTotal = false
         ) {
 
-            return [
+            const label =
+                isGrandTotal ?
+                    "TOTAL PAR LOCAL" :
+                    row.surface_group;
+
+            const materialRow =
                 {
                     is_summary_row: true,
                     is_grand_total_row: isGrandTotal,
                     summary_kind: "material",
                     surface_name: row.surface_name,
-                    product_name:
-                        (
-                            isGrandTotal ?
-                                "TOTAL GÉNÉRAL" :
-                                row.product_name
-                        ) +
-                        " - Fourniture",
+                    surface_group:
+                        row.surface_group,
+                    product_name: isGrandTotal ?
+                        label :
+                        "TOTAL MATÉRIEL " + label,
                     material_sell_total:
                         Number(row.material_sell_total || 0).toFixed(2),
                     ...Object.fromEntries(
@@ -1511,19 +1556,19 @@ function MatrixView({
                             ]
                         )
                     )
-                },
+                };
+
+            const installationRow =
                 {
                     is_summary_row: true,
                     is_grand_total_row: isGrandTotal,
                     summary_kind: "installation",
                     surface_name: row.surface_name,
-                    product_name:
-                        (
-                            isGrandTotal ?
-                                "TOTAL GÉNÉRAL" :
-                                row.product_name
-                        ) +
-                        " - Installation",
+                    surface_group:
+                        row.surface_group,
+                    product_name: isGrandTotal ?
+                        label :
+                        "TOTAL INSTALLATION " + label,
                     installation_total:
                         Number(row.installation_total || 0).toFixed(2),
                     install_hours:
@@ -1534,21 +1579,82 @@ function MatrixView({
                         roomFields.map(
                             roomField => [
                                 roomField,
-                                Number(
-                                    row[roomField + "_installation"] || 0
+                                (
+                                    isGrandTotal ?
+                                        Number(row[roomField] || 0) +
+                                        Number(
+                                            row[roomField + "_installation"] ||
+                                                0
+                                        ) :
+                                        Number(
+                                            row[
+                                                roomField +
+                                                    "_installation"
+                                            ] || 0
+                                        )
                                 ).toFixed(2)
                             ]
                         )
                     )
-                }
+                };
+
+            if (isGrandTotal)
+                return [
+                    {
+                        ...installationRow,
+                        summary_kind: "local_total",
+                        material_sell_total:
+                            Number(row.material_sell_total || 0).toFixed(2),
+                        installation_total:
+                            Number(row.installation_total || 0).toFixed(2)
+                    }
+                ];
+
+            return [
+                materialRow,
+                installationRow
             ];
 
         }
 
+        const surfaceOrder = [
+            "CM",
+            "CP"
+        ];
+
+        const orderedSurfaceTotals =
+            surfaceTotals.sort(
+                (left, right) => {
+                    const leftIndex =
+                        surfaceOrder.indexOf(left.surface_group);
+
+                    const rightIndex =
+                        surfaceOrder.indexOf(right.surface_group);
+
+                    return (
+                        (
+                            leftIndex === -1 ?
+                                99 :
+                                leftIndex
+                        )
+                        -
+                        (
+                            rightIndex === -1 ?
+                                99 :
+                                rightIndex
+                        )
+                    );
+                }
+            );
+
         return [
-            ...surfaceTotals.flatMap(
+            ...orderedSurfaceTotals.map(
                 row =>
-                    summaryPairRows(row)
+                    summaryPairRows(row)[0]
+            ),
+            ...orderedSurfaceTotals.map(
+                row =>
+                    summaryPairRows(row)[1]
             ),
             ...summaryPairRows(
                 totalRow,

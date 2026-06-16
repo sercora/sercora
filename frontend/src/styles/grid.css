@@ -2372,6 +2372,48 @@ Couleurs fournisseurs
 }
 
 
+.sercora-grid .ag-floating-bottom .ag-row:first-child .ag-cell {
+
+    border-top: 8px solid #000000 !important;
+
+}
+
+
+.sercora-grid .matrix-summary-material.matrix-summary-cm .ag-cell {
+
+    background-color: #f6dfcf !important;
+
+}
+
+
+.sercora-grid .matrix-summary-material.matrix-summary-cp .ag-cell {
+
+    background-color: #ead6c8 !important;
+
+}
+
+
+.sercora-grid .matrix-summary-installation.matrix-summary-cm .ag-cell {
+
+    background-color: #e2f0d9 !important;
+
+}
+
+
+.sercora-grid .matrix-summary-installation.matrix-summary-cp .ag-cell {
+
+    background-color: #d9ead3 !important;
+
+}
+
+
+.sercora-grid .matrix-grand-total-row .ag-cell {
+
+    background-color: #d9eaf7 !important;
+
+}
+
+
 .sercora-grid .summary-label-cell {
 
     color: #1f2d3d;
