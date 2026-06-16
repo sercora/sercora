@@ -6,6 +6,9 @@ import {
 import type { FormEvent } from "react";
 
 import sercoraLoginLogo from "../assets/sercora-login-logo.png";
+import {
+    requestPasswordReset
+} from "../utils/authApi";
 
 import "../styles/auth.css";
 
@@ -696,8 +699,11 @@ function LoginPage({
 
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [resetEmail, setResetEmail] = useState("");
     const [error, setError] = useState<string | null>(null);
+    const [status, setStatus] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isResetMode, setIsResetMode] = useState(false);
 
 
     async function submit(
@@ -706,6 +712,7 @@ function LoginPage({
 
         event.preventDefault();
         setError(null);
+        setStatus(null);
         setIsSubmitting(true);
 
         try {
@@ -728,6 +735,57 @@ function LoginPage({
     }
 
 
+    async function submitPasswordReset(
+        event: FormEvent<HTMLFormElement>
+    ) {
+
+        event.preventDefault();
+        setError(null);
+        setStatus(null);
+        setIsSubmitting(true);
+
+        try {
+            const response = await requestPasswordReset(
+                resetEmail
+            );
+            setStatus(
+                response.message ||
+                "Si un compte actif utilise ce courriel, un lien de modification sera envoyé."
+            );
+
+        } catch (resetError) {
+            setError(
+                resetError instanceof Error ?
+                    resetError.message :
+                    "Impossible d'envoyer le lien de modification"
+            );
+
+        } finally {
+            setIsSubmitting(false);
+        }
+
+    }
+
+
+    function showResetMode() {
+
+        setError(null);
+        setStatus(null);
+        setResetEmail("");
+        setIsResetMode(true);
+
+    }
+
+
+    function showLoginMode() {
+
+        setError(null);
+        setStatus(null);
+        setIsResetMode(false);
+
+    }
+
+
     return (
         <main className="login-page">
             <LoginWallpaper />
@@ -737,49 +795,82 @@ function LoginPage({
 
                 <form
                     className="login-panel"
-                    onSubmit={submit}
+                    onSubmit={
+                        isResetMode ?
+                            submitPasswordReset :
+                            submit
+                    }
                 >
                     <div className="login-copy">
                         <span>Espace sécurisé</span>
-                        <h1>Bon retour</h1>
+                        <h1>
+                            {isResetMode ? "Mot de passe oublié" : "Bon retour"}
+                        </h1>
                         <p>
-                            Connectez-vous pour accéder à vos projets, soumissions et gestion client.
+                            {isResetMode ?
+                                "Entrez le courriel lié à votre compte pour recevoir un lien de modification." :
+                                "Connectez-vous pour accéder à vos projets, soumissions et gestion client."}
                         </p>
                     </div>
 
-                    <label className="login-field">
-                        <span>Usager</span>
-                        <div>
-                            <i aria-hidden="true">U</i>
-                            <input
-                                value={username}
-                                type="text"
-                                autoComplete="username"
-                                onChange={
-                                    event => setUsername(event.target.value)
-                                }
-                            />
-                        </div>
-                    </label>
+                    {isResetMode ? (
+                        <label className="login-field">
+                            <span>Courriel</span>
+                            <div>
+                                <i aria-hidden="true">@</i>
+                                <input
+                                    value={resetEmail}
+                                    type="email"
+                                    autoComplete="email"
+                                    onChange={
+                                        event => setResetEmail(event.target.value)
+                                    }
+                                />
+                            </div>
+                        </label>
+                    ) : (
+                        <>
+                            <label className="login-field">
+                                <span>Usager</span>
+                                <div>
+                                    <i aria-hidden="true">U</i>
+                                    <input
+                                        value={username}
+                                        type="text"
+                                        autoComplete="username"
+                                        onChange={
+                                            event => setUsername(event.target.value)
+                                        }
+                                    />
+                                </div>
+                            </label>
 
-                    <label className="login-field">
-                        <span>Mot de passe</span>
-                        <div>
-                            <i aria-hidden="true">*</i>
-                            <input
-                                value={password}
-                                type="password"
-                                autoComplete="current-password"
-                                onChange={
-                                    event => setPassword(event.target.value)
-                                }
-                            />
-                        </div>
-                    </label>
+                            <label className="login-field">
+                                <span>Mot de passe</span>
+                                <div>
+                                    <i aria-hidden="true">*</i>
+                                    <input
+                                        value={password}
+                                        type="password"
+                                        autoComplete="current-password"
+                                        onChange={
+                                            event => setPassword(event.target.value)
+                                        }
+                                    />
+                                </div>
+                            </label>
+                        </>
+                    )}
 
                     {error && (
                         <div className="auth-error">
                             {error}
+                        </div>
+                    )}
+
+                    {status && (
+                        <div className="auth-success">
+                            {status}
                         </div>
                     )}
 
@@ -788,16 +879,28 @@ function LoginPage({
                         className="login-submit"
                         disabled={
                             isSubmitting ||
-                            !username.trim() ||
-                            !password
+                            (
+                                isResetMode ?
+                                    !resetEmail.trim() :
+                                    (!username.trim() || !password)
+                            )
                         }
                     >
-                        {isSubmitting ? "Connexion..." : "Connexion"}
+                        {isSubmitting ?
+                            (isResetMode ? "Envoi..." : "Connexion...") :
+                            (isResetMode ? "Envoyer le lien" : "Connexion")}
                     </button>
 
                     <div className="login-links">
-                        <button type="button">
-                            Mot de passe oublié
+                        <button
+                            type="button"
+                            onClick={
+                                isResetMode ?
+                                    showLoginMode :
+                                    showResetMode
+                            }
+                        >
+                            {isResetMode ? "Retour à la connexion" : "Mot de passe oublié"}
                         </button>
                     </div>
                 </form>

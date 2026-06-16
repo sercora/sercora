@@ -264,6 +264,28 @@ export function sendPasswordReset(
 }
 
 
+export function requestPasswordReset(
+    email: string
+) {
+
+    return fetch(
+        API_URL + "/auth/forgot-password",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(
+                {
+                    email
+                }
+            )
+        }
+    ).then(parseResponse);
+
+}
+
+
 export function setPasswordFromToken(
     setupToken: string,
     password: string

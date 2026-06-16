@@ -45,6 +45,10 @@ class EmailTestRequest(BaseModel):
     recipient: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
 class SmsSettingsInput(BaseModel):
     provider_name: str = ""
     account_id: str | None = None
@@ -720,6 +724,63 @@ def send_setup_email(
         subject,
         body
     )
+
+
+@router.post("/auth/forgot-password")
+def forgot_password(
+    request: ForgotPasswordRequest
+):
+
+    db = SessionLocal()
+
+    try:
+        ensure_user_columns(db)
+        email = request.email.strip().lower()
+
+        if not email:
+            raise HTTPException(
+                status_code=422,
+                detail="Courriel requis"
+            )
+
+        row = db.execute(
+            text(
+                """
+                SELECT
+                    id,
+                    full_name,
+                    email
+                FROM app_user
+                WHERE lower(email) = :email
+                    AND active = TRUE
+                ORDER BY id
+                LIMIT 1
+                """
+            ),
+            {
+                "email": email
+            }
+        ).fetchone()
+
+        if row is not None:
+            send_setup_email(
+                db,
+                row.id,
+                row.email,
+                row.full_name,
+                "password_reset"
+            )
+            db.commit()
+
+        return {
+            "message": (
+                "Si un compte actif utilise ce courriel, "
+                "un lien de modification sera envoye."
+            )
+        }
+
+    finally:
+        db.close()
 
 
 @router.get("/admin/email-settings")
