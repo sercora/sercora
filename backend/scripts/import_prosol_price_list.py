@@ -310,6 +310,9 @@ def unit_id_for(db, uom):
         "ctn": "unité",
         "feuille": "unité",
         "ensemble": "unité",
+        "pc": "pi²",
+        "pi.ca": "pi²",
+        "pi ca": "pi²",
         "lf": "pi lin",
         "linear foot": "pi lin",
         "sf": "pi²",
@@ -372,6 +375,9 @@ def unit_id_from_map(unit_ids, uom):
         "ctn": "unité",
         "feuille": "unité",
         "ensemble": "unité",
+        "pc": "pi²",
+        "pi.ca": "pi²",
+        "pi ca": "pi²",
         "lf": "pi lin",
         "linear foot": "pi lin",
         "sf": "pi²",
@@ -607,13 +613,37 @@ def product_values(
 ):
 
     code = product_code(row)
-    list_price = decimal_value(
-        row_value(
-            row,
+    list_price_columns = (
+        (
+            "PRIX PC",
+            "LIST PRICE",
+            "PRIX MCX",
+            "RETAIL PRICE \nAPRIL 1, 2026 /\nPRIX DE DÉTAIL \n1 AVRIL 2026\nCAD"
+        )
+        if supplier_name == "Centura"
+        else (
             "LIST PRICE",
             "PRIX MCX",
             "PRIX PC",
             "RETAIL PRICE \nAPRIL 1, 2026 /\nPRIX DE DÉTAIL \n1 AVRIL 2026\nCAD"
+        )
+    )
+    default_unit_value = (
+        "PC"
+        if (
+            supplier_name == "Centura" and
+            decimal_value(row_value(row, "PRIX PC")) is not None
+        )
+        else row_value(
+            row,
+            "UOM (UNIT OF MEASURE)",
+            "UNITÉ"
+        )
+    )
+    list_price = decimal_value(
+        row_value(
+            row,
+            *list_price_columns
         )
     )
     cost = decimal_value(
@@ -692,11 +722,7 @@ def product_values(
         "msrp_price": list_price,
         "default_unit_id": unit_id_from_map(
             unit_ids,
-            row_value(
-                row,
-                "UOM (UNIT OF MEASURE)",
-                "UNITÉ"
-            )
+            default_unit_value
         ),
         "active": True
     }
