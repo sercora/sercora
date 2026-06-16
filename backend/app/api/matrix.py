@@ -122,16 +122,40 @@ def estimate_summary(
         text(
             """
             SELECT
-                supplier_name,
-                expires_on,
-                quote_reference,
-                notes
-            FROM estimate_supplier_quote
-            WHERE estimate_id = :estimate_id
-                AND active = TRUE
+                supplier_names.supplier_name,
+                quote_info.expires_on,
+                quote_info.quote_reference,
+                quote_info.notes
+            FROM (
+                SELECT DISTINCT
+                    s.name AS supplier_name
+                FROM estimate_line l
+                JOIN product_supplier ps
+                    ON ps.product_id = l.product_id
+                JOIN supplier s
+                    ON s.id = ps.supplier_id
+                WHERE l.estimate_id = :estimate_id
+                    AND COALESCE(s.active, TRUE) = TRUE
+            ) supplier_names
+            LEFT JOIN LATERAL (
+                SELECT
+                    q.expires_on,
+                    q.quote_reference,
+                    q.notes
+                FROM estimate_supplier_quote q
+                WHERE q.estimate_id = :estimate_id
+                    AND q.active = TRUE
+                    AND lower(q.supplier_name) =
+                        lower(supplier_names.supplier_name)
+                ORDER BY
+                    q.expires_on NULLS LAST,
+                    q.id
+                LIMIT 1
+            ) quote_info
+                ON TRUE
             ORDER BY
-                expires_on NULLS LAST,
-                supplier_name
+                quote_info.expires_on NULLS LAST,
+                supplier_names.supplier_name
             """
         ),
         {

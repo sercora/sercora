@@ -937,6 +937,16 @@ function MatrixView({
 
                 headerName: room.room_name,
 
+                headerTooltip: [
+                    room.phase_name ?
+                        "Phase: " + room.phase_name :
+                        "",
+                    room.floor_name ?
+                        "Étage: " + room.floor_name :
+                        "",
+                    "Local: " + room.room_name
+                ].filter(Boolean).join(" | "),
+
                 width: 82,
 
                 minWidth: 72,
@@ -946,7 +956,9 @@ function MatrixView({
                 valueParser: (params: any) =>
                     parseNumber(params.newValue),
 
-                cellClass: numericEditableClass
+                cellClass: numericEditableClass,
+
+                headerClass: "takeoff-room-header"
 
             })
 
@@ -1015,6 +1027,10 @@ function MatrixView({
                             return {
                                 headerName:
                                     floorName,
+                                headerTooltip:
+                                    "Étage: " + floorName,
+                                headerClass:
+                                    "takeoff-floor-header",
                                 marryChildren:
                                     true,
                                 children:
@@ -1029,6 +1045,10 @@ function MatrixView({
                 return {
                     headerName:
                         phaseName,
+                    headerTooltip:
+                        "Phase: " + phaseName,
+                    headerClass:
+                        "takeoff-phase-header",
                     marryChildren:
                         true,
                     children:
@@ -1083,6 +1103,8 @@ function MatrixView({
 
             {
                 headerName: "TAKE OFF",
+                headerTooltip: "Quantités par phase, étage et local",
+                headerClass: "takeoff-root-header",
                 marryChildren: true,
                 children: groupedRoomColumns
             },
@@ -1704,26 +1726,7 @@ function MatrixView({
         if (summary.supplier_quotes.length)
             return summary.supplier_quotes;
 
-        return [
-            {
-                supplier_name: "",
-                expires_on: null,
-                quote_reference: null,
-                notes: null
-            },
-            {
-                supplier_name: "",
-                expires_on: null,
-                quote_reference: null,
-                notes: null
-            },
-            {
-                supplier_name: "",
-                expires_on: null,
-                quote_reference: null,
-                notes: null
-            }
-        ];
+        return [];
 
     }
 
@@ -1735,44 +1738,7 @@ function MatrixView({
 
         return (
             <section className="matrix-action-bar">
-                <div className="matrix-action-group">
-                    <input
-                        type="text"
-                        value={newRoomPhase}
-                        onChange={
-                            event =>
-                                setNewRoomPhase(event.target.value)
-                        }
-                        placeholder="Phase"
-                    />
-                    <input
-                        type="text"
-                        value={newRoomFloor}
-                        onChange={
-                            event =>
-                                setNewRoomFloor(event.target.value)
-                        }
-                        placeholder="Étage"
-                    />
-                    <input
-                        type="text"
-                        value={newRoomName}
-                        onChange={
-                            event =>
-                                setNewRoomName(event.target.value)
-                        }
-                        placeholder="Nom du local"
-                    />
-                    <button
-                        type="button"
-                        onClick={addRoom}
-                        disabled={isMatrixActionLoading}
-                    >
-                        Ajouter local
-                    </button>
-                </div>
-
-                <div className="matrix-action-group wide">
+                <div className="matrix-action-row product-row">
                     <input
                         type="search"
                         value={productSearch}
@@ -1841,6 +1807,43 @@ function MatrixView({
                         }
                     >
                         Éditer produit
+                    </button>
+                </div>
+
+                <div className="matrix-action-row room-row">
+                    <input
+                        type="text"
+                        value={newRoomPhase}
+                        onChange={
+                            event =>
+                                setNewRoomPhase(event.target.value)
+                        }
+                        placeholder="Phase"
+                    />
+                    <input
+                        type="text"
+                        value={newRoomFloor}
+                        onChange={
+                            event =>
+                                setNewRoomFloor(event.target.value)
+                        }
+                        placeholder="Étage"
+                    />
+                    <input
+                        type="text"
+                        value={newRoomName}
+                        onChange={
+                            event =>
+                                setNewRoomName(event.target.value)
+                        }
+                        placeholder="Nom du local"
+                    />
+                    <button
+                        type="button"
+                        onClick={addRoom}
+                        disabled={isMatrixActionLoading}
+                    >
+                        Ajouter local
                     </button>
                 </div>
 

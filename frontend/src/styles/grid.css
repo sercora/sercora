@@ -415,9 +415,11 @@
 
     display: flex;
 
-    align-items: center;
+    flex-direction: column;
 
-    gap: 10px;
+    align-items: stretch;
+
+    gap: 6px;
 
     flex: 0 0 auto;
 
@@ -434,7 +436,7 @@
 }
 
 
-.matrix-action-group {
+.matrix-action-row {
 
     display: flex;
 
@@ -447,15 +449,15 @@
 }
 
 
-.matrix-action-group.wide {
+.matrix-action-row.product-row {
 
     flex: 1 1 auto;
 
 }
 
 
-.matrix-action-group input,
-.matrix-action-group select {
+.matrix-action-row input,
+.matrix-action-row select {
 
     height: 30px;
 
@@ -478,21 +480,21 @@
 }
 
 
-.matrix-action-group > input[type="text"] {
+.matrix-action-row.room-row input[type="text"] {
 
     flex: 0 0 120px;
 
 }
 
 
-.matrix-action-group.wide input {
+.matrix-action-row.product-row input {
 
     flex: 0 0 220px;
 
 }
 
 
-.matrix-action-group select {
+.matrix-action-row select {
 
     flex: 1 1 260px;
 
@@ -501,7 +503,7 @@
 }
 
 
-.matrix-action-group button {
+.matrix-action-row button {
 
     height: 30px;
 
@@ -528,7 +530,7 @@
 }
 
 
-.matrix-action-group button.secondary {
+.matrix-action-row button.secondary {
 
     border-color: #87919d;
 
@@ -539,7 +541,7 @@
 }
 
 
-.matrix-action-group button:disabled {
+.matrix-action-row button:disabled {
 
     cursor: default;
 
@@ -759,6 +761,8 @@
 .matrix-action-status {
 
     flex: 0 0 auto;
+
+    align-self: flex-start;
 
     color: #5c6670;
 
@@ -1169,6 +1173,40 @@ Header
     background-color: #ffffff;
 
     font-weight: 700;
+
+}
+
+
+.sercora-grid .takeoff-root-header {
+
+    background-color: #d7e8d0 !important;
+
+}
+
+
+.sercora-grid .takeoff-phase-header {
+
+    background-color: #b8d7ee !important;
+
+    color: #12364f;
+
+}
+
+
+.sercora-grid .takeoff-floor-header {
+
+    background-color: #e8d9f1 !important;
+
+    color: #422555;
+
+}
+
+
+.sercora-grid .takeoff-room-header {
+
+    background-color: #fff4c2 !important;
+
+    color: #4f3c00;
 
 }
 
