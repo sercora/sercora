@@ -27,6 +27,37 @@ export type Product = {
     price_updated_at: string | null;
     supplier_names: string | null;
     supplier_product_code: string | null;
+    technical_documents?: ProductDocument[];
+    coverage_options?: ProductCoverageOption[];
+    active: boolean;
+};
+
+
+export type ProductDocument = {
+    id: number;
+    product_id: number;
+    source: string;
+    source_document_id: number | null;
+    source_uuid: string | null;
+    document_type: string;
+    title: string;
+    url: string;
+    language: string | null;
+    active: boolean;
+    synced_at: string | null;
+};
+
+
+export type ProductCoverageOption = {
+    id?: number;
+    product_id?: number;
+    coverage_type: "thickness" | "tile_size";
+    label: string | null;
+    thickness_mm: number | string | null;
+    tile_size_label: string | null;
+    coverage_value: number | string | null;
+    coverage_unit: string;
+    sort_order: number;
     active: boolean;
 };
 
@@ -52,6 +83,8 @@ export type ProductInput = {
     msrp_price: number | string | null;
     supplier_name: string | null;
     supplier_product_code: string | null;
+    technical_documents?: ProductDocument[];
+    coverage_options: ProductCoverageOption[];
     active: boolean;
 };
 
@@ -115,6 +148,20 @@ export type PriceListImportResponse = {
 };
 
 
+export type ProductBulkUpdateInput = {
+    product_ids: number[];
+    product_type_id?: number;
+    manufacturer_name?: string;
+    category_name?: string;
+    default_unit_id?: number;
+    default_purchase_price?: number;
+    msrp_price?: number;
+    supplier_name?: string;
+    supplier_product_code?: string;
+    active?: boolean;
+};
+
+
 function parseResponse(response: Response) {
 
     if (!response.ok)
@@ -130,6 +177,21 @@ export function fetchProducts(): Promise<Product[]> {
     return fetch(
         API_URL +
         "/products"
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function fetchProduct(
+    productId: number
+): Promise<Product> {
+
+    return fetch(
+        API_URL +
+        "/products/" +
+        productId
     )
 
     .then(parseResponse);
@@ -355,6 +417,29 @@ export function updateProduct(
                 "Content-Type": "application/json"
             },
             body: JSON.stringify(product)
+        }
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function updateProductsBulk(
+    update: ProductBulkUpdateInput
+): Promise<{
+    updated: number;
+}> {
+
+    return fetch(
+        API_URL +
+        "/products/bulk",
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(update)
         }
     )
 

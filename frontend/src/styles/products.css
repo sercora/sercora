@@ -24,6 +24,33 @@
 }
 
 
+.products-page.creating-product {
+
+    grid-template-columns: minmax(0, 1fr);
+
+}
+
+
+.products-page.creating-product .products-list-panel {
+
+    display: none;
+
+}
+
+
+.products-page.creating-product .product-editor {
+
+    width: min(1080px, 100%);
+
+    margin: 0 auto;
+
+    border-left: 1px solid #d8dce2;
+
+    border-right: 1px solid #d8dce2;
+
+}
+
+
 .products-list-panel {
 
     display: flex;
@@ -65,6 +92,7 @@
 .products-toolbar button,
 .product-editor input,
 .product-editor select,
+.product-editor button,
 .editor-actions button {
 
     border: 1px solid #b9c0ca;
@@ -568,7 +596,7 @@
 .prosol-result strong,
 .prosol-result small {
 
-    overflow: hidden;
+    overflow-y: auto;
 
     text-overflow: ellipsis;
 
@@ -595,7 +623,7 @@
 
 .products-table-wrap {
 
-    flex: 1 1 auto;
+    flex: 0 0 auto;
 
     min-width: 0;
 
@@ -610,11 +638,33 @@
 
     width: 100%;
 
-    min-width: 1320px;
+    min-width: 1360px;
 
     border-collapse: collapse;
 
     font-size: 13px;
+
+}
+
+
+.products-table .selection-column {
+
+    width: 36px;
+
+    min-width: 36px;
+
+    text-align: center;
+
+}
+
+
+.products-table .selection-column input {
+
+    width: 15px;
+
+    height: 15px;
+
+    margin: 0;
 
 }
 
@@ -807,7 +857,7 @@
 
     min-height: 0;
 
-    overflow-y: auto;
+    overflow-y: visible;
 
     padding-right: 4px;
 
@@ -835,6 +885,64 @@
 }
 
 
+.bulk-editor-grid {
+
+    display: grid;
+
+    grid-template-columns: 1fr;
+
+    gap: 10px;
+
+    flex: 0 0 auto;
+
+    min-width: 0;
+
+    padding-bottom: 12px;
+
+}
+
+
+.bulk-editor-grid label {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 5px;
+
+    min-width: 0;
+
+    color: #47505a;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+}
+
+
+.bulk-editor-grid label > span {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+}
+
+
+.bulk-editor-grid label > span input {
+
+    width: 14px;
+
+    height: 14px;
+
+    padding: 0;
+
+}
+
+
 .product-editor input,
 .product-editor select {
 
@@ -845,6 +953,182 @@
     padding: 0 8px;
 
     font-weight: 400;
+
+}
+
+
+.bulk-editor-grid label > span input {
+
+    width: 14px;
+
+    height: 14px;
+
+    padding: 0;
+
+}
+
+
+.product-editor-section {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+
+    flex: 0 0 auto;
+
+    min-width: 0;
+
+    margin-bottom: 12px;
+
+    padding-top: 12px;
+
+    border-top: 1px solid #e0e4e8;
+
+}
+
+
+.product-editor-section-heading {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 8px;
+
+}
+
+
+.product-editor-section-heading h3 {
+
+    margin: 0;
+
+    color: #1f252d;
+
+    font-size: 14px;
+
+    line-height: 18px;
+
+}
+
+
+.product-editor-section-heading button,
+.coverage-option-row button {
+
+    width: auto;
+
+    height: 28px;
+
+    padding: 0 8px;
+
+    cursor: pointer;
+
+}
+
+
+.technical-document-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 6px;
+
+}
+
+
+.technical-document-list a {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 8px;
+
+    min-width: 0;
+
+    padding: 7px 8px;
+
+    border: 1px solid #d2d8de;
+
+    border-radius: 4px;
+
+    background-color: #f9fbfc;
+
+    color: #1b5e20;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    text-decoration: none;
+
+}
+
+
+.technical-document-list span {
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+}
+
+
+.technical-document-list small,
+.empty-editor-note {
+
+    color: #68717a;
+
+    font-size: 12px;
+
+    font-weight: 400;
+
+}
+
+
+.empty-editor-note {
+
+    margin: 0;
+
+}
+
+
+.coverage-option-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 7px;
+
+}
+
+
+.coverage-option-row {
+
+    display: grid;
+
+    grid-template-columns: 96px minmax(0, 1fr) 82px 82px 64px;
+
+    gap: 6px;
+
+    min-width: 0;
+
+}
+
+
+.coverage-option-row input,
+.coverage-option-row select {
+
+    height: 30px;
 
 }
 

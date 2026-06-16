@@ -18,6 +18,7 @@ import type {
     SupplierDiscount
 } from "../utils/productsApi";
 import {
+    syncProsolTechnicalSheets,
     updateProsolPrices
 } from "../utils/prosolApi";
 
@@ -59,6 +60,7 @@ function ImportationPage() {
     const [supplierDiscounts, setSupplierDiscounts] = useState<SupplierDiscount[]>([]);
     const [discountInputs, setDiscountInputs] = useState<Record<string, string>>({});
     const [isUpdatingProsolPrices, setIsUpdatingProsolPrices] = useState(false);
+    const [isSyncingTechnicalSheets, setIsSyncingTechnicalSheets] = useState(false);
     const [activeUploadSupplier, setActiveUploadSupplier] = useState<string | null>(null);
     const [activeSavingSupplier, setActiveSavingSupplier] = useState<string | null>(null);
     const [activeApplyingSupplier, setActiveApplyingSupplier] = useState<string | null>(null);
@@ -180,6 +182,46 @@ function ImportationPage() {
         .finally(
             () => {
                 setIsUpdatingProsolPrices(false);
+            }
+        );
+
+    }
+
+
+    function syncMapeiTechnicalSheets() {
+
+        setIsSyncingTechnicalSheets(true);
+        setStatusMessage("");
+        setErrorMessage("");
+
+        syncProsolTechnicalSheets("Mapei")
+
+        .then(
+            response => {
+                setStatusMessage(
+                    "Fiches techniques Mapei: " +
+                    response.documents +
+                    " fiches synchronisées sur " +
+                    response.checked +
+                    " produits" +
+                    (
+                        response.failed ?
+                            " / erreurs: " + response.failed :
+                            ""
+                    )
+                );
+            }
+        )
+
+        .catch(
+            () => {
+                setErrorMessage("Synchronisation des fiches techniques Mapei impossible.");
+            }
+        )
+
+        .finally(
+            () => {
+                setIsSyncingTechnicalSheets(false);
             }
         );
 
@@ -353,16 +395,27 @@ function ImportationPage() {
                 <div className="importation-row">
                     <div>
                         <h3>Prosol</h3>
-                        <p>Mise à jour des prix depuis l'API web Prosol.</p>
+                        <p>Mise à jour des prix et fiches techniques depuis l'API web Prosol.</p>
                     </div>
-                    <button
-                        type="button"
-                        className="primary-auth-button"
-                        onClick={updateProsol}
-                        disabled={isUpdatingProsolPrices}
-                    >
-                        Mise à Jour web Prosol
-                    </button>
+                    <div className="importation-actions">
+                        <button
+                            type="button"
+                            className="primary-auth-button"
+                            onClick={updateProsol}
+                            disabled={isUpdatingProsolPrices}
+                        >
+                            Mise à Jour web Prosol
+                        </button>
+
+                        <button
+                            type="button"
+                            className="secondary-auth-button"
+                            onClick={syncMapeiTechnicalSheets}
+                            disabled={isSyncingTechnicalSheets}
+                        >
+                            Fiches techniques Mapei
+                        </button>
+                    </div>
                 </div>
 
                 {SUPPLIER_ROWS.map(

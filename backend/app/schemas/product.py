@@ -1,6 +1,17 @@
 from pydantic import BaseModel
 
 
+class ProductCoverageOptionInput(BaseModel):
+    coverage_type: str
+    label: str | None = None
+    thickness_mm: float | None = None
+    tile_size_label: str | None = None
+    coverage_value: float
+    coverage_unit: str
+    sort_order: int = 0
+    active: bool = True
+
+
 class ProductResponse(BaseModel):
     id: int
     name: str
@@ -27,4 +38,18 @@ class ProductCreate(BaseModel):
     source_url: str | None = None
     default_purchase_price: float | None = None
     msrp_price: float | None = None
+    coverage_options: list[ProductCoverageOptionInput] = []
     active: bool = True
+
+
+class ProductBulkUpdate(BaseModel):
+    product_ids: list[int]
+    product_type_id: int | None = None
+    manufacturer_name: str | None = None
+    category_name: str | None = None
+    default_unit_id: int | None = None
+    default_purchase_price: float | None = None
+    msrp_price: float | None = None
+    supplier_name: str | None = None
+    supplier_product_code: str | None = None
+    active: bool | None = None

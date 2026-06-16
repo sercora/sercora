@@ -249,7 +249,7 @@ def fetch_product_detail(
                 "filter[where_identifier]": uuid,
                 "include": (
                     "productManufacturer,productCategory,"
-                    "productType,productCollection"
+                    "productType,productCollection,documents"
                 ),
                 "append[]": [
                     "image_url",
@@ -419,6 +419,7 @@ def normalize_product(
             if merged.get("uuid")
             else ""
         ),
+        "documents": merged.get("documents") or [],
         "default_purchase_price": price,
         "msrp_price": msrp,
         "price_by_measure": offer.get("price_by_measure_presentable") or "",
@@ -458,6 +459,261 @@ def enrich_product(
         product,
         offer=offer,
         detail=detail
+    )
+
+
+def technical_documents_from_product(
+    prosol_product: dict[str, Any]
+):
+
+    documents = prosol_product.get("documents") or []
+
+    if not isinstance(documents, list):
+        return []
+
+    technical_documents = []
+
+    for document in documents:
+        if not isinstance(document, dict):
+            continue
+
+        if (document.get("type") or "").upper() != "TDS":
+            continue
+
+        url = (document.get("url") or "").strip()
+
+        if not url:
+            continue
+
+        technical_documents.append(
+            {
+                "source_document_id": document.get("id"),
+                "source_uuid": document.get("uuid") or None,
+                "document_type": "TDS",
+                "title": document.get("name") or "Fiche technique",
+                "url": url,
+                "language": (
+                    (document.get("language") or "").upper() or None
+                )
+            }
+        )
+
+    return technical_documents
+
+
+def sync_product_technical_documents(
+    db,
+    product_id: int,
+    prosol_product: dict[str, Any]
+):
+
+    technical_documents = technical_documents_from_product(
+        prosol_product
+    )
+    seen_document_keys = []
+
+    for document in technical_documents:
+        document_key = (
+            document["source_uuid"] or
+            str(document["source_document_id"] or document["url"])
+        )
+        seen_document_keys.append(document_key)
+
+        db.execute(
+            text(
+                """
+                INSERT INTO product_document (
+                    product_id,
+                    source,
+                    source_document_id,
+                    source_uuid,
+                    document_type,
+                    title,
+                    url,
+                    language,
+                    active,
+                    synced_at
+                )
+                VALUES (
+                    :product_id,
+                    'Prosol',
+                    :source_document_id,
+                    :source_uuid,
+                    :document_type,
+                    :title,
+                    :url,
+                    :language,
+                    TRUE,
+                    CURRENT_TIMESTAMP
+                )
+                ON CONFLICT (product_id, source, source_uuid)
+                    WHERE source_uuid IS NOT NULL
+                DO UPDATE
+                SET
+                    source_document_id = EXCLUDED.source_document_id,
+                    document_type = EXCLUDED.document_type,
+                    title = EXCLUDED.title,
+                    url = EXCLUDED.url,
+                    language = EXCLUDED.language,
+                    active = TRUE,
+                    synced_at = CURRENT_TIMESTAMP
+                """
+            ),
+            {
+                "product_id": product_id,
+                **document
+            }
+        )
+
+    if seen_document_keys:
+        db.execute(
+            text(
+                """
+                UPDATE product_document
+                SET active = FALSE,
+                    synced_at = CURRENT_TIMESTAMP
+                WHERE product_id = :product_id
+                    AND source = 'Prosol'
+                    AND document_type = 'TDS'
+                    AND COALESCE(source_uuid, source_document_id::TEXT, url)
+                        <> ALL(:seen_document_keys)
+                """
+            ),
+            {
+                "product_id": product_id,
+                "seen_document_keys": seen_document_keys
+            }
+        )
+
+    return len(technical_documents)
+
+
+def normalized_code(
+    value: Any
+):
+
+    return re.sub(
+        r"[^A-Z0-9]",
+        "",
+        str(value or "").upper()
+    )
+
+
+def search_prosol_products_for_match(
+    query: str
+):
+
+    if len(query.strip()) < 3:
+        return []
+
+    payload = prosol_request(
+        "/api/storefront/products/search",
+        method="POST",
+        data={
+            "query": query,
+            "hitsPerPage": 8
+        }
+    )
+
+    rows = (
+        payload.get("hits") or
+        payload.get("data") or
+        payload.get("rows") or
+        []
+    )
+
+    return [
+        row
+        for row in rows
+        if isinstance(row, dict)
+    ]
+
+
+def candidate_matches_local_product(
+    candidate: dict[str, Any],
+    local_code: str,
+    manufacturer: str
+):
+
+    candidate_name = localized_text(candidate.get("name")).lower()
+
+    if manufacturer.lower() not in candidate_name:
+        return False
+
+    candidate_codes = {
+        normalized_code(candidate.get("manufacturer_sku")),
+        normalized_code(candidate.get("prosol_sku")),
+        normalized_code(candidate.get("sku"))
+    }
+
+    return local_code in candidate_codes
+
+
+def find_prosol_match_for_local_product(
+    row,
+    manufacturer: str
+):
+
+    local_code = normalized_code(row.manufacturer_sku)
+
+    if not local_code:
+        return {}
+
+    for candidate in search_prosol_products_for_match(
+        row.manufacturer_sku
+    ):
+        if candidate_matches_local_product(
+            candidate,
+            local_code,
+            manufacturer
+        ):
+            return candidate
+
+    return {}
+
+
+def link_local_product_to_prosol(
+    db,
+    product_id: int,
+    prosol_product: dict[str, Any]
+):
+
+    db.execute(
+        text(
+            """
+            UPDATE product
+            SET
+                prosol_product_id = COALESCE(
+                    prosol_product_id,
+                    :prosol_product_id
+                ),
+                prosol_uuid = COALESCE(
+                    prosol_uuid,
+                    :prosol_uuid
+                ),
+                prosol_sku = COALESCE(
+                    prosol_sku,
+                    :prosol_sku
+                ),
+                image_url = COALESCE(
+                    image_url,
+                    :image_url
+                ),
+                source_url = COALESCE(
+                    source_url,
+                    :source_url
+                )
+            WHERE id = :product_id
+            """
+        ),
+        {
+            "product_id": product_id,
+            "prosol_product_id": prosol_product.get("id"),
+            "prosol_uuid": prosol_product.get("uuid") or None,
+            "prosol_sku": prosol_product.get("prosol_sku") or None,
+            "image_url": prosol_product.get("image_url") or None,
+            "source_url": prosol_product.get("source_url") or None
+        }
     )
 
 
@@ -737,6 +993,11 @@ def upsert_local_product(
             active=True
         )
     )
+    sync_product_technical_documents(
+        db,
+        product_id,
+        prosol_product
+    )
 
     return product_id
 
@@ -811,6 +1072,128 @@ def import_prosol_product(
         )
 
         return product_payload(row)
+
+    finally:
+        db.close()
+
+
+@router.post("/prosol/products/sync-technical-sheets")
+def sync_prosol_technical_sheets(
+    manufacturer: str = Query("Mapei", min_length=2),
+    limit: int = Query(50, ge=1, le=500)
+):
+
+    db = SessionLocal()
+    checked = 0
+    updated = 0
+    failed = 0
+    documents = 0
+    errors = []
+
+    try:
+        rows = db.execute(
+            text(
+                """
+                SELECT
+                    id,
+                    prosol_product_id,
+                    prosol_uuid,
+                    manufacturer_sku,
+                    name
+                FROM product
+                WHERE active = TRUE
+                    AND (
+                        lower(coalesce(manufacturer_name, ''))
+                            LIKE :manufacturer_pattern
+                        OR lower(name)
+                            LIKE :manufacturer_pattern
+                    )
+                ORDER BY id
+                LIMIT :limit
+                """
+            ),
+            {
+                "manufacturer_pattern":
+                    "%" + manufacturer.lower() + "%",
+                "limit": limit
+            }
+        ).fetchall()
+
+        for row in rows:
+            checked += 1
+
+            try:
+                prosol_product_id = row.prosol_product_id
+                prosol_uuid = row.prosol_uuid
+                matched_product = {}
+
+                if not prosol_product_id:
+                    matched_product = find_prosol_match_for_local_product(
+                        row,
+                        manufacturer
+                    )
+                    prosol_product_id = matched_product.get("id")
+                    prosol_uuid = matched_product.get("uuid")
+
+                    if not prosol_product_id:
+                        continue
+
+                detail = fetch_product_detail(
+                    product_id=prosol_product_id,
+                    uuid=prosol_uuid
+                )
+
+                if not detail:
+                    failed += 1
+                    errors.append(
+                        {
+                            "product_id": row.id,
+                            "name": row.name,
+                            "error": "No Prosol detail returned"
+                        }
+                    )
+                    continue
+
+                linked_product = normalize_product(
+                    matched_product or detail,
+                    detail=detail
+                )
+                link_local_product_to_prosol(
+                    db,
+                    row.id,
+                    linked_product
+                )
+
+                synced_documents = sync_product_technical_documents(
+                    db,
+                    row.id,
+                    detail
+                )
+                documents += synced_documents
+
+                if synced_documents:
+                    updated += 1
+
+            except Exception as error:  # noqa: BLE001
+                failed += 1
+                errors.append(
+                    {
+                        "product_id": row.id,
+                        "name": row.name,
+                        "error": str(error)[:240]
+                    }
+                )
+
+        db.commit()
+
+        return {
+            "manufacturer": manufacturer,
+            "checked": checked,
+            "updated": updated,
+            "documents": documents,
+            "failed": failed,
+            "errors": errors[:20]
+        }
 
     finally:
         db.close()

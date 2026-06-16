@@ -9,13 +9,17 @@ import type { ChangeEvent } from "react";
 import {
     createProduct,
     disableProduct,
+    fetchProduct,
     fetchProductPage,
     fetchProductTypes,
     fetchUnits,
-    updateProduct
+    updateProduct,
+    updateProductsBulk
 } from "../utils/productsApi";
 import type {
     Product,
+    ProductBulkUpdateInput,
+    ProductCoverageOption,
     ProductInput,
     ProductType,
     Unit
@@ -26,6 +30,7 @@ import "../styles/products.css";
 
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura" | "Olympia";
 type PageSize = 10 | 20 | 50 | "all";
+type BulkFieldKey = keyof Omit<ProductBulkUpdateInput, "product_ids">;
 
 
 type ProductsPageProps = {
@@ -54,7 +59,22 @@ const EMPTY_FORM: ProductInput = {
     msrp_price: null,
     supplier_name: "",
     supplier_product_code: "",
+    technical_documents: [],
+    coverage_options: [],
     active: true
+};
+
+
+const EMPTY_BULK_FORM: Record<BulkFieldKey, string> = {
+    product_type_id: "",
+    manufacturer_name: "",
+    category_name: "",
+    default_unit_id: "",
+    default_purchase_price: "",
+    msrp_price: "",
+    supplier_name: "",
+    supplier_product_code: "",
+    active: "true"
 };
 
 
@@ -172,9 +192,22 @@ function toForm(
             product.supplier_names || "",
         supplier_product_code:
             product.supplier_product_code || "",
+        technical_documents:
+            product.technical_documents || [],
+        coverage_options:
+            product.coverage_options || [],
         active:
             product.active
     };
+
+}
+
+
+function coverageNumberValue(
+    value: string | number | null
+) {
+
+    return numberValue(value);
 
 }
 
@@ -224,8 +257,56 @@ function normalizeForm(
             textValue(form.supplier_name),
         supplier_product_code:
             textValue(form.supplier_product_code),
+        technical_documents:
+            form.technical_documents || [],
+        coverage_options:
+            (form.coverage_options || [])
+            .map(
+                (coverageOption, index) => ({
+                    ...coverageOption,
+                    label:
+                        textValue(coverageOption.label),
+                    thickness_mm:
+                        coverageOption.coverage_type === "thickness" ?
+                            coverageNumberValue(coverageOption.thickness_mm) :
+                            null,
+                    tile_size_label:
+                        coverageOption.coverage_type === "tile_size" ?
+                            textValue(coverageOption.tile_size_label) :
+                            null,
+                    coverage_value:
+                        coverageNumberValue(coverageOption.coverage_value),
+                    coverage_unit:
+                        String(coverageOption.coverage_unit || "").trim(),
+                    sort_order:
+                        index,
+                    active:
+                        coverageOption.active
+                })
+            )
+            .filter(
+                coverageOption =>
+                    coverageOption.coverage_value !== null &&
+                    coverageOption.coverage_unit
+            ),
         active:
             form.active
+    };
+
+}
+
+
+function emptyCoverageOption(): ProductCoverageOption {
+
+    return {
+        coverage_type: "thickness",
+        label: "",
+        thickness_mm: "",
+        tile_size_label: "",
+        coverage_value: "",
+        coverage_unit: "pi2/sac",
+        sort_order: 0,
+        active: true
     };
 
 }
@@ -288,12 +369,26 @@ function ProductsPage({
     const [productTypes, setProductTypes] = useState<ProductType[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
     const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+    const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
     const [form, setForm] = useState<ProductInput>(EMPTY_FORM);
+    const [bulkForm, setBulkForm] = useState<Record<BulkFieldKey, string>>(EMPTY_BULK_FORM);
+    const [bulkFields, setBulkFields] = useState<Record<BulkFieldKey, boolean>>({
+        product_type_id: false,
+        manufacturer_name: false,
+        category_name: false,
+        default_unit_id: false,
+        default_purchase_price: false,
+        msrp_price: false,
+        supplier_name: false,
+        supplier_product_code: false,
+        active: false
+    });
     const [query, setQuery] = useState("");
     const [showInactiveProducts, setShowInactiveProducts] = useState(false);
     const [pageSize, setPageSize] = useState<PageSize>(20);
     const [currentPage, setCurrentPage] = useState(1);
     const [isEditorVisible, setIsEditorVisible] = useState(true);
+    const [isCreatingProduct, setIsCreatingProduct] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [statusMessage, setStatusMessage] = useState("");
 
@@ -536,10 +631,113 @@ function ProductsPage({
     ) {
 
         setSelectedProductId(product.id);
+        setSelectedProductIds([product.id]);
+        setIsCreatingProduct(false);
         setIsEditorVisible(true);
         setStatusMessage("");
         setForm(
             toForm(product)
+        );
+
+        fetchProduct(product.id)
+
+        .then(
+            detailedProduct => {
+                setForm(
+                    toForm(detailedProduct)
+                );
+            }
+        )
+
+        .catch(
+            () => {
+                setStatusMessage(
+                    "Impossible de charger les détails du produit."
+                );
+            }
+        );
+
+    }
+
+
+    function toggleProductSelection(
+        product: Product,
+        event: ChangeEvent<HTMLInputElement>
+    ) {
+
+        event.stopPropagation();
+
+        setIsCreatingProduct(false);
+        setStatusMessage("");
+
+        setSelectedProductIds(
+            previousIds => {
+                const nextIds = event.target.checked ?
+                    Array.from(
+                        new Set([
+                            ...previousIds,
+                            product.id
+                        ])
+                    ) :
+                    previousIds.filter(
+                        productId =>
+                            productId !== product.id
+                    );
+
+                if (nextIds.length === 1) {
+                    setSelectedProductId(nextIds[0]);
+                    const nextProduct = products.find(
+                        candidate =>
+                            candidate.id === nextIds[0]
+                    );
+
+                    if (nextProduct) {
+                        setForm(
+                            toForm(nextProduct)
+                        );
+                        fetchProduct(nextProduct.id)
+
+                        .then(
+                            detailedProduct => {
+                                setForm(
+                                    toForm(detailedProduct)
+                                );
+                            }
+                        )
+
+                        .catch(
+                            () => {
+                                setStatusMessage(
+                                    "Impossible de charger les détails du produit."
+                                );
+                            }
+                        );
+                    }
+                }
+
+                if (nextIds.length !== 1)
+                    setSelectedProductId(null);
+
+                return nextIds;
+            }
+        );
+
+    }
+
+
+    function startProductCreation() {
+
+        setIsCreatingProduct(true);
+        setSelectedProductId(null);
+        setSelectedProductIds([]);
+        setIsEditorVisible(true);
+        setStatusMessage("");
+        setForm(
+            {
+                ...EMPTY_FORM,
+                product_type_id:
+                    productTypes[0]?.id || 0
+            }
         );
 
     }
@@ -628,6 +826,194 @@ function ProductsPage({
     }
 
 
+    function addCoverageOption() {
+
+        setForm(
+            previousForm => ({
+                ...previousForm,
+                coverage_options: [
+                    ...(previousForm.coverage_options || []),
+                    {
+                        ...emptyCoverageOption(),
+                        sort_order:
+                            previousForm.coverage_options?.length || 0
+                    }
+                ]
+            })
+        );
+
+    }
+
+
+    function updateCoverageOption(
+        index: number,
+        field: keyof ProductCoverageOption,
+        value: string
+    ) {
+
+        setForm(
+            previousForm => ({
+                ...previousForm,
+                coverage_options:
+                    (previousForm.coverage_options || []).map(
+                        (coverageOption, coverageIndex) => {
+                            if (coverageIndex !== index)
+                                return coverageOption;
+
+                            return {
+                                ...coverageOption,
+                                [field]:
+                                    value
+                            };
+                        }
+                    )
+            })
+        );
+
+    }
+
+
+    function removeCoverageOption(
+        index: number
+    ) {
+
+        setForm(
+            previousForm => ({
+                ...previousForm,
+                coverage_options:
+                    (previousForm.coverage_options || []).filter(
+                        (_coverageOption, coverageIndex) =>
+                            coverageIndex !== index
+                    )
+            })
+        );
+
+    }
+
+
+    function buildBulkPayload() {
+
+        const payload: ProductBulkUpdateInput = {
+            product_ids: selectedProductIds
+        };
+
+        if (bulkFields.product_type_id && bulkForm.product_type_id)
+            payload.product_type_id = Number(bulkForm.product_type_id);
+
+        if (bulkFields.manufacturer_name)
+            payload.manufacturer_name = bulkForm.manufacturer_name.trim();
+
+        if (bulkFields.category_name)
+            payload.category_name = bulkForm.category_name.trim();
+
+        if (bulkFields.default_unit_id && bulkForm.default_unit_id)
+            payload.default_unit_id = Number(bulkForm.default_unit_id);
+
+        if (
+            bulkFields.default_purchase_price &&
+            bulkForm.default_purchase_price
+        )
+            payload.default_purchase_price = Number(
+                bulkForm.default_purchase_price
+            );
+
+        if (bulkFields.msrp_price && bulkForm.msrp_price)
+            payload.msrp_price = Number(bulkForm.msrp_price);
+
+        if (bulkFields.supplier_name)
+            payload.supplier_name = bulkForm.supplier_name.trim();
+
+        if (bulkFields.supplier_product_code)
+            payload.supplier_product_code = bulkForm.supplier_product_code.trim();
+
+        if (bulkFields.active)
+            payload.active = bulkForm.active === "true";
+
+        return payload;
+
+    }
+
+
+    function saveBulkProducts() {
+
+        if (selectedProductIds.length < 2)
+            return;
+
+        const payload =
+            buildBulkPayload();
+
+        if (Object.keys(payload).length <= 1) {
+            setStatusMessage(
+                "Choisir au moins une propriété à modifier."
+            );
+            return;
+        }
+
+        setIsSaving(true);
+        setStatusMessage("");
+
+        updateProductsBulk(payload)
+
+        .then(
+            response => {
+                setStatusMessage(
+                    response.updated +
+                    " produits mis à jour."
+                );
+
+                return loadProducts();
+            }
+        )
+
+        .catch(
+            () => {
+                setStatusMessage(
+                    "Mise à jour groupée impossible."
+                );
+            }
+        )
+
+        .finally(
+            () => {
+                setIsSaving(false);
+            }
+        );
+
+    }
+
+
+    function updateBulkField(
+        field: BulkFieldKey,
+        value: string
+    ) {
+
+        setBulkForm(
+            previousForm => ({
+                ...previousForm,
+                [field]:
+                    value
+            })
+        );
+
+    }
+
+
+    function toggleBulkField(
+        field: BulkFieldKey,
+        enabled: boolean
+    ) {
+
+        setBulkFields(
+            previousFields => ({
+                ...previousFields,
+                [field]:
+                    enabled
+            })
+        );
+
+    }
+
+
     function saveProduct() {
 
         const payload =
@@ -672,7 +1058,9 @@ function ProductsPage({
                     setSelectedProductId(
                         result.id
                     );
+                    setSelectedProductIds([result.id]);
                 }
+                setIsCreatingProduct(false);
 
                 return loadProducts();
 
@@ -703,6 +1091,18 @@ function ProductsPage({
     function cancelProductEdit() {
 
         setStatusMessage("");
+
+        if (isCreatingProduct) {
+            setIsCreatingProduct(false);
+            setForm(
+                {
+                    ...EMPTY_FORM,
+                    product_type_id:
+                        productTypes[0]?.id || 0
+                }
+            );
+            return;
+        }
 
         if (selectedProduct) {
             setForm(
@@ -778,9 +1178,13 @@ function ProductsPage({
 
         <section
             className={
-                isEditorVisible ?
-                    "products-page" :
-                    "products-page editor-hidden"
+                [
+                    "products-page",
+                    isEditorVisible ? "" : "editor-hidden",
+                    isCreatingProduct ? "creating-product" : ""
+                ]
+                .filter(Boolean)
+                .join(" ")
             }
         >
 
@@ -817,6 +1221,14 @@ function ProductsPage({
                     <button
                         type="button"
                         className="editor-toggle"
+                        onClick={startProductCreation}
+                    >
+                        Nouveau
+                    </button>
+
+                    <button
+                        type="button"
+                        className="editor-toggle"
                         onClick={
                             () =>
                                 setIsEditorVisible(
@@ -835,6 +1247,7 @@ function ProductsPage({
                     <table className="products-table">
                         <thead>
                             <tr>
+                                <th className="selection-column"></th>
                                 <th>Produit</th>
                                 <th>Type</th>
                                 <th>Manufacturier</th>
@@ -856,7 +1269,7 @@ function ProductsPage({
                                     <tr
                                         key={product.id}
                                         className={
-                                            product.id === selectedProductId ?
+                                            selectedProductIds.includes(product.id) ?
                                                 "selected" :
                                                 ""
                                         }
@@ -865,6 +1278,25 @@ function ProductsPage({
                                                 selectProduct(product)
                                         }
                                     >
+                                        <td className="selection-column">
+                                            <input
+                                                type="checkbox"
+                                                checked={
+                                                    selectedProductIds.includes(product.id)
+                                                }
+                                                onChange={
+                                                    event =>
+                                                        toggleProductSelection(
+                                                            product,
+                                                            event
+                                                        )
+                                                }
+                                                onClick={
+                                                    event =>
+                                                        event.stopPropagation()
+                                                }
+                                            />
+                                        </td>
                                         <td>{product.name}</td>
                                         <td>{product.product_type_name || ""}</td>
                                         <td>{product.manufacturer_name || ""}</td>
@@ -991,7 +1423,279 @@ function ProductsPage({
 
             </div>
 
-            {isEditorVisible && (
+            {isEditorVisible && selectedProductIds.length > 1 && !isCreatingProduct && (
+                <aside className="product-editor bulk-editor">
+
+                <div className="editor-header">
+                    <h2>Modifier groupe</h2>
+                    <span>{selectedProductIds.length} produits</span>
+                </div>
+
+                <div className="bulk-editor-grid">
+                    <label>
+                        <span>
+                            <input
+                                type="checkbox"
+                                checked={bulkFields.product_type_id}
+                                onChange={
+                                    event =>
+                                        toggleBulkField(
+                                            "product_type_id",
+                                            event.target.checked
+                                        )
+                                }
+                            />
+                            Type
+                        </span>
+                        <select
+                            value={bulkForm.product_type_id}
+                            onChange={
+                                event =>
+                                    updateBulkField(
+                                        "product_type_id",
+                                        event.target.value
+                                    )
+                            }
+                            disabled={!bulkFields.product_type_id}
+                        >
+                            <option value="">Choisir</option>
+                            {productTypes.map(
+                                productType => (
+                                    <option
+                                        key={productType.id}
+                                        value={productType.id}
+                                    >
+                                        {productType.name}
+                                    </option>
+                                )
+                            )}
+                        </select>
+                    </label>
+
+                    <label>
+                        <span>
+                            <input
+                                type="checkbox"
+                                checked={bulkFields.manufacturer_name}
+                                onChange={
+                                    event =>
+                                        toggleBulkField(
+                                            "manufacturer_name",
+                                            event.target.checked
+                                        )
+                                }
+                            />
+                            Manufacturier
+                        </span>
+                        <input
+                            type="text"
+                            value={bulkForm.manufacturer_name}
+                            onChange={
+                                event =>
+                                    updateBulkField(
+                                        "manufacturer_name",
+                                        event.target.value
+                                    )
+                            }
+                            disabled={!bulkFields.manufacturer_name}
+                        />
+                    </label>
+
+                    <label>
+                        <span>
+                            <input
+                                type="checkbox"
+                                checked={bulkFields.category_name}
+                                onChange={
+                                    event =>
+                                        toggleBulkField(
+                                            "category_name",
+                                            event.target.checked
+                                        )
+                                }
+                            />
+                            Catégorie
+                        </span>
+                        <input
+                            type="text"
+                            value={bulkForm.category_name}
+                            onChange={
+                                event =>
+                                    updateBulkField(
+                                        "category_name",
+                                        event.target.value
+                                    )
+                            }
+                            disabled={!bulkFields.category_name}
+                        />
+                    </label>
+
+                    <label>
+                        <span>
+                            <input
+                                type="checkbox"
+                                checked={bulkFields.default_unit_id}
+                                onChange={
+                                    event =>
+                                        toggleBulkField(
+                                            "default_unit_id",
+                                            event.target.checked
+                                        )
+                                }
+                            />
+                            Unité
+                        </span>
+                        <select
+                            value={bulkForm.default_unit_id}
+                            onChange={
+                                event =>
+                                    updateBulkField(
+                                        "default_unit_id",
+                                        event.target.value
+                                    )
+                            }
+                            disabled={!bulkFields.default_unit_id}
+                        >
+                            <option value="">Choisir</option>
+                            {units.map(
+                                unit => (
+                                    <option
+                                        key={unit.id}
+                                        value={unit.id}
+                                    >
+                                        {unit.name} ({unit.symbol})
+                                    </option>
+                                )
+                            )}
+                        </select>
+                    </label>
+
+                    <label>
+                        <span>
+                            <input
+                                type="checkbox"
+                                checked={bulkFields.default_purchase_price}
+                                onChange={
+                                    event =>
+                                        toggleBulkField(
+                                            "default_purchase_price",
+                                            event.target.checked
+                                        )
+                                }
+                            />
+                            Prix achat
+                        </span>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={bulkForm.default_purchase_price}
+                            onChange={
+                                event =>
+                                    updateBulkField(
+                                        "default_purchase_price",
+                                        event.target.value
+                                    )
+                            }
+                            disabled={!bulkFields.default_purchase_price}
+                        />
+                    </label>
+
+                    <label>
+                        <span>
+                            <input
+                                type="checkbox"
+                                checked={bulkFields.msrp_price}
+                                onChange={
+                                    event =>
+                                        toggleBulkField(
+                                            "msrp_price",
+                                            event.target.checked
+                                        )
+                                }
+                            />
+                            MSRP
+                        </span>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={bulkForm.msrp_price}
+                            onChange={
+                                event =>
+                                    updateBulkField(
+                                        "msrp_price",
+                                        event.target.value
+                                    )
+                            }
+                            disabled={!bulkFields.msrp_price}
+                        />
+                    </label>
+
+                    <label>
+                        <span>
+                            <input
+                                type="checkbox"
+                                checked={bulkFields.active}
+                                onChange={
+                                    event =>
+                                        toggleBulkField(
+                                            "active",
+                                            event.target.checked
+                                        )
+                                }
+                            />
+                            État
+                        </span>
+                        <select
+                            value={bulkForm.active}
+                            onChange={
+                                event =>
+                                    updateBulkField(
+                                        "active",
+                                        event.target.value
+                                    )
+                            }
+                            disabled={!bulkFields.active}
+                        >
+                            <option value="true">Actif</option>
+                            <option value="false">Inactif</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div className="editor-actions">
+                    <button
+                        type="button"
+                        className="primary-action"
+                        onClick={saveBulkProducts}
+                        disabled={isSaving}
+                    >
+                        Sauvegarder
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={
+                            () => {
+                                setSelectedProductIds([]);
+                                setSelectedProductId(null);
+                            }
+                        }
+                        disabled={isSaving}
+                    >
+                        Annuler
+                    </button>
+                </div>
+
+                {statusMessage && (
+                    <p className="editor-status">
+                        {statusMessage}
+                    </p>
+                )}
+
+                </aside>
+            )}
+
+            {isEditorVisible && (isCreatingProduct || selectedProductId !== null) && (
                 <aside className="product-editor">
 
                 <div className="editor-header">
@@ -1179,6 +1883,141 @@ function ProductsPage({
                         Actif
                     </label>
 
+                </div>
+
+                <div className="product-editor-section">
+                    <div className="product-editor-section-heading">
+                        <h3>Fiches techniques</h3>
+                    </div>
+
+                    {(form.technical_documents || []).length > 0 ? (
+                        <div className="technical-document-list">
+                            {(form.technical_documents || []).map(
+                                document => (
+                                    <a
+                                        key={document.id}
+                                        href={document.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        <span>{document.title}</span>
+                                        <small>{document.language || document.source}</small>
+                                    </a>
+                                )
+                            )}
+                        </div>
+                    ) : (
+                        <p className="empty-editor-note">
+                            Aucune fiche technique synchronisée.
+                        </p>
+                    )}
+                </div>
+
+                <div className="product-editor-section">
+                    <div className="product-editor-section-heading">
+                        <h3>Pouvoir couvrant</h3>
+                        <button
+                            type="button"
+                            onClick={addCoverageOption}
+                        >
+                            Ajouter
+                        </button>
+                    </div>
+
+                    <div className="coverage-option-list">
+                        {(form.coverage_options || []).map(
+                            (coverageOption, index) => (
+                                <div
+                                    key={index}
+                                    className="coverage-option-row"
+                                >
+                                    <select
+                                        value={coverageOption.coverage_type}
+                                        onChange={
+                                            event =>
+                                                updateCoverageOption(
+                                                    index,
+                                                    "coverage_type",
+                                                    event.target.value
+                                                )
+                                        }
+                                    >
+                                        <option value="thickness">Épaisseur</option>
+                                        <option value="tile_size">Format tuile</option>
+                                    </select>
+
+                                    <input
+                                        type="text"
+                                        value={
+                                            coverageOption.coverage_type === "thickness" ?
+                                                coverageOption.thickness_mm ?? "" :
+                                                coverageOption.tile_size_label || ""
+                                        }
+                                        placeholder={
+                                            coverageOption.coverage_type === "thickness" ?
+                                                "mm" :
+                                                "ex: 12x24"
+                                        }
+                                        onChange={
+                                            event =>
+                                                updateCoverageOption(
+                                                    index,
+                                                    coverageOption.coverage_type === "thickness" ?
+                                                        "thickness_mm" :
+                                                        "tile_size_label",
+                                                    event.target.value
+                                                )
+                                        }
+                                    />
+
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={coverageOption.coverage_value ?? ""}
+                                        placeholder="Couvrant"
+                                        onChange={
+                                            event =>
+                                                updateCoverageOption(
+                                                    index,
+                                                    "coverage_value",
+                                                    event.target.value
+                                                )
+                                        }
+                                    />
+
+                                    <input
+                                        type="text"
+                                        value={coverageOption.coverage_unit}
+                                        placeholder="Unité"
+                                        onChange={
+                                            event =>
+                                                updateCoverageOption(
+                                                    index,
+                                                    "coverage_unit",
+                                                    event.target.value
+                                                )
+                                        }
+                                    />
+
+                                    <button
+                                        type="button"
+                                        onClick={
+                                            () =>
+                                                removeCoverageOption(index)
+                                        }
+                                    >
+                                        Retirer
+                                    </button>
+                                </div>
+                            )
+                        )}
+
+                        {(form.coverage_options || []).length === 0 && (
+                            <p className="empty-editor-note">
+                                Aucune option de couverture configurée.
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 <div className="editor-actions">

@@ -40,6 +40,20 @@ export type ProsolPriceUpdateResponse = {
 };
 
 
+export type ProsolTechnicalSheetSyncResponse = {
+    manufacturer: string;
+    checked: number;
+    updated: number;
+    documents: number;
+    failed: number;
+    errors: Array<{
+        product_id: number;
+        name: string;
+        error: string;
+    }>;
+};
+
+
 function parseResponse(response: Response) {
 
     if (!response.ok)
@@ -103,6 +117,30 @@ export function updateProsolPrices(): Promise<ProsolPriceUpdateResponse> {
     return fetch(
         API_URL +
         "/prosol/products/update-prices",
+        {
+            method: "POST"
+        }
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function syncProsolTechnicalSheets(
+    manufacturer = "Mapei"
+): Promise<ProsolTechnicalSheetSyncResponse> {
+
+    const params = new URLSearchParams(
+        {
+            manufacturer
+        }
+    );
+
+    return fetch(
+        API_URL +
+        "/prosol/products/sync-technical-sheets?" +
+        params.toString(),
         {
             method: "POST"
         }

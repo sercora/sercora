@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from app.database.database import SessionLocal
-from app.schemas.product import ProductCreate
+from app.schemas.product import ProductBulkUpdate, ProductCreate
 from scripts.import_olympia_price_list import import_olympia_price_list
 from scripts.import_prosol_price_list import import_price_list
 
@@ -62,6 +62,43 @@ def decimal_value(value):
     return float(value)
 
 
+def product_document_payload(row):
+
+    return {
+        "id": row.id,
+        "product_id": row.product_id,
+        "source": row.source,
+        "source_document_id": row.source_document_id,
+        "source_uuid": row.source_uuid,
+        "document_type": row.document_type,
+        "title": row.title,
+        "url": row.url,
+        "language": row.language,
+        "active": row.active,
+        "synced_at": (
+            row.synced_at.isoformat()
+            if row.synced_at
+            else None
+        )
+    }
+
+
+def product_coverage_payload(row):
+
+    return {
+        "id": row.id,
+        "product_id": row.product_id,
+        "coverage_type": row.coverage_type,
+        "label": row.label,
+        "thickness_mm": decimal_value(row.thickness_mm),
+        "tile_size_label": row.tile_size_label,
+        "coverage_value": decimal_value(row.coverage_value),
+        "coverage_unit": row.coverage_unit,
+        "sort_order": row.sort_order,
+        "active": row.active
+    }
+
+
 def product_payload(row):
 
     return {
@@ -96,6 +133,156 @@ def product_payload(row):
         "supplier_product_code": row.supplier_product_code,
         "active": row.active
     }
+
+
+def fetch_product_technical_documents(
+    db,
+    product_id: int
+):
+
+    rows = db.execute(
+        text(
+            """
+            SELECT
+                id,
+                product_id,
+                source,
+                source_document_id,
+                source_uuid,
+                document_type,
+                title,
+                url,
+                language,
+                active,
+                synced_at
+            FROM product_document
+            WHERE product_id = :product_id
+                AND active = TRUE
+                AND document_type = 'TDS'
+            ORDER BY
+                CASE
+                    WHEN language = 'FR' THEN 0
+                    WHEN language = 'EN' THEN 1
+                    ELSE 2
+                END,
+                title,
+                id
+            """
+        ),
+        {
+            "product_id": product_id
+        }
+    ).fetchall()
+
+    return [
+        product_document_payload(row)
+        for row in rows
+    ]
+
+
+def fetch_product_coverage_options(
+    db,
+    product_id: int
+):
+
+    rows = db.execute(
+        text(
+            """
+            SELECT
+                id,
+                product_id,
+                coverage_type,
+                label,
+                thickness_mm,
+                tile_size_label,
+                coverage_value,
+                coverage_unit,
+                sort_order,
+                active
+            FROM product_coverage_option
+            WHERE product_id = :product_id
+                AND active = TRUE
+            ORDER BY sort_order, id
+            """
+        ),
+        {
+            "product_id": product_id
+        }
+    ).fetchall()
+
+    return [
+        product_coverage_payload(row)
+        for row in rows
+    ]
+
+
+def sync_product_coverage_options(
+    db,
+    product_id: int,
+    product: ProductCreate
+):
+
+    db.execute(
+        text(
+            """
+            DELETE FROM product_coverage_option
+            WHERE product_id = :product_id
+            """
+        ),
+        {
+            "product_id": product_id
+        }
+    )
+
+    for index, coverage_option in enumerate(product.coverage_options):
+        if not coverage_option.active:
+            continue
+
+        if coverage_option.coverage_type not in (
+            "thickness",
+            "tile_size"
+        ):
+            continue
+
+        db.execute(
+            text(
+                """
+                INSERT INTO product_coverage_option (
+                    product_id,
+                    coverage_type,
+                    label,
+                    thickness_mm,
+                    tile_size_label,
+                    coverage_value,
+                    coverage_unit,
+                    sort_order,
+                    active
+                )
+                VALUES (
+                    :product_id,
+                    :coverage_type,
+                    :label,
+                    :thickness_mm,
+                    :tile_size_label,
+                    :coverage_value,
+                    :coverage_unit,
+                    :sort_order,
+                    :active
+                )
+                """
+            ),
+            {
+                "product_id": product_id,
+                "coverage_type": coverage_option.coverage_type,
+                "label": coverage_option.label,
+                "thickness_mm": coverage_option.thickness_mm,
+                "tile_size_label": coverage_option.tile_size_label,
+                "coverage_value": coverage_option.coverage_value,
+                "coverage_unit": coverage_option.coverage_unit,
+                "sort_order": coverage_option.sort_order or index,
+                "active": coverage_option.active
+            }
+        )
 
 
 def product_values(product: ProductCreate):
@@ -790,6 +977,104 @@ def apply_supplier_discount(
         db.close()
 
 
+@router.put("/products/bulk")
+def update_products_bulk(
+    update: ProductBulkUpdate
+):
+
+    product_ids = [
+        product_id
+        for product_id in update.product_ids
+        if product_id > 0
+    ]
+
+    if not product_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="No products selected"
+        )
+
+    allowed_fields = {
+        "product_type_id": update.product_type_id,
+        "manufacturer_name": update.manufacturer_name,
+        "category_name": update.category_name,
+        "default_unit_id": update.default_unit_id,
+        "default_purchase_price": update.default_purchase_price,
+        "msrp_price": update.msrp_price,
+        "active": update.active
+    }
+    assignments = []
+    values = {
+        "product_ids": product_ids
+    }
+
+    for field_name, field_value in allowed_fields.items():
+        if field_value is None:
+            continue
+
+        assignments.append(
+            field_name + " = :" + field_name
+        )
+        values[field_name] = field_value
+
+    if (
+        update.default_purchase_price is not None or
+        update.msrp_price is not None
+    ):
+        assignments.append(
+            "price_updated_at = CURRENT_TIMESTAMP"
+        )
+
+    db = SessionLocal()
+
+    try:
+        updated_count = 0
+
+        if assignments:
+            result = db.execute(
+                text(
+                    """
+                    UPDATE product
+                    SET """ + ", ".join(assignments) + """
+                    WHERE id = ANY(:product_ids)
+                    """
+                ),
+                values
+            )
+            updated_count = result.rowcount
+
+        if (
+            update.supplier_name is not None or
+            update.supplier_product_code is not None
+        ):
+            for product_id in product_ids:
+                sync_product_supplier(
+                    db,
+                    product_id,
+                    ProductCreate(
+                        product_type_id=update.product_type_id or 1,
+                        name="bulk",
+                        supplier_name=update.supplier_name,
+                        supplier_product_code=update.supplier_product_code,
+                        active=True
+                    )
+                )
+
+            updated_count = max(
+                updated_count,
+                len(product_ids)
+            )
+
+        db.commit()
+
+        return {
+            "updated": updated_count
+        }
+
+    finally:
+        db.close()
+
+
 @router.get("/products/{product_id}")
 def get_product(product_id: int):
 
@@ -824,16 +1109,26 @@ def get_product(product_id: int):
             {"id": product_id}
         ).fetchone()
 
-    finally:
-        db.close()
+        if row is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Product not found"
+            )
 
-    if row is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Product not found"
+        payload = product_payload(row)
+        payload["technical_documents"] = fetch_product_technical_documents(
+            db,
+            product_id
+        )
+        payload["coverage_options"] = fetch_product_coverage_options(
+            db,
+            product_id
         )
 
-    return product_payload(row)
+        return payload
+
+    finally:
+        db.close()
 
 
 @router.post("/products")
@@ -905,6 +1200,11 @@ def create_product(product: ProductCreate):
             row.id,
             product
         )
+        sync_product_coverage_options(
+            db,
+            row.id,
+            product
+        )
 
         db.commit()
 
@@ -965,6 +1265,11 @@ def update_product(
         )
 
         sync_product_supplier(
+            db,
+            product_id,
+            product
+        )
+        sync_product_coverage_options(
             db,
             product_id,
             product
