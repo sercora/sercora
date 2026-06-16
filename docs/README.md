@@ -7,6 +7,7 @@ Le dossier `docs/` contient la documentation technique et operationnelle de Serc
 - `ARCHITECTURE.md`: organisation globale du frontend, backend, base de donnees, NAS et integrations.
 - `API.md`: endpoints FastAPI principaux et payloads utiles.
 - `OPERATIONS.md`: deploiement, verification, services, NAS, SMTP, Snipe-IT et depannage.
+- `WIKI_MIGRATION.md`: validation du remplacement de `sercora-wiki` par la documentation integree.
 
 Les README des sous-dossiers completent cette documentation:
 
