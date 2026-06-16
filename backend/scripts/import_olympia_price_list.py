@@ -155,6 +155,9 @@ def extract_rows(path: Path):
                         "FINI": db_text(label_parts["finish"]),
                         "FORMAT": db_text(current_size, 100),
                         "CATÉGORIE": db_text(current_category),
+                        "PRIX PC": str(
+                            Decimal(match.group("sf_price"))
+                        ),
                         "PRIX MCX": str(
                             Decimal(match.group("unit_price"))
                         ),

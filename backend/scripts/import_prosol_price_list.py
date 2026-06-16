@@ -613,6 +613,10 @@ def product_values(
 ):
 
     code = product_code(row)
+    square_foot_price_supplier = supplier_name in (
+        "Centura",
+        "Olympia"
+    )
     list_price_columns = (
         (
             "PRIX PC",
@@ -620,7 +624,7 @@ def product_values(
             "PRIX MCX",
             "RETAIL PRICE \nAPRIL 1, 2026 /\nPRIX DE DÉTAIL \n1 AVRIL 2026\nCAD"
         )
-        if supplier_name == "Centura"
+        if square_foot_price_supplier
         else (
             "LIST PRICE",
             "PRIX MCX",
@@ -631,7 +635,7 @@ def product_values(
     default_unit_value = (
         "PC"
         if (
-            supplier_name == "Centura" and
+            square_foot_price_supplier and
             decimal_value(row_value(row, "PRIX PC")) is not None
         )
         else row_value(
