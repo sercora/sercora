@@ -129,6 +129,7 @@ export type EstimateLineInput = {
     product_id: number;
     surface_type_id: number;
     unit_id: number;
+    insert_position?: number | null;
     grout_color: string | null;
     loss_percent: number;
     purchase_price: number;
@@ -422,5 +423,43 @@ export function updateEstimateLine(
         }
 
     );
+
+}
+
+
+export function updateEstimateLinePosition(
+    lineId: number,
+    position: number
+) {
+
+    return fetch(
+
+        API_URL +
+        "/estimate-lines/" +
+        lineId +
+        "/position",
+
+        {
+
+            method: "PUT",
+
+            headers: {
+
+                "Content-Type":
+                    "application/json"
+
+            },
+
+            body: JSON.stringify(
+                {
+                    position
+                }
+            )
+
+        }
+
+    )
+
+    .then(parseResponse);
 
 }

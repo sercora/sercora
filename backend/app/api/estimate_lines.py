@@ -3,9 +3,45 @@ from sqlalchemy import text
 
 from app.database.database import SessionLocal
 from app.schemas.estimate_line import EstimateLineCreate
+from app.schemas.estimate_line import EstimateLinePositionUpdate
 from app.schemas.estimate_line import EstimateLineUpdate
 
 router = APIRouter()
+
+
+def normalize_line_order(
+    db,
+    estimate_id: int
+):
+
+    db.execute(
+        text(
+            """
+            WITH ordered_lines AS (
+                SELECT
+                    id,
+                    row_number() OVER (
+                        ORDER BY
+                            CASE
+                                WHEN COALESCE(sort_order, 0) > 0
+                                    THEN sort_order
+                                ELSE 2147483647
+                            END,
+                            id
+                    ) AS line_number
+                FROM estimate_line
+                WHERE estimate_id = :estimate_id
+            )
+            UPDATE estimate_line l
+            SET sort_order = ordered_lines.line_number
+            FROM ordered_lines
+            WHERE l.id = ordered_lines.id
+            """
+        ),
+        {
+            "estimate_id": estimate_id
+        }
+    )
 
 
 @router.get("/estimate-lines")
@@ -108,6 +144,50 @@ def create_estimate_line(line: EstimateLineCreate):
 
     db = SessionLocal()
 
+    normalize_line_order(
+        db,
+        line.estimate_id
+    )
+
+    line_count = db.execute(
+        text(
+            """
+            SELECT count(*) AS line_count
+            FROM estimate_line
+            WHERE estimate_id = :estimate_id
+            """
+        ),
+        {
+            "estimate_id": line.estimate_id
+        }
+    ).fetchone().line_count
+
+    insert_position = (
+        line.insert_position
+        if line.insert_position and line.insert_position > 0
+        else line_count + 1
+    )
+
+    insert_position = min(
+        insert_position,
+        line_count + 1
+    )
+
+    db.execute(
+        text(
+            """
+            UPDATE estimate_line
+            SET sort_order = sort_order + 1
+            WHERE estimate_id = :estimate_id
+                AND sort_order >= :insert_position
+            """
+        ),
+        {
+            "estimate_id": line.estimate_id,
+            "insert_position": insert_position
+        }
+    )
+
     row = db.execute(
         text(
             """
@@ -121,7 +201,8 @@ def create_estimate_line(line: EstimateLineCreate):
                 loss_percent,
                 purchase_price,
                 profit_percent,
-                installation_cost
+                installation_cost,
+                sort_order
             )
             VALUES
             (
@@ -133,7 +214,8 @@ def create_estimate_line(line: EstimateLineCreate):
                 :loss_percent,
                 :purchase_price,
                 :profit_percent,
-                :installation_cost
+                :installation_cost,
+                :sort_order
             )
             RETURNING id
             """
@@ -147,7 +229,8 @@ def create_estimate_line(line: EstimateLineCreate):
             "loss_percent": line.loss_percent,
             "purchase_price": line.purchase_price,
             "profit_percent": line.profit_percent,
-            "installation_cost": line.installation_cost
+            "installation_cost": line.installation_cost,
+            "sort_order": insert_position
         }
     ).fetchone()
 
@@ -180,6 +263,146 @@ def create_estimate_line(line: EstimateLineCreate):
     return {
         "id": row.id,
         "message": "Estimate line created"
+    }
+
+
+@router.put("/estimate-lines/{line_id}/position")
+def update_estimate_line_position(
+    line_id: int,
+    update: EstimateLinePositionUpdate
+):
+
+    db = SessionLocal()
+
+    line_row = db.execute(
+        text(
+            """
+            SELECT
+                id,
+                estimate_id,
+                sort_order
+            FROM estimate_line
+            WHERE id = :id
+            """
+        ),
+        {
+            "id": line_id
+        }
+    ).fetchone()
+
+    if line_row is None:
+
+        db.close()
+
+        raise HTTPException(
+            status_code=404,
+            detail="Estimate line not found"
+        )
+
+    normalize_line_order(
+        db,
+        line_row.estimate_id
+    )
+
+    refreshed_line = db.execute(
+        text(
+            """
+            SELECT sort_order
+            FROM estimate_line
+            WHERE id = :id
+            """
+        ),
+        {
+            "id": line_id
+        }
+    ).fetchone()
+
+    line_count = db.execute(
+        text(
+            """
+            SELECT count(*) AS line_count
+            FROM estimate_line
+            WHERE estimate_id = :estimate_id
+            """
+        ),
+        {
+            "estimate_id": line_row.estimate_id
+        }
+    ).fetchone().line_count
+
+    target_position = max(
+        1,
+        min(
+            update.position,
+            line_count
+        )
+    )
+
+    current_position = refreshed_line.sort_order
+
+    if target_position < current_position:
+        db.execute(
+            text(
+                """
+                UPDATE estimate_line
+                SET sort_order = sort_order + 1
+                WHERE estimate_id = :estimate_id
+                    AND sort_order >= :target_position
+                    AND sort_order < :current_position
+                """
+            ),
+            {
+                "estimate_id": line_row.estimate_id,
+                "target_position": target_position,
+                "current_position": current_position
+            }
+        )
+
+    elif target_position > current_position:
+        db.execute(
+            text(
+                """
+                UPDATE estimate_line
+                SET sort_order = sort_order - 1
+                WHERE estimate_id = :estimate_id
+                    AND sort_order <= :target_position
+                    AND sort_order > :current_position
+                """
+            ),
+            {
+                "estimate_id": line_row.estimate_id,
+                "target_position": target_position,
+                "current_position": current_position
+            }
+        )
+
+    db.execute(
+        text(
+            """
+            UPDATE estimate_line
+            SET sort_order = :target_position
+            WHERE id = :id
+            """
+        ),
+        {
+            "id": line_id,
+            "target_position": target_position
+        }
+    )
+
+    normalize_line_order(
+        db,
+        line_row.estimate_id
+    )
+
+    db.commit()
+
+    db.close()
+
+    return {
+        "id": line_id,
+        "position": target_position,
+        "message": "Estimate line position updated"
     }
 
 
@@ -241,7 +464,9 @@ def delete_estimate_line(line_id: int):
     row = db.execute(
         text(
             """
-            SELECT id
+            SELECT
+                id,
+                estimate_id
             FROM estimate_line
             WHERE id = :id
             """
@@ -282,6 +507,11 @@ def delete_estimate_line(line_id: int):
         {
             "id": line_id
         }
+    )
+
+    normalize_line_order(
+        db,
+        row.estimate_id
     )
 
     db.commit()

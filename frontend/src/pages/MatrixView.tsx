@@ -30,6 +30,7 @@ import {
     fetchSurfaceTypes,
     updateEstimateMatrixSummary,
     updateEstimateRoom,
+    updateEstimateLinePosition,
     updateEstimateLine as saveEstimateLine,
     updateEstimateQuantity as saveEstimateQuantity
 } from "../utils/matrixApi";
@@ -299,6 +300,7 @@ function MatrixView({
     const [newRoomFloor, setNewRoomFloor] = useState("");
     const [newRoomName, setNewRoomName] = useState("");
     const [productSearch, setProductSearch] = useState("");
+    const [newLinePosition, setNewLinePosition] = useState("");
     const [productResults, setProductResults] = useState<Product[]>([]);
     const [selectedProductId, setSelectedProductId] = useState("");
     const [matrixActionStatus, setMatrixActionStatus] = useState("");
@@ -496,9 +498,11 @@ function MatrixView({
 
         const supplier =
             String(
-                params.data?.manufacturer_name ||
-                params.data?.product_name ||
-                ""
+                [
+                    params.data?.supplier_names,
+                    params.data?.manufacturer_name,
+                    params.data?.product_name
+                ].filter(Boolean).join(" ")
             ).toLowerCase();
 
         if (supplier.includes("olympia"))
@@ -509,6 +513,9 @@ function MatrixView({
 
         if (supplier.includes("schluter"))
             return "supplier-schluter";
+
+        if (supplier.includes("centura"))
+            return "supplier-centura";
 
         return "";
 
@@ -605,6 +612,50 @@ function MatrixView({
             params.newValue === params.oldValue
         )
             return;
+
+        if (field === "line_number") {
+
+            const nextPosition =
+                parseNumber(
+                    params.newValue
+                );
+
+            if (nextPosition <= 0) {
+                refreshGrid();
+                return;
+            }
+
+            setIsMatrixActionLoading(true);
+            setMatrixActionStatus("");
+
+            updateEstimateLinePosition(
+                params.data.line_id,
+                nextPosition
+            )
+
+            .then(
+                () => {
+                    setMatrixActionStatus("Ligne déplacée.");
+                    return reloadMatrix();
+                }
+            )
+
+            .catch(
+                () => {
+                    setMatrixActionStatus("Déplacement de ligne impossible.");
+                    refreshGrid();
+                }
+            )
+
+            .finally(
+                () => {
+                    setIsMatrixActionLoading(false);
+                }
+            );
+
+            return;
+
+        }
 
         if (field === "surface_name") {
 
@@ -918,6 +969,12 @@ function MatrixView({
                     line_id:
                         line.line_id,
 
+                    line_number:
+                        line.line_number,
+
+                    sort_order:
+                        line.sort_order,
+
                     surface_type_id:
                         line.surface_type_id,
 
@@ -929,6 +986,9 @@ function MatrixView({
 
                     manufacturer_name:
                         line.manufacturer_name,
+
+                    supplier_names:
+                        line.supplier_names,
 
                     unit_name:
                         line.unit_name,
@@ -1149,6 +1209,23 @@ function MatrixView({
                 resizable: false,
                 suppressMovable: true,
                 cellClass: "line-select-cell"
+            },
+
+            {
+                headerName: "#",
+                field: "line_number",
+                width: 54,
+                minWidth: 48,
+                maxWidth: 64,
+                pinned: "left",
+                editable: true,
+                valueParser: (params: any) =>
+                    parseNumber(params.newValue),
+                cellClass: [
+                    "editable-cell",
+                    "numeric-cell",
+                    "line-number-cell"
+                ]
             },
 
             {
@@ -1884,9 +1961,14 @@ function MatrixView({
                     surfaceTypes[0].id
                 ];
 
+        const insertPosition =
+            nullableNumber(
+                newLinePosition
+            );
+
         const lines: EstimateLineInput[] =
             targetSurfaceTypeIds.map(
-                surfaceTypeId => ({
+                (surfaceTypeId, index) => ({
                     estimate_id:
                         matrixSummary.estimate.id,
                     product_id:
@@ -1895,6 +1977,10 @@ function MatrixView({
                         surfaceTypeId,
                     unit_id:
                         unitId,
+                    insert_position:
+                        insertPosition ?
+                            insertPosition + index :
+                            null,
                     grout_color:
                         product.default_grout_color,
                     loss_percent:
@@ -2087,6 +2173,18 @@ function MatrixView({
                     >
                         Chercher
                     </button>
+                    <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={newLinePosition}
+                        onChange={
+                            event =>
+                                setNewLinePosition(event.target.value)
+                        }
+                        placeholder="Position"
+                        className="line-position-input"
+                    />
                     <div className="matrix-product-results">
                         {productResults.map(
                             product => (

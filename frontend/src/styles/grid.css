@@ -494,6 +494,15 @@
 }
 
 
+.matrix-action-row.product-row input.line-position-input {
+
+    flex: 0 0 92px;
+
+    min-width: 92px;
+
+}
+
+
 .matrix-action-row select {
 
     flex: 1 1 260px;
@@ -1663,6 +1672,20 @@ Couleurs fournisseurs
 .sercora-grid .supplier-schluter {
 
     background-color: rgba(73, 169, 95, 0.30) !important;
+
+}
+
+
+.sercora-grid .supplier-centura {
+
+    background-color: rgba(196, 137, 39, 0.30) !important;
+
+}
+
+
+.sercora-grid .line-number-cell {
+
+    font-weight: 700;
 
 }
 

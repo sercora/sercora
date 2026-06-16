@@ -25,6 +25,41 @@ class MatrixSummaryUpdate(BaseModel):
     warranty_years: int | None = Field(default=None, ge=0)
 
 
+def normalize_line_order(
+    db,
+    estimate_id: int
+):
+
+    db.execute(
+        text(
+            """
+            WITH ordered_lines AS (
+                SELECT
+                    id,
+                    row_number() OVER (
+                        ORDER BY
+                            CASE
+                                WHEN COALESCE(sort_order, 0) > 0
+                                    THEN sort_order
+                                ELSE 2147483647
+                            END,
+                            id
+                    ) AS line_number
+                FROM estimate_line
+                WHERE estimate_id = :estimate_id
+            )
+            UPDATE estimate_line l
+            SET sort_order = ordered_lines.line_number
+            FROM ordered_lines
+            WHERE l.id = ordered_lines.id
+            """
+        ),
+        {
+            "estimate_id": estimate_id
+        }
+    )
+
+
 def iso_date(value):
 
     if not value:
@@ -270,6 +305,13 @@ def get_matrix(estimate_id: int):
 
     db = SessionLocal()
 
+    normalize_line_order(
+        db,
+        estimate_id
+    )
+
+    db.commit()
+
     room_rows = db.execute(
         text(
             """
@@ -315,11 +357,15 @@ def get_matrix(estimate_id: int):
 
                 l.id AS line_id,
 
+                l.sort_order,
+
                 l.surface_type_id,
 
                 p.name AS product_name,
 
                 p.manufacturer_name,
+
+                supplier_info.supplier_names,
 
                 s.name AS surface_name,
 
@@ -358,6 +404,17 @@ def get_matrix(estimate_id: int):
             JOIN unit u
                 ON u.id = l.unit_id
 
+            LEFT JOIN LATERAL (
+                SELECT
+                    string_agg(sup.name, ', ' ORDER BY sup.name)
+                        AS supplier_names
+                FROM product_supplier ps
+                JOIN supplier sup
+                    ON sup.id = ps.supplier_id
+                WHERE ps.product_id = p.id
+            ) supplier_info
+                ON TRUE
+
             LEFT JOIN estimate_quantity q
                 ON q.estimate_line_id = l.id
 
@@ -368,6 +425,7 @@ def get_matrix(estimate_id: int):
             WHERE l.estimate_id = :estimate_id
 
             ORDER BY
+                l.sort_order,
                 l.id,
                 NULLIF(r.phase_name, '') NULLS LAST,
                 NULLIF(r.floor_name, '') NULLS LAST,
@@ -392,11 +450,17 @@ def get_matrix(estimate_id: int):
 
                 "line_id": line_id,
 
+                "line_number": row.sort_order,
+
+                "sort_order": row.sort_order,
+
                 "surface_type_id": row.surface_type_id,
 
                 "product_name": row.product_name,
 
                 "manufacturer_name": row.manufacturer_name,
+
+                "supplier_names": row.supplier_names,
 
                 "surface_name": row.surface_name,
 
