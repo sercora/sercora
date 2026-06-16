@@ -808,7 +808,11 @@ function MatrixView({
                     "matrix-summary-row",
                 params.data?.summary_kind === "material" ?
                     "matrix-summary-material" :
-                    "matrix-summary-installation",
+                    params.data?.summary_kind === "installation" ?
+                        "matrix-summary-installation" :
+                        params.data?.summary_kind === "hours" ?
+                            "matrix-summary-hours" :
+                            "matrix-summary-total-local",
                 params.data?.surface_group === "CM" ?
                     "matrix-summary-cm" :
                     params.data?.surface_group === "CP" ?
@@ -1617,6 +1621,45 @@ function MatrixView({
 
         }
 
+        function hoursRow(
+            row: any
+        ) {
+
+            return {
+                is_summary_row: true,
+                summary_kind: "hours",
+                surface_name:
+                    row.surface_name,
+                surface_group:
+                    row.surface_group,
+                product_name:
+                    "Nbr d'heure_" + row.surface_group,
+                install_hours:
+                    Number(row.install_hours || 0).toFixed(2),
+                allocated_install_hours:
+                    Number(row.allocated_install_hours || 0).toFixed(2),
+                ...Object.fromEntries(
+                    roomFields.map(
+                        roomField => [
+                            roomField,
+                            (
+                                hourlyRate ?
+                                    Number(
+                                        row[
+                                            roomField +
+                                                "_installation"
+                                        ] || 0
+                                    ) / hourlyRate :
+                                    0
+                            ).toFixed(2)
+                        ]
+                    )
+                )
+            };
+
+        }
+
+
         const surfaceOrder = [
             "CM",
             "CP"
@@ -1659,6 +1702,10 @@ function MatrixView({
             ...summaryPairRows(
                 totalRow,
                 true
+            ),
+            ...orderedSurfaceTotals.map(
+                row =>
+                    hoursRow(row)
             )
         ];
 

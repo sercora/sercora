@@ -23,7 +23,7 @@
 
     content: "";
 
-    flex: 0 0 72px;
+    flex: 0 0 16px;
 
 }
 
@@ -2410,6 +2410,26 @@ Couleurs fournisseurs
 .sercora-grid .matrix-grand-total-row .ag-cell {
 
     background-color: #d9eaf7 !important;
+
+}
+
+
+.sercora-grid .matrix-summary-hours .ag-cell {
+
+    background-color: #ffffff !important;
+
+    color: #111111;
+
+    font-weight: 400;
+
+}
+
+
+.sercora-grid .matrix-summary-hours .summary-label-cell {
+
+    color: #111111;
+
+    font-weight: 700;
 
 }
 
