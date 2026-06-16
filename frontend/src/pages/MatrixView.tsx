@@ -305,6 +305,9 @@ function MatrixView({
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [isProductSaving, setIsProductSaving] = useState(false);
     const [productEditStatus, setProductEditStatus] = useState("");
+    const [tileSurfaceProduct, setTileSurfaceProduct] = useState<Product | null>(null);
+    const [selectedTileSurfaceIds, setSelectedTileSurfaceIds] = useState<number[]>([]);
+    const [tileSurfaceStatus, setTileSurfaceStatus] = useState("");
     const [folderPath, setFolderPath] = useState("");
     const [rootName, setRootName] = useState("");
     const [folderItems, setFolderItems] = useState<EstimateFolderItem[]>([]);
@@ -1569,8 +1572,58 @@ function MatrixView({
     }
 
 
-    function createLineForProduct(
+    function isTileProduct(
         product: Product
+    ) {
+
+        return String(
+            product.product_type_name || ""
+        ).trim().toLowerCase() === "tuile";
+
+    }
+
+
+    function openTileSurfaceSelector(
+        product: Product
+    ) {
+
+        setTileSurfaceProduct(product);
+        setSelectedTileSurfaceIds([]);
+        setTileSurfaceStatus("");
+
+    }
+
+
+    function toggleTileSurface(
+        surfaceId: number,
+        checked: boolean
+    ) {
+
+        setSelectedTileSurfaceIds(
+            previousSurfaceIds => {
+                if (checked)
+                    return Array.from(
+                        new Set(
+                            [
+                                ...previousSurfaceIds,
+                                surfaceId
+                            ]
+                        )
+                    );
+
+                return previousSurfaceIds.filter(
+                    previousSurfaceId =>
+                        previousSurfaceId !== surfaceId
+                );
+            }
+        );
+
+    }
+
+
+    function createLineForProduct(
+        product: Product,
+        surfaceTypeIds?: number[]
     ) {
 
         if (!matrixSummary)
@@ -1584,42 +1637,73 @@ function MatrixView({
             return;
         }
 
+        const unitId =
+            product.default_unit_id;
+
         if (!surfaceTypes.length) {
             setMatrixActionStatus("Aucune surface active disponible.");
             return;
         }
 
-        const line: EstimateLineInput = {
-            estimate_id:
-                matrixSummary.estimate.id,
-            product_id:
-                product.id,
-            surface_type_id:
-                surfaceTypes[0].id,
-            unit_id:
-                product.default_unit_id,
-            grout_color:
-                product.default_grout_color,
-            loss_percent:
-                15,
-            purchase_price:
-                product.default_purchase_price ?? 0,
-            profit_percent:
-                matrixSummary.rates.global_profit_percent ?? 20,
-            installation_cost:
-                0
-        };
+        if (
+            !surfaceTypeIds &&
+            isTileProduct(product)
+        ) {
+            openTileSurfaceSelector(product);
+            return;
+        }
+
+        const targetSurfaceTypeIds =
+            surfaceTypeIds?.length ?
+                surfaceTypeIds :
+                [
+                    surfaceTypes[0].id
+                ];
+
+        const lines: EstimateLineInput[] =
+            targetSurfaceTypeIds.map(
+                surfaceTypeId => ({
+                    estimate_id:
+                        matrixSummary.estimate.id,
+                    product_id:
+                        product.id,
+                    surface_type_id:
+                        surfaceTypeId,
+                    unit_id:
+                        unitId,
+                    grout_color:
+                        product.default_grout_color,
+                    loss_percent:
+                        15,
+                    purchase_price:
+                        product.default_purchase_price ?? 0,
+                    profit_percent:
+                        matrixSummary.rates.global_profit_percent ?? 20,
+                    installation_cost:
+                        0
+                })
+            );
 
         setIsMatrixActionLoading(true);
         setMatrixActionStatus("");
 
-        createEstimateLine(
-            line
+        Promise.all(
+            lines.map(
+                line =>
+                    createEstimateLine(line)
+            )
         )
 
         .then(
             () => {
-                setMatrixActionStatus("Ligne ajoutée.");
+                setTileSurfaceProduct(null);
+                setSelectedTileSurfaceIds([]);
+                setTileSurfaceStatus("");
+                setMatrixActionStatus(
+                    lines.length > 1 ?
+                        lines.length + " lignes ajoutées." :
+                        "Ligne ajoutée."
+                );
                 return reloadMatrix();
             }
         )
@@ -1634,6 +1718,24 @@ function MatrixView({
             () => {
                 setIsMatrixActionLoading(false);
             }
+        );
+
+    }
+
+
+    function confirmTileSurfaces() {
+
+        if (!tileSurfaceProduct)
+            return;
+
+        if (!selectedTileSurfaceIds.length) {
+            setTileSurfaceStatus("Sélectionner au moins une surface.");
+            return;
+        }
+
+        createLineForProduct(
+            tileSurfaceProduct,
+            selectedTileSurfaceIds
         );
 
     }
@@ -2042,6 +2144,97 @@ function MatrixView({
                             disabled={isProductSaving}
                         >
                             Sauvegarder et ajouter ligne
+                        </button>
+                    </footer>
+                </section>
+            </div>
+        );
+
+    }
+
+
+    function renderTileSurfaceSelector() {
+
+        if (!tileSurfaceProduct)
+            return null;
+
+        return (
+            <div className="matrix-modal-backdrop">
+                <section className="matrix-product-modal tile-surface-modal">
+                    <header>
+                        <h2>Surfaces pour la tuile</h2>
+                        <button
+                            type="button"
+                            onClick={
+                                () => {
+                                    setTileSurfaceProduct(null);
+                                    setSelectedTileSurfaceIds([]);
+                                    setTileSurfaceStatus("");
+                                }
+                            }
+                        >
+                            Fermer
+                        </button>
+                    </header>
+
+                    <div className="tile-surface-content">
+                        <div className="tile-surface-product">
+                            {[
+                                tileSurfaceProduct.manufacturer_name,
+                                tileSurfaceProduct.name,
+                                tileSurfaceProduct.size_name
+                            ].filter(Boolean).join(" - ")}
+                        </div>
+
+                        <div className="tile-surface-options">
+                            {surfaceTypes.map(
+                                surface => (
+                                    <label key={surface.id}>
+                                        <input
+                                            type="checkbox"
+                                            checked={
+                                                selectedTileSurfaceIds.includes(
+                                                    surface.id
+                                                )
+                                            }
+                                            onChange={
+                                                event =>
+                                                    toggleTileSurface(
+                                                        surface.id,
+                                                        event.target.checked
+                                                    )
+                                            }
+                                        />
+                                        <span>{surface.name}</span>
+                                    </label>
+                                )
+                            )}
+                        </div>
+                    </div>
+
+                    <footer>
+                        {tileSurfaceStatus && (
+                            <span>{tileSurfaceStatus}</span>
+                        )}
+                        <button
+                            type="button"
+                            onClick={
+                                () => {
+                                    setTileSurfaceProduct(null);
+                                    setSelectedTileSurfaceIds([]);
+                                    setTileSurfaceStatus("");
+                                }
+                            }
+                            disabled={isMatrixActionLoading}
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="button"
+                            onClick={confirmTileSurfaces}
+                            disabled={isMatrixActionLoading}
+                        >
+                            Ajouter les lignes
                         </button>
                     </footer>
                 </section>
@@ -2465,6 +2658,8 @@ function MatrixView({
             {renderMatrixSummary()}
 
             {renderMatrixActions()}
+
+            {renderTileSurfaceSelector()}
 
             {renderProductEditor()}
 
