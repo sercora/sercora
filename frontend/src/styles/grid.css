@@ -2148,6 +2148,46 @@
 }
 
 
+.matrix-toolbar-subtotal {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    height: 26px;
+
+    padding: 0 10px;
+
+    border: 1px solid #8aa7d6;
+
+    border-radius: 3px;
+
+    background-color: #ffffff;
+
+    color: #1f252d;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    line-height: 24px;
+
+    white-space: nowrap;
+
+}
+
+
+.matrix-toolbar-subtotal span {
+
+    color: #5c6670;
+
+    font-weight: 700;
+
+}
+
+
 .sercora-grid {
 
     --sercora-zoom: 1;

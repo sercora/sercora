@@ -80,6 +80,17 @@ const ZOOM_LEVELS: Record<string, number> = {
 
 const WORK_HOURS_PER_DAY = 8;
 
+const NUMERIC_MATRIX_FIELDS = new Set(
+    [
+        "line_number",
+        "loss_percent",
+        "purchase_price",
+        "profit_percent",
+        "installation_cost",
+        "manpower_multiplier"
+    ]
+);
+
 const GRID_LOCALE_TEXT = {
     noRowsToShow: "Aucune ligne à afficher",
     loadingOoo: "Chargement...",
@@ -348,6 +359,11 @@ function MatrixView({
     const [selectedTileSurfaceIds, setSelectedTileSurfaceIds] = useState<number[]>([]);
     const [tileSurfaceStatus, setTileSurfaceStatus] = useState("");
     const [selectedLineIds, setSelectedLineIds] = useState<number[]>([]);
+    const [rangeSubtotal, setRangeSubtotal] = useState<{
+        count: number;
+        sum: number;
+        average: number;
+    } | null>(null);
     const [editingRoom, setEditingRoom] = useState<EstimateRoomColumn | null>(null);
     const [roomEditForm, setRoomEditForm] = useState({
         phase_name: "",
@@ -856,6 +872,153 @@ function MatrixView({
                 (row: any) =>
                     Number(row.line_id)
             ).filter(Boolean)
+        );
+
+    }
+
+
+    function isNumericMatrixColumn(
+        column: any
+    ) {
+
+        const columnDefinition =
+            column?.getColDef?.() || {};
+
+        const field =
+            columnDefinition.field || "";
+
+        if (
+            NUMERIC_MATRIX_FIELDS.has(field) ||
+            roomColumns.some(
+                room =>
+                    room.key === field
+            )
+        )
+            return true;
+
+        const cellClass =
+            columnDefinition.cellClass;
+
+        return Array.isArray(cellClass) &&
+            cellClass.includes("numeric-cell");
+
+    }
+
+
+    function numericCellValue(
+        value: any
+    ) {
+
+        if (typeof value === "number")
+            return Number.isFinite(value) ?
+                value :
+                null;
+
+        if (typeof value !== "string")
+            return null;
+
+        const normalizedValue =
+            value
+                .replace(/\s/g, "")
+                .replace("$", "")
+                .replace("%", "")
+                .replace(",", ".");
+
+        if (!normalizedValue)
+            return null;
+
+        const parsedValue =
+            Number(normalizedValue);
+
+        return Number.isFinite(parsedValue) ?
+            parsedValue :
+            null;
+
+    }
+
+
+    function onRangeSelectionChanged(
+        params: any
+    ) {
+
+        if (!params.finished)
+            return;
+
+        const ranges =
+            params.api?.getCellRanges?.() || [];
+
+        if (!ranges.length) {
+            setRangeSubtotal(null);
+            return;
+        }
+
+        let sum = 0;
+        let count = 0;
+
+        ranges.forEach(
+            (range: any) => {
+                const startIndex =
+                    Number(range.startRow?.rowIndex ?? 0);
+                const endIndex =
+                    Number(range.endRow?.rowIndex ?? startIndex);
+                const firstIndex =
+                    Math.min(
+                        startIndex,
+                        endIndex
+                    );
+                const lastIndex =
+                    Math.max(
+                        startIndex,
+                        endIndex
+                    );
+
+                range.columns.filter(
+                    (column: any) =>
+                        isNumericMatrixColumn(column)
+                ).forEach(
+                    (column: any) => {
+                        for (
+                            let rowIndex = firstIndex;
+                            rowIndex <= lastIndex;
+                            rowIndex += 1
+                        ) {
+                            const rowNode =
+                                params.api.getDisplayedRowAtIndex(rowIndex);
+
+                            if (
+                                !rowNode ||
+                                rowNode.data?.is_summary_row
+                            )
+                                continue;
+
+                            const value =
+                                numericCellValue(
+                                    params.api.getValue(
+                                        column,
+                                        rowNode
+                                    )
+                                );
+
+                            if (value === null)
+                                continue;
+
+                            sum += value;
+                            count += 1;
+                        }
+                    }
+                );
+            }
+        );
+
+        setRangeSubtotal(
+            count ?
+                {
+                    count,
+                    sum,
+                    average:
+                        sum / count
+                } :
+                null
         );
 
     }
@@ -5255,6 +5418,7 @@ function MatrixView({
             <ZoomToolbar
                 zoom={zoom}
                 contextLabel={"Soumissions " + estimateMenu.toLowerCase()}
+                rangeSubtotal={rangeSubtotal}
                 selectedLineCount={selectedLineIds.length}
                 onDeleteSelectedLines={deleteSelectedLines}
                 onFitToScreen={fitToScreen}
@@ -5269,6 +5433,7 @@ function MatrixView({
                 getRowClass={getMatrixRowClass}
                 onCellValueChanged={onCellValueChanged}
                 onCellClicked={onCellClicked}
+                onRangeSelectionChanged={onRangeSelectionChanged}
                 onSelectionChanged={onSelectionChanged}
                 zoomScale={ZOOM_LEVELS[zoom] || 1}
                 localeText={GRID_LOCALE_TEXT}

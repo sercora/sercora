@@ -15,6 +15,7 @@ type MatrixGridProps = {
     getRowClass?: (params: any) => string | string[];
     onCellValueChanged: (params: any) => void;
     onCellClicked?: (params: any) => void;
+    onRangeSelectionChanged?: (params: any) => void;
     onSelectionChanged?: (params: any) => void;
     zoomScale: number;
     localeText: Record<string, string>;
@@ -31,6 +32,7 @@ const MatrixGrid = forwardRef<any, MatrixGridProps>(
             getRowClass,
             onCellValueChanged,
             onCellClicked,
+            onRangeSelectionChanged,
             onSelectionChanged,
             zoomScale,
             localeText
@@ -67,6 +69,10 @@ const MatrixGrid = forwardRef<any, MatrixGridProps>(
 
                     onCellClicked={
                         onCellClicked
+                    }
+
+                    onRangeSelectionChanged={
+                        onRangeSelectionChanged
                     }
 
                     onSelectionChanged={
