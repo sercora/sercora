@@ -4,6 +4,9 @@ set -e
 
 echo "Building React staging..."
 
+cd /home/simon/sercora-staging
+node scripts/generate-operations-backlog.mjs
+
 cd /home/simon/sercora-staging/frontend
 
 VITE_API_URL=/api npm run build

@@ -4,6 +4,9 @@ set -e
 
 echo "Building React..."
 
+cd ~/sercora
+node scripts/generate-operations-backlog.mjs
+
 cd ~/sercora/frontend
 
 VITE_API_URL=https://api.serco.pro npm run build
