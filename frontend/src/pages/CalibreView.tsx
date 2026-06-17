@@ -12,6 +12,8 @@ import CalibreCanvas from "../components/calibre/CalibreCanvas";
 import CalibreLayersPanel from "../components/calibre/CalibreLayersPanel";
 import CalibreToolbar from "../components/calibre/CalibreToolbar";
 import {
+    CALIBRE_MAX_ZOOM,
+    CALIBRE_MIN_ZOOM,
     DEFAULT_CALIBRE_CALIBRATION,
     DEFAULT_CALIBRE_SECTORS,
     DEFAULT_LAYER_VISIBILITY
@@ -433,9 +435,9 @@ function CalibreView() {
 
         setViewportScale(
             currentScale => Math.max(
-                0.25,
+                CALIBRE_MIN_ZOOM,
                 Math.min(
-                    4,
+                    CALIBRE_MAX_ZOOM,
                     currentScale * factor
                 )
             )

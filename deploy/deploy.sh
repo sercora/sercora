@@ -10,7 +10,7 @@ VITE_API_URL=https://api.serco.pro npm run build
 
 echo "Deploying files..."
 
-sudo rsync -av --delete dist/ /var/www/sercora/
+sudo rsync -av --delete --exclude pdfjs/ dist/ /var/www/sercora/
 
 echo "Deploying PDF.js resources..."
 

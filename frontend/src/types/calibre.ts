@@ -104,6 +104,10 @@ export const DEFAULT_CALIBRE_SECTORS: CalibreSector[] = [
 ];
 
 
+export const CALIBRE_MIN_ZOOM = 0.25;
+export const CALIBRE_MAX_ZOOM = 8;
+
+
 export const CALIBRE_LAYERS: CalibreLayerDefinition[] = [
     {
         key: "floor",

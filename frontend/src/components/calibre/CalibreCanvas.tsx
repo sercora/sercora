@@ -22,6 +22,8 @@ import {
 } from "react-konva";
 
 import {
+    CALIBRE_MAX_ZOOM,
+    CALIBRE_MIN_ZOOM,
     CALIBRE_LAYERS
 } from "../../types/calibre";
 import type {
@@ -819,9 +821,9 @@ function CalibreCanvas({
             0.9 :
             1.1;
         const nextScale = Math.max(
-            0.25,
+            CALIBRE_MIN_ZOOM,
             Math.min(
-                4,
+                CALIBRE_MAX_ZOOM,
                 viewportScale * scaleFactor
             )
         );

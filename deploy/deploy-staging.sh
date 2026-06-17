@@ -10,7 +10,7 @@ VITE_API_URL=/api npm run build
 
 echo "Deploying staging files..."
 
-sudo rsync -av --delete dist/ /var/www/sercora-staging/
+sudo rsync -av --delete --exclude pdfjs/ dist/ /var/www/sercora-staging/
 
 echo "Deploying PDF.js resources..."
 
