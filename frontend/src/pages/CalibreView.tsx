@@ -144,6 +144,7 @@ function CalibreView() {
         useState<CalibreLayerVisibility>(DEFAULT_LAYER_VISIBILITY);
     const [measurements, setMeasurements] = useState<CalibreMeasurement[]>([]);
     const [calibrations, setCalibrations] = useState<CalibrePageCalibrationMap>({});
+    const [lineWeight, setLineWeight] = useState(1);
     const [viewportScale, setViewportScale] = useState(1);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isLayersOpen, setIsLayersOpen] = useState(false);
@@ -502,6 +503,7 @@ function CalibreView() {
                 isFullscreen={isFullscreen}
                 isImportingPdfPage={isImportingPdfPage}
                 isLayersOpen={isLayersOpen}
+                lineWeight={lineWeight}
                 pages={pages}
                 pendingPdf={pendingPdf}
                 scalePercent={Math.round(viewportScale * 100)}
@@ -513,6 +515,7 @@ function CalibreView() {
                         currentValue => !currentValue
                     )
                 }
+                onLineWeightChange={setLineWeight}
                 onOperationChange={setActiveOperation}
                 onPageChange={handlePageChange}
                 onPdfPageImport={handlePdfPageImport}
@@ -538,6 +541,7 @@ function CalibreView() {
                     calibration={activeCalibration}
                     imageUrl={activePage?.imageUrl || ""}
                     layerVisibility={layerVisibility}
+                    lineWeight={lineWeight}
                     measurements={activePageMeasurements}
                     unitSystem={unitSystem}
                     viewportScale={viewportScale}

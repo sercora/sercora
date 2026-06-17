@@ -1,6 +1,5 @@
 import {
     useEffect,
-    useMemo,
     useRef,
     useState
 } from "react";
@@ -47,6 +46,7 @@ type CalibreCanvasProps = {
     calibration: CalibreCalibration;
     imageUrl: string;
     layerVisibility: CalibreLayerVisibility;
+    lineWeight: number;
     measurements: CalibreMeasurement[];
     unitSystem: CalibreUnitSystem;
     viewportScale: number;
@@ -404,6 +404,33 @@ function measurementTotals(
 }
 
 
+function fitViewportForImage(
+    image: HTMLImageElement,
+    size: CanvasSize
+) {
+
+    const scale = Math.max(
+        CALIBRE_MIN_ZOOM,
+        Math.min(
+            CALIBRE_MAX_ZOOM,
+            Math.min(
+                size.width / image.width,
+                size.height / image.height
+            ) * 0.94
+        )
+    );
+
+    return {
+        scale,
+        viewport: {
+            x: (size.width - image.width * scale) / 2,
+            y: (size.height - image.height * scale) / 2
+        }
+    };
+
+}
+
+
 function CalibreCanvas({
     activeLayer,
     activeOperation,
@@ -413,6 +440,7 @@ function CalibreCanvas({
     calibration,
     imageUrl,
     layerVisibility,
+    lineWeight,
     measurements,
     unitSystem,
     viewportScale,
@@ -506,46 +534,62 @@ function CalibreCanvas({
         ]
     );
 
-    const imageLayout = useMemo(
+    useEffect(
         () => {
-            if (!image)
-                return null;
+            onFitToScreenReady(
+                () => {
+                    if (!image) {
+                        onViewportScaleChange(1);
+                        setViewport({
+                            x: 0,
+                            y: 0
+                        });
+                        return;
+                    }
 
-            const scale = Math.min(
-                size.width / image.width,
-                size.height / image.height
-            ) * 0.94;
-            const width = image.width * scale;
-            const height = image.height * scale;
+                    const nextFit = fitViewportForImage(
+                        image,
+                        size
+                    );
 
-            return {
-                x: (size.width - width) / 2,
-                y: (size.height - height) / 2,
-                width,
-                height
-            };
+                    onViewportScaleChange(nextFit.scale);
+                    setViewport(nextFit.viewport);
+                }
+            );
         },
         [
             image,
+            onFitToScreenReady,
+            onViewportScaleChange,
             size
         ]
     );
 
     useEffect(
         () => {
-            onFitToScreenReady(
+            if (!image)
+                return;
+
+            const frameId = window.requestAnimationFrame(
                 () => {
-                    onViewportScaleChange(1);
-                    setViewport({
-                        x: 0,
-                        y: 0
-                    });
+                    const nextFit = fitViewportForImage(
+                        image,
+                        size
+                    );
+
+                    onViewportScaleChange(nextFit.scale);
+                    setViewport(nextFit.viewport);
                 }
             );
+
+            return () => {
+                window.cancelAnimationFrame(frameId);
+            };
         },
         [
-            onFitToScreenReady,
-            onViewportScaleChange
+            image,
+            onViewportScaleChange,
+            size
         ]
     );
 
@@ -863,7 +907,10 @@ function CalibreCanvas({
         const layer = layerDefinition(measurement.layer);
         const labelPoint = measurement.points[0];
         const isSubtract = measurement.operation === "subtract";
-        const strokeWidth = isSubtract ? 2 : 3;
+        const strokeWidth = isSubtract ?
+            Math.max(0.5, lineWeight * 0.8) :
+            lineWeight;
+        const labelScale = 1 / viewportScale;
         const dash = isSubtract ? [
             7,
             5
@@ -876,16 +923,21 @@ function CalibreCanvas({
                         points={pointsToArray(measurement.points)}
                         stroke={layer.color}
                         strokeWidth={strokeWidth}
+                        strokeScaleEnabled={false}
                         dash={dash}
                         lineCap="round"
                     />
                     <Label
                         x={(measurement.points[0].x + measurement.points[1].x) / 2}
                         y={(measurement.points[0].y + measurement.points[1].y) / 2}
+                        scaleX={labelScale}
+                        scaleY={labelScale}
                     >
                         <Tag
                             fill="#ffffff"
                             stroke={layer.color}
+                            strokeWidth={0.75}
+                            strokeScaleEnabled={false}
                             cornerRadius={4}
                         />
                         <Text
@@ -893,9 +945,9 @@ function CalibreCanvas({
                                 measurement.lengthFeet,
                                 measurement.operation
                             )}
-                            padding={5}
+                            padding={3}
                             fill="#172016"
-                            fontSize={12}
+                            fontSize={10}
                             fontStyle="bold"
                         />
                     </Label>
@@ -917,15 +969,20 @@ function CalibreCanvas({
                         fill={isSubtract ? "rgba(255,255,255,0.24)" : layer.fill}
                         stroke={layer.color}
                         strokeWidth={strokeWidth}
+                        strokeScaleEnabled={false}
                         dash={dash}
                     />
                     <Label
                         x={Math.min(first.x, second.x) + 8}
                         y={Math.min(first.y, second.y) + 8}
+                        scaleX={labelScale}
+                        scaleY={labelScale}
                     >
                         <Tag
                             fill="#ffffff"
                             stroke={layer.color}
+                            strokeWidth={0.75}
+                            strokeScaleEnabled={false}
                             cornerRadius={4}
                         />
                         <Text
@@ -933,9 +990,9 @@ function CalibreCanvas({
                                 measurement.areaSquareFeet,
                                 measurement.operation
                             )}
-                            padding={5}
+                            padding={3}
                             fill="#172016"
-                            fontSize={12}
+                            fontSize={10}
                             fontStyle="bold"
                         />
                     </Label>
@@ -951,15 +1008,20 @@ function CalibreCanvas({
                     fill={isSubtract ? "rgba(255,255,255,0.24)" : layer.fill}
                     stroke={layer.color}
                     strokeWidth={strokeWidth}
+                    strokeScaleEnabled={false}
                     dash={dash}
                 />
                 <Label
                     x={labelPoint.x + 8}
                     y={labelPoint.y + 8}
+                    scaleX={labelScale}
+                    scaleY={labelScale}
                 >
                     <Tag
                         fill="#ffffff"
                         stroke={layer.color}
+                        strokeWidth={0.75}
+                        strokeScaleEnabled={false}
                         cornerRadius={4}
                     />
                     <Text
@@ -967,9 +1029,9 @@ function CalibreCanvas({
                             measurement.areaSquareFeet,
                             measurement.operation
                         )}
-                        padding={5}
+                        padding={3}
                         fill="#172016"
-                        fontSize={12}
+                        fontSize={10}
                         fontStyle="bold"
                     />
                 </Label>
@@ -984,6 +1046,7 @@ function CalibreCanvas({
         if (!draft || !pointerPoint)
             return null;
 
+        const draftStrokeWidth = Math.max(0.5, lineWeight);
         const layer = activeTool === "calibrate" ?
             {
                 color: "#101611",
@@ -1002,7 +1065,8 @@ function CalibreCanvas({
                         pointerPoint
                     ])}
                     stroke={layer.color}
-                    strokeWidth={2}
+                    strokeWidth={draftStrokeWidth}
+                    strokeScaleEnabled={false}
                     dash={[
                         8,
                         6
@@ -1022,7 +1086,8 @@ function CalibreCanvas({
                     height={Math.abs(pointerPoint.y - first.y)}
                     fill={layer.fill}
                     stroke={layer.color}
-                    strokeWidth={2}
+                    strokeWidth={draftStrokeWidth}
+                    strokeScaleEnabled={false}
                     dash={[
                         8,
                         6
@@ -1038,7 +1103,8 @@ function CalibreCanvas({
                     pointerPoint
                 ])}
                 stroke={layer.color}
-                strokeWidth={2}
+                strokeWidth={draftStrokeWidth}
+                strokeScaleEnabled={false}
                 dash={[
                     8,
                     6
@@ -1101,13 +1167,13 @@ function CalibreCanvas({
                         draggable={activeTool === "pan"}
                         onDragEnd={handleDragEnd}
                     >
-                        {image && imageLayout && (
+                        {image && (
                             <KonvaImage
                                 image={image}
-                                x={imageLayout.x}
-                                y={imageLayout.y}
-                                width={imageLayout.width}
-                                height={imageLayout.height}
+                                x={0}
+                                y={0}
+                                width={image.width}
+                                height={image.height}
                                 listening={false}
                             />
                         )}
@@ -1121,10 +1187,11 @@ function CalibreCanvas({
                                     key={`${point.x}-${point.y}`}
                                     x={point.x}
                                     y={point.y}
-                                    radius={4}
+                                    radius={4 / viewportScale}
                                     fill="#ffffff"
                                     stroke="#101611"
-                                    strokeWidth={2}
+                                    strokeWidth={1}
+                                    strokeScaleEnabled={false}
                                 />
                             )
                         )}

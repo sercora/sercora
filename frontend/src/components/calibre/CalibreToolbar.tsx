@@ -22,6 +22,7 @@ type CalibreToolbarProps = {
     isFullscreen: boolean;
     isImportingPdfPage: boolean;
     isLayersOpen: boolean;
+    lineWeight: number;
     pages: CalibrePage[];
     pendingPdf: PendingPdfToolbarState | null;
     scalePercent: number;
@@ -29,6 +30,7 @@ type CalibreToolbarProps = {
     onFitToScreen: () => void;
     onFullscreenToggle: () => void;
     onLayersToggle: () => void;
+    onLineWeightChange: (lineWeight: number) => void;
     onOperationChange: (operation: CalibreOperation) => void;
     onPageChange: (pageId: string) => void;
     onPdfPageImport: (pageNumber: number) => void;
@@ -66,6 +68,7 @@ function CalibreToolbar({
     isFullscreen,
     isImportingPdfPage,
     isLayersOpen,
+    lineWeight,
     pages,
     pendingPdf,
     scalePercent,
@@ -73,6 +76,7 @@ function CalibreToolbar({
     onFitToScreen,
     onFullscreenToggle,
     onLayersToggle,
+    onLineWeightChange,
     onOperationChange,
     onPageChange,
     onPdfPageImport,
@@ -263,6 +267,25 @@ function CalibreToolbar({
                     >
                         Soustraction
                     </button>
+                </div>
+
+                <div className="calibre-inline-field">
+                    <label htmlFor="calibre-line-weight">Trait</label>
+                    <select
+                        id="calibre-line-weight"
+                        value={lineWeight}
+                        onChange={
+                            event => onLineWeightChange(
+                                Number(event.target.value)
+                            )
+                        }
+                    >
+                        <option value={0.5}>Très fin</option>
+                        <option value={1}>Fin</option>
+                        <option value={1.5}>Moyen</option>
+                        <option value={2}>Gras</option>
+                        <option value={3}>Très gras</option>
+                    </select>
                 </div>
 
                 <div className="calibre-zoom-group">

@@ -194,11 +194,29 @@
 
 .calibre-tool-group,
 .calibre-zoom-group,
-.calibre-segmented-control {
+.calibre-segmented-control,
+.calibre-inline-field {
     display: flex;
     align-items: center;
     gap: 6px;
     min-width: 0;
+}
+
+.calibre-inline-field label {
+    color: #647068;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.calibre-inline-field select {
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid #b9c4bc;
+    border-radius: 5px;
+    background: #ffffff;
+    color: #263028;
+    font: 800 12px Calibri, Arial, sans-serif;
 }
 
 .calibre-tool-group {
