@@ -5,8 +5,8 @@ import {
     useRef,
     useState
 } from "react";
-import * as pdfjsLib from "pdfjs-dist";
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.mjs?url";
 
 import CalibreCanvas from "../components/calibre/CalibreCanvas";
 import CalibreLayersPanel from "../components/calibre/CalibreLayersPanel";
