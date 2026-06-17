@@ -29,18 +29,24 @@ import type {
     CalibreLayerKind,
     CalibreLayerVisibility,
     CalibreMeasurement,
+    CalibreOperation,
     CalibrePoint,
-    CalibreTool
+    CalibreTool,
+    CalibreUnitSystem
 } from "../../types/calibre";
 
 
 type CalibreCanvasProps = {
     activeLayer: CalibreLayerKind;
+    activeOperation: CalibreOperation;
+    activePageId: string;
+    activeSectorId: string;
     activeTool: CalibreTool;
     calibration: CalibreCalibration;
     imageUrl: string;
     layerVisibility: CalibreLayerVisibility;
     measurements: CalibreMeasurement[];
+    unitSystem: CalibreUnitSystem;
     viewportScale: number;
     onCalibrationChange: (calibration: CalibreCalibration) => void;
     onFitToScreenReady: (handler: () => void) => void;
@@ -71,6 +77,12 @@ type Viewport = {
     x: number;
     y: number;
 };
+
+
+type RightPanState = {
+    x: number;
+    y: number;
+} | null;
 
 
 function distance(
@@ -111,17 +123,11 @@ function polygonArea(
 }
 
 
-function parseFeet(
-    value: string | null
+function parsePositiveNumber(
+    value: string
 ) {
 
-    if (!value)
-        return null;
-
-    const normalized = value
-        .replace(",", ".")
-        .replace(/[^0-9.]/g, "");
-    const parsed = Number(normalized);
+    const parsed = Number(value.replace(",", "."));
 
     return Number.isFinite(parsed) && parsed > 0 ?
         parsed :
@@ -130,24 +136,156 @@ function parseFeet(
 }
 
 
-function feetLabel(
-    value: number | null
+function parseFraction(
+    value: string
 ) {
 
-    return value === null ?
-        "Non calibré" :
-        `${value.toFixed(2)} pi`;
+    const parts = value.split("/");
+
+    if (parts.length !== 2)
+        return null;
+
+    const numerator = parsePositiveNumber(parts[0]);
+    const denominator = parsePositiveNumber(parts[1]);
+
+    if (!numerator || !denominator)
+        return null;
+
+    return numerator / denominator;
+
+}
+
+
+function parseInchesToken(
+    value: string
+) {
+
+    const normalized = value.trim();
+
+    if (!normalized)
+        return 0;
+
+    if (normalized.includes("/"))
+        return parseFraction(normalized) || 0;
+
+    return parsePositiveNumber(normalized) || 0;
+
+}
+
+
+function parseMetricFeet(
+    value: string
+) {
+
+    const normalized = value.trim().toLowerCase().replace(",", ".");
+    const match = normalized.match(/^([0-9.]+)\s*(mm|millimetres|millimètres|cm|m|metres|mètres)?$/u);
+
+    if (!match)
+        return null;
+
+    const amount = parsePositiveNumber(match[1]);
+    const unit = match[2] || "mm";
+
+    if (!amount)
+        return null;
+
+    if (unit === "m" || unit === "metres" || unit === "mètres")
+        return amount * 3.280839895;
+
+    if (unit === "cm")
+        return amount / 30.48;
+
+    return amount / 304.8;
+
+}
+
+
+function parseImperialFeet(
+    value: string
+) {
+
+    const normalized = value
+        .trim()
+        .toLowerCase()
+        .replace(/,/g, ".")
+        .replace(/′/g, "'")
+        .replace(/″/g, "\"")
+        .replace(/pouces|pouce|po/g, "\"")
+        .replace(/pieds|pied|pi|ft/g, "'")
+        .replace(/\s+/g, " ");
+
+    if (!normalized)
+        return null;
+
+    const feetMatch = normalized.match(/([0-9.]+)\s*'/);
+    const inchMatch = normalized.match(/([0-9.]+)\s*"/);
+    const fractionMatch = normalized.match(/([0-9]+\s*\/\s*[0-9]+)/);
+
+    if (feetMatch || inchMatch || fractionMatch) {
+        const feet = feetMatch ? parsePositiveNumber(feetMatch[1]) || 0 : 0;
+        const inches = inchMatch ? parsePositiveNumber(inchMatch[1]) || 0 : 0;
+        const fraction = fractionMatch ? parseFraction(fractionMatch[1].replace(/\s/g, "")) || 0 : 0;
+
+        return feet + (inches + fraction) / 12;
+    }
+
+    const parts = normalized.split(" ").filter(Boolean);
+
+    if (parts.length >= 2) {
+        const feet = parsePositiveNumber(parts[0]);
+        const inches = parseInchesToken(parts[1]);
+        const fraction = parts[2] ? parseInchesToken(parts[2]) : 0;
+
+        if (feet)
+            return feet + (inches + fraction) / 12;
+    }
+
+    return parsePositiveNumber(normalized);
+
+}
+
+
+function parseDistanceFeet(
+    value: string | null,
+    unitSystem: CalibreUnitSystem
+) {
+
+    if (!value)
+        return null;
+
+    return unitSystem === "metric" ?
+        parseMetricFeet(value) :
+        parseImperialFeet(value);
+
+}
+
+
+function feetLabel(
+    value: number | null,
+    operation: CalibreOperation = "add"
+) {
+
+    if (value === null)
+        return "Non calibré";
+
+    const prefix = operation === "subtract" ? "-" : "";
+
+    return `${prefix}${value.toFixed(2)} pi`;
 
 }
 
 
 function areaLabel(
-    value: number | null
+    value: number | null,
+    operation: CalibreOperation = "add"
 ) {
 
-    return value === null ?
-        "Non calibré" :
-        `${value.toFixed(2)} pi²`;
+    if (value === null)
+        return "Non calibré";
+
+    const prefix = operation === "subtract" ? "-" : "";
+
+    return `${prefix}${value.toFixed(2)} pi²`;
 
 }
 
@@ -266,11 +404,15 @@ function measurementTotals(
 
 function CalibreCanvas({
     activeLayer,
+    activeOperation,
+    activePageId,
+    activeSectorId,
     activeTool,
     calibration,
     imageUrl,
     layerVisibility,
     measurements,
+    unitSystem,
     viewportScale,
     onCalibrationChange,
     onFitToScreenReady,
@@ -290,6 +432,7 @@ function CalibreCanvas({
     });
     const [draft, setDraft] = useState<DraftShape | null>(null);
     const [pointerPoint, setPointerPoint] = useState<CalibrePoint | null>(null);
+    const [rightPan, setRightPan] = useState<RightPanState>(null);
     const image = useLoadedImage(imageUrl);
 
     useEffect(
@@ -326,6 +469,39 @@ function CalibreCanvas({
             };
         },
         []
+    );
+
+    useEffect(
+        () => {
+            const stage = stageRef.current;
+            const container = stage?.container();
+
+            if (!container)
+                return;
+
+            function preventContextMenu(
+                event: MouseEvent
+            ) {
+
+                event.preventDefault();
+
+            }
+
+            container.addEventListener(
+                "contextmenu",
+                preventContextMenu
+            );
+
+            return () => {
+                container.removeEventListener(
+                    "contextmenu",
+                    preventContextMenu
+                );
+            };
+        },
+        [
+            imageUrl
+        ]
     );
 
     const imageLayout = useMemo(
@@ -407,9 +583,46 @@ function CalibreCanvas({
     }
 
 
+    function handleRightPanMove(
+        event: KonvaEventObject<MouseEvent>
+    ) {
+
+        if (!rightPan)
+            return false;
+
+        event.evt.preventDefault();
+
+        const nextX = event.evt.clientX;
+        const nextY = event.evt.clientY;
+
+        setViewport(
+            currentViewport => ({
+                x: currentViewport.x + nextX - rightPan.x,
+                y: currentViewport.y + nextY - rightPan.y
+            })
+        );
+        setRightPan({
+            x: nextX,
+            y: nextY
+        });
+
+        return true;
+
+    }
+
+
     function handleStageMouseDown(
         event: KonvaEventObject<MouseEvent>
     ) {
+
+        if (event.evt.button === 2) {
+            event.evt.preventDefault();
+            setRightPan({
+                x: event.evt.clientX,
+                y: event.evt.clientY
+            });
+            return;
+        }
 
         if (!image || activeTool === "select" || activeTool === "pan")
             return;
@@ -438,17 +651,24 @@ function CalibreCanvas({
                 firstPoint,
                 point
             );
-            const feet = parseFeet(
-                window.prompt(
-                    "Distance réelle en pieds",
-                    "10"
-                )
+            const promptLabel = unitSystem === "metric" ?
+                "Distance réelle (ex: 2500mm, 2.5m)" :
+                "Distance réelle (ex: 10, 8' 2\" 7/16)";
+            const enteredValue = window.prompt(
+                promptLabel,
+                unitSystem === "metric" ? "2500mm" : "10"
+            );
+            const feet = parseDistanceFeet(
+                enteredValue,
+                unitSystem
             );
 
             if (feet) {
                 onCalibrationChange({
                     pixelsPerFoot: pixelDistance / feet,
-                    referenceFeet: feet
+                    referenceFeet: feet,
+                    unitSystem,
+                    referenceLabel: enteredValue || ""
                 });
             }
 
@@ -469,8 +689,11 @@ function CalibreCanvas({
 
             addMeasurement({
                 id: crypto.randomUUID(),
+                pageId: activePageId,
                 type: "line",
                 layer: activeLayer,
+                sectorId: activeSectorId,
+                operation: activeOperation,
                 points: [
                     draft.points[0],
                     point
@@ -495,8 +718,11 @@ function CalibreCanvas({
 
             addMeasurement({
                 id: crypto.randomUUID(),
+                pageId: activePageId,
                 type: "rectangle",
                 layer: activeLayer,
+                sectorId: activeSectorId,
+                operation: activeOperation,
                 points: [
                     draft.points[0],
                     point
@@ -541,8 +767,11 @@ function CalibreCanvas({
 
         addMeasurement({
             id: crypto.randomUUID(),
+            pageId: activePageId,
             type: "polygon",
             layer: activeLayer,
+            sectorId: activeSectorId,
+            operation: activeOperation,
             points: draft.points,
             lengthFeet: null,
             areaSquareFeet: null
@@ -552,9 +781,24 @@ function CalibreCanvas({
     }
 
 
-    function handleMouseMove() {
+    function handleMouseMove(
+        event: KonvaEventObject<MouseEvent>
+    ) {
+
+        if (handleRightPanMove(event))
+            return;
 
         setPointerPoint(pointerToWorld());
+
+    }
+
+
+    function handleMouseUp(
+        event: KonvaEventObject<MouseEvent>
+    ) {
+
+        if (event.evt.button === 2)
+            setRightPan(null);
 
     }
 
@@ -616,6 +860,12 @@ function CalibreCanvas({
 
         const layer = layerDefinition(measurement.layer);
         const labelPoint = measurement.points[0];
+        const isSubtract = measurement.operation === "subtract";
+        const strokeWidth = isSubtract ? 2 : 3;
+        const dash = isSubtract ? [
+            7,
+            5
+        ] : undefined;
 
         if (measurement.type === "line") {
             return (
@@ -623,7 +873,8 @@ function CalibreCanvas({
                     <Line
                         points={pointsToArray(measurement.points)}
                         stroke={layer.color}
-                        strokeWidth={3}
+                        strokeWidth={strokeWidth}
+                        dash={dash}
                         lineCap="round"
                     />
                     <Label
@@ -636,7 +887,10 @@ function CalibreCanvas({
                             cornerRadius={4}
                         />
                         <Text
-                            text={feetLabel(measurement.lengthFeet)}
+                            text={feetLabel(
+                                measurement.lengthFeet,
+                                measurement.operation
+                            )}
                             padding={5}
                             fill="#172016"
                             fontSize={12}
@@ -658,9 +912,10 @@ function CalibreCanvas({
                         y={Math.min(first.y, second.y)}
                         width={Math.abs(second.x - first.x)}
                         height={Math.abs(second.y - first.y)}
-                        fill={layer.fill}
+                        fill={isSubtract ? "rgba(255,255,255,0.24)" : layer.fill}
                         stroke={layer.color}
-                        strokeWidth={2}
+                        strokeWidth={strokeWidth}
+                        dash={dash}
                     />
                     <Label
                         x={Math.min(first.x, second.x) + 8}
@@ -672,7 +927,10 @@ function CalibreCanvas({
                             cornerRadius={4}
                         />
                         <Text
-                            text={areaLabel(measurement.areaSquareFeet)}
+                            text={areaLabel(
+                                measurement.areaSquareFeet,
+                                measurement.operation
+                            )}
                             padding={5}
                             fill="#172016"
                             fontSize={12}
@@ -688,9 +946,10 @@ function CalibreCanvas({
                 <Line
                     points={pointsToArray(measurement.points)}
                     closed
-                    fill={layer.fill}
+                    fill={isSubtract ? "rgba(255,255,255,0.24)" : layer.fill}
                     stroke={layer.color}
-                    strokeWidth={2}
+                    strokeWidth={strokeWidth}
+                    dash={dash}
                 />
                 <Label
                     x={labelPoint.x + 8}
@@ -702,7 +961,10 @@ function CalibreCanvas({
                         cornerRadius={4}
                     />
                     <Text
-                        text={areaLabel(measurement.areaSquareFeet)}
+                        text={areaLabel(
+                            measurement.areaSquareFeet,
+                            measurement.operation
+                        )}
                         padding={5}
                         fill="#172016"
                         fontSize={12}
@@ -789,12 +1051,15 @@ function CalibreCanvas({
         <section
             ref={shellRef}
             className="calibre-canvas-shell"
+            onContextMenu={
+                event => event.preventDefault()
+            }
         >
             {!image && (
                 <div className="calibre-empty-state">
                     <strong>Importer un plan</strong>
                     <span>
-                        Sélectionnez une image JPG ou PNG pour commencer le relevé.
+                        Sélectionnez une image ou une page PDF pour commencer le relevé.
                     </span>
                 </div>
             )}
@@ -805,6 +1070,12 @@ function CalibreCanvas({
                 </div>
             )}
 
+            {image && rightPan && (
+                <div className="calibre-canvas-hint calibre-pan-hint">
+                    Déplacement du fond de plan
+                </div>
+            )}
+
             <Stage
                 ref={stageRef}
                 width={size.width}
@@ -812,6 +1083,10 @@ function CalibreCanvas({
                 className="calibre-stage"
                 onMouseDown={handleStageMouseDown}
                 onMouseMove={handleMouseMove}
+                onMouseLeave={
+                    () => setRightPan(null)
+                }
+                onMouseUp={handleMouseUp}
                 onDblClick={finishPolygon}
                 onWheel={handleWheel}
             >

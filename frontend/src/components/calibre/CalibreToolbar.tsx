@@ -1,30 +1,76 @@
 import type {
     CalibreCalibration,
-    CalibreTool
+    CalibreOperation,
+    CalibrePage,
+    CalibreTool,
+    CalibreUnitSystem
 } from "../../types/calibre";
 
 
+type PendingPdfToolbarState = {
+    fileName: string;
+    pageCount: number;
+};
+
+
 type CalibreToolbarProps = {
+    activeOperation: CalibreOperation;
+    activePageId: string;
     activeTool: CalibreTool;
     calibration: CalibreCalibration;
-    imageName: string;
+    importError: string;
+    isImportingPdfPage: boolean;
+    pages: CalibrePage[];
+    pendingPdf: PendingPdfToolbarState | null;
     scalePercent: number;
+    unitSystem: CalibreUnitSystem;
     onFitToScreen: () => void;
-    onImageSelected: (file: File) => void;
+    onOperationChange: (operation: CalibreOperation) => void;
+    onPageChange: (pageId: string) => void;
+    onPdfPageImport: (pageNumber: number) => void;
+    onPlanSelected: (file: File) => void;
     onToolChange: (tool: CalibreTool) => void;
+    onUnitSystemChange: (unitSystem: CalibreUnitSystem) => void;
     onZoomIn: () => void;
     onZoomOut: () => void;
 };
 
 
+function pageNumbers(
+    pageCount: number
+) {
+
+    return Array.from(
+        {
+            length: pageCount
+        },
+        (
+            _,
+            index
+        ) => index + 1
+    );
+
+}
+
+
 function CalibreToolbar({
+    activeOperation,
+    activePageId,
     activeTool,
     calibration,
-    imageName,
+    importError,
+    isImportingPdfPage,
+    pages,
+    pendingPdf,
     scalePercent,
+    unitSystem,
     onFitToScreen,
-    onImageSelected,
+    onOperationChange,
+    onPageChange,
+    onPdfPageImport,
+    onPlanSelected,
     onToolChange,
+    onUnitSystemChange,
     onZoomIn,
     onZoomOut
 }: CalibreToolbarProps) {
@@ -61,82 +107,180 @@ function CalibreToolbar({
 
     return (
         <header className="calibre-toolbar">
-            <div className="calibre-toolbar-title">
-                <span>Sercora Calibre</span>
-                <strong>Relevé de quantités</strong>
-            </div>
+            <div className="calibre-toolbar-main">
+                <div className="calibre-toolbar-title">
+                    <span>Sercora Calibre</span>
+                    <strong>Relevé de quantités</strong>
+                </div>
 
-            <label className="calibre-upload-button">
-                <input
-                    type="file"
-                    accept="image/png,image/jpeg"
-                    onChange={
-                        event => {
-                            const file = event.target.files?.[0];
+                <label className="calibre-upload-button">
+                    <input
+                        type="file"
+                        accept="application/pdf,image/png,image/jpeg"
+                        onChange={
+                            event => {
+                                const file = event.target.files?.[0];
 
-                            if (file)
-                                onImageSelected(file);
+                                if (file)
+                                    onPlanSelected(file);
 
-                            event.currentTarget.value = "";
+                                event.currentTarget.value = "";
+                            }
                         }
-                    }
-                />
-                Importer JPG/PNG
-            </label>
+                    />
+                    Importer PDF/JPG/PNG
+                </label>
 
-            <div className="calibre-tool-group">
-                {toolItems.map(
-                    tool => (
-                        <button
-                            key={tool.key}
-                            type="button"
-                            className={
-                                activeTool === tool.key ?
-                                    "calibre-tool-button active" :
-                                    "calibre-tool-button"
-                            }
-                            onClick={
-                                () => onToolChange(tool.key)
-                            }
-                        >
-                            {tool.label}
-                        </button>
-                    )
-                )}
+                <div className="calibre-field-group">
+                    <label htmlFor="calibre-active-page">Fond de plan</label>
+                    <select
+                        id="calibre-active-page"
+                        value={activePageId}
+                        onChange={
+                            event => onPageChange(event.target.value)
+                        }
+                    >
+                        <option value="">Aucune page</option>
+                        {pages.map(
+                            page => (
+                                <option
+                                    key={page.id}
+                                    value={page.id}
+                                >
+                                    {page.name}
+                                </option>
+                            )
+                        )}
+                    </select>
+                </div>
+
+                <div className="calibre-file-status">
+                    <span>{pages.length} page{pages.length > 1 ? "s" : ""} importée{pages.length > 1 ? "s" : ""}</span>
+                    <strong>
+                        {calibration.pixelsPerFoot ?
+                            `${calibration.pixelsPerFoot.toFixed(2)} px/pi` :
+                            "Non calibré"}
+                    </strong>
+                </div>
             </div>
 
-            <div className="calibre-zoom-group">
-                <button
-                    type="button"
-                    className="calibre-tool-button"
-                    onClick={onZoomOut}
-                >
-                    Zoom -
-                </button>
-                <span>{scalePercent}%</span>
-                <button
-                    type="button"
-                    className="calibre-tool-button"
-                    onClick={onZoomIn}
-                >
-                    Zoom +
-                </button>
-                <button
-                    type="button"
-                    className="calibre-tool-button"
-                    onClick={onFitToScreen}
-                >
-                    Fit
-                </button>
-            </div>
+            {pendingPdf && (
+                <div className="calibre-pdf-strip">
+                    <span>{pendingPdf.fileName}</span>
+                    <div>
+                        {pageNumbers(pendingPdf.pageCount).map(
+                            pageNumber => (
+                                <button
+                                    key={pageNumber}
+                                    type="button"
+                                    className="calibre-tool-button"
+                                    disabled={isImportingPdfPage}
+                                    onClick={
+                                        () => onPdfPageImport(pageNumber)
+                                    }
+                                >
+                                    Page {pageNumber}
+                                </button>
+                            )
+                        )}
+                    </div>
+                </div>
+            )}
 
-            <div className="calibre-file-status">
-                <span>{imageName || "Aucun plan chargé"}</span>
-                <strong>
-                    {calibration.pixelsPerFoot ?
-                        `${calibration.pixelsPerFoot.toFixed(2)} px/pi` :
-                        "Non calibré"}
-                </strong>
+            {importError && (
+                <div className="calibre-import-error">
+                    {importError}
+                </div>
+            )}
+
+            <div className="calibre-toolbar-controls">
+                <div className="calibre-tool-group">
+                    {toolItems.map(
+                        tool => (
+                            <button
+                                key={tool.key}
+                                type="button"
+                                className={
+                                    activeTool === tool.key ?
+                                        "calibre-tool-button active" :
+                                        "calibre-tool-button"
+                                }
+                                onClick={
+                                    () => onToolChange(tool.key)
+                                }
+                            >
+                                {tool.label}
+                            </button>
+                        )
+                    )}
+                </div>
+
+                <div className="calibre-segmented-control" aria-label="Système d'unités">
+                    <button
+                        type="button"
+                        className={unitSystem === "imperial" ? "active" : ""}
+                        onClick={
+                            () => onUnitSystemChange("imperial")
+                        }
+                    >
+                        Impérial
+                    </button>
+                    <button
+                        type="button"
+                        className={unitSystem === "metric" ? "active" : ""}
+                        onClick={
+                            () => onUnitSystemChange("metric")
+                        }
+                    >
+                        Métrique
+                    </button>
+                </div>
+
+                <div className="calibre-segmented-control" aria-label="Opération de mesure">
+                    <button
+                        type="button"
+                        className={activeOperation === "add" ? "active" : ""}
+                        onClick={
+                            () => onOperationChange("add")
+                        }
+                    >
+                        Addition
+                    </button>
+                    <button
+                        type="button"
+                        className={activeOperation === "subtract" ? "active" : ""}
+                        onClick={
+                            () => onOperationChange("subtract")
+                        }
+                    >
+                        Soustraction
+                    </button>
+                </div>
+
+                <div className="calibre-zoom-group">
+                    <button
+                        type="button"
+                        className="calibre-tool-button"
+                        onClick={onZoomOut}
+                    >
+                        Zoom -
+                    </button>
+                    <span>{scalePercent}%</span>
+                    <button
+                        type="button"
+                        className="calibre-tool-button"
+                        onClick={onZoomIn}
+                    >
+                        Zoom +
+                    </button>
+                    <button
+                        type="button"
+                        className="calibre-tool-button"
+                        onClick={onFitToScreen}
+                    >
+                        Ajuster
+                    </button>
+                </div>
             </div>
         </header>
     );

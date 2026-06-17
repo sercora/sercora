@@ -7,6 +7,32 @@ export type CalibreTool =
     "pan";
 
 
+export type CalibreUnitSystem =
+    "imperial" |
+    "metric";
+
+
+export type CalibreOperation =
+    "add" |
+    "subtract";
+
+
+export type CalibreSector = {
+    id: string;
+    name: string;
+    room: string;
+};
+
+
+export type CalibrePage = {
+    id: string;
+    name: string;
+    sourceName: string;
+    pageNumber: number;
+    imageUrl: string;
+};
+
+
 export type CalibreLayerKind =
     "floor" |
     "wall" |
@@ -39,8 +65,11 @@ export type CalibreLayerVisibility = Record<CalibreLayerKind, boolean>;
 
 export type CalibreMeasurement = {
     id: string;
+    pageId: string;
     type: CalibreMeasurementType;
     layer: CalibreLayerKind;
+    sectorId: string;
+    operation: CalibreOperation;
     points: CalibrePoint[];
     lengthFeet: number | null;
     areaSquareFeet: number | null;
@@ -50,7 +79,29 @@ export type CalibreMeasurement = {
 export type CalibreCalibration = {
     pixelsPerFoot: number | null;
     referenceFeet: number | null;
+    unitSystem: CalibreUnitSystem;
+    referenceLabel: string;
 };
+
+
+export type CalibrePageCalibrationMap = Record<string, CalibreCalibration>;
+
+
+export const DEFAULT_CALIBRE_CALIBRATION: CalibreCalibration = {
+    pixelsPerFoot: null,
+    referenceFeet: null,
+    unitSystem: "imperial",
+    referenceLabel: ""
+};
+
+
+export const DEFAULT_CALIBRE_SECTORS: CalibreSector[] = [
+    {
+        id: "main",
+        name: "Secteur principal",
+        room: "Pièce non assignée"
+    }
+];
 
 
 export const CALIBRE_LAYERS: CalibreLayerDefinition[] = [
