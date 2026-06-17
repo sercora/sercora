@@ -20,6 +20,7 @@ import {
     getUnitProfit,
     getUnitSellPrice
 } from "../utils/matrixCalculations";
+import { openPdfPreviewWindow } from "../utils/filePreview";
 
 import {
     createEstimateRevision,
@@ -6040,6 +6041,19 @@ function MatrixView({
                                 }
                             >
                                 Ouvrir
+                            </button>
+                        )}
+                        {filePreview?.type === "pdf" && pdfPreviewUrl && (
+                            <button
+                                type="button"
+                                onClick={
+                                    () => openPdfPreviewWindow(
+                                        pdfPreviewUrl,
+                                        filePreview.name
+                                    )
+                                }
+                            >
+                                Plein écran
                             </button>
                         )}
                         <button
