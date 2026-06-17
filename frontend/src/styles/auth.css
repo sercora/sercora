@@ -258,6 +258,204 @@
     filter: saturate(1.07);
 }
 
+.operations-status-page {
+    align-items: stretch;
+}
+
+.operations-status-shell {
+    width: min(1180px, 100%);
+    max-width: none;
+}
+
+.operations-status-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.operations-status-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid #d7dfda;
+    border-radius: 8px;
+    background: #f8fbf8;
+}
+
+.operations-status-card span {
+    color: #377d2f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.operations-status-card strong {
+    color: #172016;
+    font-size: 20px;
+    font-weight: 850;
+}
+
+.operations-status-card small {
+    overflow: hidden;
+    color: #647068;
+    font-size: 12px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.operations-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px;
+    border: 1px solid #d7dfda;
+    border-radius: 8px;
+    background: #f8fbf8;
+}
+
+.operations-tabs button {
+    height: 34px;
+    padding: 0 12px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: #263028;
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.operations-tabs button.active,
+.operations-tabs button:hover {
+    border-color: #8fc487;
+    background: #e7f4e5;
+    color: #1f6f18;
+}
+
+.operations-section {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+}
+
+.operations-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.operations-list article {
+    display: grid;
+    gap: 8px;
+    padding: 14px;
+    border: 1px solid #d7dfda;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.operations-list h3,
+.operations-console h3 {
+    margin: 0;
+    color: #172016;
+    font-size: 15px;
+    font-weight: 850;
+}
+
+.operations-list p {
+    margin: 0;
+    color: #4e5a52;
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 19px;
+}
+
+.operations-list strong {
+    color: #1f6f18;
+    font-size: 12px;
+    font-weight: 850;
+}
+
+.operations-console pre {
+    min-height: 220px;
+    margin: 0;
+    padding: 14px;
+    overflow: auto;
+    border: 1px solid #101611;
+    border-radius: 8px;
+    background: #101611;
+    color: #dff5dc;
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
+    line-height: 19px;
+}
+
+.operations-release-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.operations-release-row span {
+    padding: 6px 9px;
+    border: 1px solid #d7dfda;
+    border-radius: 999px;
+    background: #f8fbf8;
+    color: #263028;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.operations-commit-table {
+    max-height: 520px;
+    overflow: auto;
+    border: 1px solid #d7dfda;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.operations-commit-table table {
+    width: 100%;
+    min-width: 940px;
+    border-collapse: collapse;
+}
+
+.operations-commit-table th,
+.operations-commit-table td {
+    padding: 9px 10px;
+    border-bottom: 1px solid #edf1ee;
+    color: #263028;
+    font-size: 12px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.operations-commit-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f8fbf8;
+    color: #377d2f;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.operations-commit-table td:nth-child(2),
+.operations-commit-table td:nth-child(5) {
+    color: #647068;
+    font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+@media (max-width: 900px) {
+    .operations-status-grid,
+    .operations-list {
+        grid-template-columns: 1fr;
+    }
+}
+
 .login-submit:disabled {
     cursor: default;
     filter: grayscale(0.55);

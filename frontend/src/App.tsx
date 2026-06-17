@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import CalibreView from "./pages/CalibreView";
 import ClientsPage from "./pages/ClientsPage";
 import ConfigurationPage from "./pages/ConfigurationPage";
 import LoginPage from "./pages/LoginPage";
@@ -21,13 +22,13 @@ import {
 import "./App.css";
 
 
-type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
+type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Calibre" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura" | "Olympia";
 type ProjectMenuKey = "En cours" | "En Soumission" | "Création";
 type ProjectSubmissionMenuKey = "Nouveaux" | "Approuvés" | "Indécis" | "Refusés" | "Envoyés";
 type EstimateMenuKey = "En cours" | "Envoyées" | "Refusé" | "Template";
 type ToolsMenuKey = "Disponible" | "Déployé";
-type ConfigurationMenuKey = "Courriel" | "VoIP/SMS" | "Mobile-Punch" | "Importation";
+type ConfigurationMenuKey = "Courriel" | "VoIP/SMS" | "Mobile-Punch" | "Importation" | "Statut";
 
 
 const NAV_ITEMS: PageKey[] = [
@@ -35,6 +36,7 @@ const NAV_ITEMS: PageKey[] = [
     "Projets",
     "Produits",
     "Outils",
+    "Calibre",
     "Soumissions",
     "Usagers",
     "Configuration"
@@ -94,7 +96,8 @@ const CONFIGURATION_MENU_ITEMS: ConfigurationMenuKey[] = [
     "Courriel",
     "VoIP/SMS",
     "Mobile-Punch",
-    "Importation"
+    "Importation",
+    "Statut"
 ];
 
 
@@ -108,6 +111,7 @@ const PAGE_CONTEXT: Record<PageKey, string> = {
     Projets: "Chantiers et suivis",
     Produits: "Catalogue, prix et fournisseurs",
     Outils: "Inventaire Snipe-IT",
+    Calibre: "Relevés et métrés",
     Soumissions: "Estimations et quantités",
     Profil: "Compte et mot de passe",
     Usagers: "Roles et acces",
@@ -726,6 +730,10 @@ function App() {
                             estimateId={activeEstimateId}
                             onEstimateChange={setActiveEstimateId}
                         />
+                    )}
+
+                    {activePage === "Calibre" && (
+                        <CalibreView key={`calibre-${navigationRefreshKey}`} />
                     )}
 
                     {activePage === "Profil" && (

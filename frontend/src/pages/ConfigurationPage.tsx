@@ -18,6 +18,7 @@ import {
     testSmsSettings
 } from "../utils/authApi";
 import ImportationPage from "./ImportationPage";
+import OperationsStatusPage from "./OperationsStatusPage";
 
 import "../styles/auth.css";
 
@@ -50,7 +51,7 @@ const EMPTY_SMS_SETTINGS: SmsSettings = {
 type ConfigurationPageProps = {
     token: string;
     currentUser: SercoraUser;
-    configurationMenu: "Courriel" | "VoIP/SMS" | "Mobile-Punch" | "Importation";
+    configurationMenu: "Courriel" | "VoIP/SMS" | "Mobile-Punch" | "Importation" | "Statut";
 };
 
 
@@ -339,6 +340,11 @@ function ConfigurationPage({
                 <ImportationPage />
             </section>
         );
+    }
+
+
+    if (configurationMenu === "Statut") {
+        return <OperationsStatusPage />;
     }
 
 
