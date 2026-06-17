@@ -34,6 +34,10 @@ import "../styles/calibre.css";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
+const PDF_RESOURCE_BASE_URL = "/pdfjs";
+const PDF_MAX_CANVAS_PIXELS = 16000000;
+const PDF_MAX_CANVAS_SIDE = 5000;
+
 
 type PendingPdf = {
     fileName: string;
@@ -55,6 +59,64 @@ function revokePageUrls(
 
     pages.forEach(
         page => URL.revokeObjectURL(page.imageUrl)
+    );
+
+}
+
+
+function pdfDocumentOptions(
+    data: ArrayBuffer
+) {
+
+    return {
+        cMapPacked: true,
+        cMapUrl: `${PDF_RESOURCE_BASE_URL}/cmaps/`,
+        data,
+        standardFontDataUrl: `${PDF_RESOURCE_BASE_URL}/standard_fonts/`,
+        useSystemFonts: true,
+        wasmUrl: `${PDF_RESOURCE_BASE_URL}/wasm/`
+    };
+
+}
+
+
+function pdfErrorMessage(
+    prefix: string,
+    error: unknown
+) {
+
+    if (error instanceof Error && error.message)
+        return `${prefix} ${error.message}`;
+
+    if (typeof error === "string" && error)
+        return `${prefix} ${error}`;
+
+    return prefix;
+
+}
+
+
+function pdfPageRenderScale(
+    width: number,
+    height: number
+) {
+
+    const preferredScale = 2;
+    const sideScale = Math.min(
+        PDF_MAX_CANVAS_SIDE / width,
+        PDF_MAX_CANVAS_SIDE / height
+    );
+    const pixelScale = Math.sqrt(
+        PDF_MAX_CANVAS_PIXELS / (width * height)
+    );
+
+    return Math.max(
+        0.35,
+        Math.min(
+            preferredScale,
+            sideScale,
+            pixelScale
+        )
     );
 
 }
@@ -162,9 +224,9 @@ function CalibreView() {
         if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
             try {
                 const data = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({
-                    data: data.slice(0)
-                }).promise;
+                const pdf = await pdfjsLib.getDocument(
+                    pdfDocumentOptions(data.slice(0))
+                ).promise;
 
                 setPendingPdf({
                     fileName: file.name,
@@ -172,8 +234,13 @@ function CalibreView() {
                     pageCount: pdf.numPages
                 });
             }
-            catch {
-                setImportError("Impossible de lire ce PDF.");
+            catch (error) {
+                setImportError(
+                    pdfErrorMessage(
+                        "Impossible de lire ce PDF.",
+                        error
+                    )
+                );
             }
 
             return;
@@ -207,12 +274,18 @@ function CalibreView() {
         setImportError("");
 
         try {
-            const pdf = await pdfjsLib.getDocument({
-                data: pendingPdf.data.slice(0)
-            }).promise;
+            const pdf = await pdfjsLib.getDocument(
+                pdfDocumentOptions(pendingPdf.data.slice(0))
+            ).promise;
             const page = await pdf.getPage(pageNumber);
+            const baseViewport = page.getViewport({
+                scale: 1
+            });
             const viewport = page.getViewport({
-                scale: 2
+                scale: pdfPageRenderScale(
+                    baseViewport.width,
+                    baseViewport.height
+                )
             });
             const canvas = document.createElement("canvas");
             const context = canvas.getContext("2d");
@@ -248,8 +321,13 @@ function CalibreView() {
                 imageUrl: URL.createObjectURL(blob)
             });
         }
-        catch {
-            setImportError("Impossible de convertir cette page PDF.");
+        catch (error) {
+            setImportError(
+                pdfErrorMessage(
+                    "Impossible de convertir cette page PDF.",
+                    error
+                )
+            );
         }
         finally {
             setIsImportingPdfPage(false);
