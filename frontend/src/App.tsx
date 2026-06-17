@@ -761,14 +761,14 @@ function App() {
                 <span>Crédits : Simon Mathieu 2026</span>
                 <nav aria-label="Liens projet">
                     <a
-                        href="https://github.com/sercora/sercora/tree/codex"
+                        href="https://github.com/sercora/sercora/tree/main"
                         target="_blank"
                         rel="noreferrer"
                     >
-                        GitHub codex
+                        GitHub main
                     </a>
                     <a
-                        href="https://github.com/sercora/sercora/tree/codex/docs"
+                        href="https://github.com/sercora/sercora/tree/main/docs"
                         target="_blank"
                         rel="noreferrer"
                     >
