@@ -37,8 +37,8 @@ import "../styles/calibre.css";
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 const PDF_RESOURCE_BASE_URL = "/pdfjs";
-const PDF_MAX_CANVAS_PIXELS = 16000000;
-const PDF_MAX_CANVAS_SIDE = 5000;
+const PDF_MAX_CANVAS_PIXELS = 25000000;
+const PDF_MAX_CANVAS_SIDE = 6500;
 
 
 type PendingPdf = {
@@ -103,7 +103,7 @@ function pdfPageRenderScale(
     height: number
 ) {
 
-    const preferredScale = 2;
+    const preferredScale = 3;
     const sideScale = Math.min(
         PDF_MAX_CANVAS_SIDE / width,
         PDF_MAX_CANVAS_SIDE / height
@@ -126,6 +126,7 @@ function pdfPageRenderScale(
 
 function CalibreView() {
 
+    const pageRef = useRef<HTMLElement | null>(null);
     const fitToScreenRef = useRef<() => void>(() => undefined);
     const pagesRef = useRef<CalibrePage[]>([]);
     const [pages, setPages] = useState<CalibrePage[]>([]);
@@ -144,6 +145,8 @@ function CalibreView() {
     const [measurements, setMeasurements] = useState<CalibreMeasurement[]>([]);
     const [calibrations, setCalibrations] = useState<CalibrePageCalibrationMap>({});
     const [viewportScale, setViewportScale] = useState(1);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isLayersOpen, setIsLayersOpen] = useState(false);
 
     useEffect(
         () => {
@@ -157,6 +160,29 @@ function CalibreView() {
     useEffect(
         () => () => {
             revokePageUrls(pagesRef.current);
+        },
+        []
+    );
+
+    useEffect(
+        () => {
+            function handleFullscreenChange() {
+
+                setIsFullscreen(document.fullscreenElement === pageRef.current);
+
+            }
+
+            document.addEventListener(
+                "fullscreenchange",
+                handleFullscreenChange
+            );
+
+            return () => {
+                document.removeEventListener(
+                    "fullscreenchange",
+                    handleFullscreenChange
+                );
+            };
         },
         []
     );
@@ -446,20 +472,47 @@ function CalibreView() {
     }
 
 
+    async function toggleFullscreen() {
+
+        if (document.fullscreenElement) {
+            await document.exitFullscreen();
+            return;
+        }
+
+        await pageRef.current?.requestFullscreen();
+
+    }
+
+
     return (
-        <section className="calibre-page">
+        <section
+            ref={pageRef}
+            className={
+                isFullscreen ?
+                    "calibre-page fullscreen" :
+                    "calibre-page"
+            }
+        >
             <CalibreToolbar
                 activeOperation={activeOperation}
                 activePageId={activePageId}
                 activeTool={activeTool}
                 calibration={activeCalibration}
                 importError={importError}
+                isFullscreen={isFullscreen}
                 isImportingPdfPage={isImportingPdfPage}
+                isLayersOpen={isLayersOpen}
                 pages={pages}
                 pendingPdf={pendingPdf}
                 scalePercent={Math.round(viewportScale * 100)}
                 unitSystem={unitSystem}
                 onFitToScreen={resetViewport}
+                onFullscreenToggle={toggleFullscreen}
+                onLayersToggle={
+                    () => setIsLayersOpen(
+                        currentValue => !currentValue
+                    )
+                }
                 onOperationChange={setActiveOperation}
                 onPageChange={handlePageChange}
                 onPdfPageImport={handlePdfPageImport}
@@ -494,17 +547,24 @@ function CalibreView() {
                     onViewportScaleChange={setViewportScale}
                 />
 
-                <CalibreLayersPanel
-                    activeLayer={activeLayer}
-                    activeSectorId={activeSectorId}
-                    measurements={activePageMeasurements}
-                    sectors={sectors}
-                    visibility={layerVisibility}
-                    onActiveLayerChange={setActiveLayer}
-                    onActiveSectorChange={setActiveSectorId}
-                    onSectorsChange={setSectors}
-                    onVisibilityChange={updateLayerVisibility}
-                />
+                {isLayersOpen && (
+                    <div className="calibre-floating-panel">
+                        <CalibreLayersPanel
+                            activeLayer={activeLayer}
+                            activeSectorId={activeSectorId}
+                            measurements={activePageMeasurements}
+                            sectors={sectors}
+                            visibility={layerVisibility}
+                            onActiveLayerChange={setActiveLayer}
+                            onActiveSectorChange={setActiveSectorId}
+                            onClose={
+                                () => setIsLayersOpen(false)
+                            }
+                            onSectorsChange={setSectors}
+                            onVisibilityChange={updateLayerVisibility}
+                        />
+                    </div>
+                )}
             </div>
         </section>
     );

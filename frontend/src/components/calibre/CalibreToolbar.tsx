@@ -19,12 +19,16 @@ type CalibreToolbarProps = {
     activeTool: CalibreTool;
     calibration: CalibreCalibration;
     importError: string;
+    isFullscreen: boolean;
     isImportingPdfPage: boolean;
+    isLayersOpen: boolean;
     pages: CalibrePage[];
     pendingPdf: PendingPdfToolbarState | null;
     scalePercent: number;
     unitSystem: CalibreUnitSystem;
     onFitToScreen: () => void;
+    onFullscreenToggle: () => void;
+    onLayersToggle: () => void;
     onOperationChange: (operation: CalibreOperation) => void;
     onPageChange: (pageId: string) => void;
     onPdfPageImport: (pageNumber: number) => void;
@@ -59,12 +63,16 @@ function CalibreToolbar({
     activeTool,
     calibration,
     importError,
+    isFullscreen,
     isImportingPdfPage,
+    isLayersOpen,
     pages,
     pendingPdf,
     scalePercent,
     unitSystem,
     onFitToScreen,
+    onFullscreenToggle,
+    onLayersToggle,
     onOperationChange,
     onPageChange,
     onPdfPageImport,
@@ -258,6 +266,28 @@ function CalibreToolbar({
                 </div>
 
                 <div className="calibre-zoom-group">
+                    <button
+                        type="button"
+                        className={
+                            isLayersOpen ?
+                                "calibre-tool-button active" :
+                                "calibre-tool-button"
+                        }
+                        onClick={onLayersToggle}
+                    >
+                        Calques
+                    </button>
+                    <button
+                        type="button"
+                        className={
+                            isFullscreen ?
+                                "calibre-tool-button active" :
+                                "calibre-tool-button"
+                        }
+                        onClick={onFullscreenToggle}
+                    >
+                        {isFullscreen ? "Quitter plein écran" : "Plein écran"}
+                    </button>
                     <button
                         type="button"
                         className="calibre-tool-button"

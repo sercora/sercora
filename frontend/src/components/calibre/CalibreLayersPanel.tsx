@@ -17,6 +17,7 @@ type CalibreLayersPanelProps = {
     visibility: CalibreLayerVisibility;
     onActiveLayerChange: (layer: CalibreLayerKind) => void;
     onActiveSectorChange: (sectorId: string) => void;
+    onClose?: () => void;
     onSectorsChange: (sectors: CalibreSector[]) => void;
     onVisibilityChange: (
         layer: CalibreLayerKind,
@@ -94,6 +95,7 @@ function CalibreLayersPanel({
     visibility,
     onActiveLayerChange,
     onActiveSectorChange,
+    onClose,
     onSectorsChange,
     onVisibilityChange
 }: CalibreLayersPanelProps) {
@@ -132,9 +134,22 @@ function CalibreLayersPanel({
 
     return (
         <aside className="calibre-layers-panel">
-            <div className="calibre-panel-heading">
-                <span>Calques</span>
-                <strong>Types de travaux</strong>
+            <div className="calibre-popup-heading-row">
+                <div className="calibre-panel-heading">
+                    <span>Calques</span>
+                    <strong>Types de travaux</strong>
+                </div>
+
+                {onClose && (
+                    <button
+                        type="button"
+                        className="calibre-popup-close"
+                        aria-label="Fermer les calques"
+                        onClick={onClose}
+                    >
+                        Fermer
+                    </button>
+                )}
             </div>
 
             <div className="calibre-layer-list">
