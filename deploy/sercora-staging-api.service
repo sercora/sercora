@@ -1,0 +1,20 @@
+[Unit]
+Description=Sercora Staging FastAPI API
+After=network.target
+
+[Service]
+User=simon
+Group=simon
+
+WorkingDirectory=/home/simon/sercora-staging/backend
+
+Environment="PATH=/home/simon/sercora/backend/.venv/bin"
+EnvironmentFile=-/home/simon/sercora-staging/backend/.env
+
+ExecStart=/home/simon/sercora/backend/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
