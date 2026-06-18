@@ -14,8 +14,6 @@ import CalibreLayersPanel from "../components/calibre/CalibreLayersPanel";
 import CalibreResultsPanel from "../components/calibre/CalibreResultsPanel";
 import CalibreToolbar from "../components/calibre/CalibreToolbar";
 import {
-    CALIBRE_MAX_ZOOM,
-    CALIBRE_MIN_ZOOM,
     DEFAULT_CALIBRE_ANNOTATION_STYLE,
     DEFAULT_CALIBRE_CALIBRATION,
     DEFAULT_CALIBRE_SECTORS,
@@ -49,15 +47,33 @@ type PendingPdf = {
     fileName: string;
     data: ArrayBuffer;
     pageCount: number;
+    source: CalibreImportSource;
+};
+
+
+type CalibreImportSource =
+    "projectPlans" |
+    "legacyInProgress" |
+    "local";
+
+
+type PendingPlanFields = {
+    pageNumber: number;
+    planName: string;
+    planDate: string;
+    revisionNumber: string;
 };
 
 
 type CalibreHistoryEntry = {
     annotationStyle: CalibreAnnotationStyle;
+    activeOperation: CalibreOperation;
+    activePageId: string;
     calibrations: CalibrePageCalibrationMap;
     layerVisibility: CalibreLayerVisibility;
     lineWeight: number;
     measurements: CalibreMeasurement[];
+    pages: CalibrePage[];
     sectors: CalibreSector[];
     snapRadius: number;
 };
@@ -72,6 +88,7 @@ type StoredCalibreSession = {
     layerVisibility?: CalibreLayerVisibility;
     lineWeight?: number;
     measurements?: CalibreMeasurement[];
+    pageMetadata?: Array<Omit<CalibrePage, "imageUrl">>;
     sectors?: CalibreSector[];
     snapRadius?: number;
     unitSystem?: CalibreUnitSystem;
@@ -85,6 +102,23 @@ const CALIBRE_HISTORY_LIMIT = 100;
 function createPageId() {
 
     return crypto.randomUUID();
+
+}
+
+
+function defaultPlanName(
+    fileName: string,
+    pageNumber: number
+) {
+
+    const baseName = fileName.replace(
+        /\.[^.]+$/,
+        ""
+    );
+
+    return pageNumber > 1 ?
+        `${baseName}-${pageNumber}` :
+        baseName;
 
 }
 
@@ -190,6 +224,12 @@ function CalibreView() {
     const [pages, setPages] = useState<CalibrePage[]>([]);
     const [activePageId, setActivePageId] = useState("");
     const [pendingPdf, setPendingPdf] = useState<PendingPdf | null>(null);
+    const [pendingPlanFields, setPendingPlanFields] = useState<PendingPlanFields>({
+        pageNumber: 1,
+        planName: "",
+        planDate: "",
+        revisionNumber: "0"
+    });
     const [isImportingPdfPage, setIsImportingPdfPage] = useState(false);
     const [importError, setImportError] = useState("");
     const [activeTool, setActiveTool] = useState<CalibreTool>("select");
@@ -269,6 +309,17 @@ function CalibreView() {
                         layerVisibility,
                         lineWeight,
                         measurements,
+                        pageMetadata: pages.map(
+                            page => ({
+                                id: page.id,
+                                name: page.name,
+                                pageNumber: page.pageNumber,
+                                planDate: page.planDate,
+                                planName: page.planName,
+                                revisionNumber: page.revisionNumber,
+                                sourceName: page.sourceName
+                            })
+                        ),
                         sectors,
                         snapRadius,
                         unitSystem
@@ -296,6 +347,7 @@ function CalibreView() {
             layerVisibility,
             lineWeight,
             measurements,
+            pages,
             sectors,
             snapRadius,
             unitSystem
@@ -343,10 +395,13 @@ function CalibreView() {
 
         return {
             annotationStyle,
+            activeOperation,
+            activePageId,
             calibrations,
             layerVisibility,
             lineWeight,
             measurements,
+            pages,
             sectors,
             snapRadius
         };
@@ -374,10 +429,13 @@ function CalibreView() {
     ) {
 
         setAnnotationStyle(snapshot.annotationStyle);
+        setActiveOperation(snapshot.activeOperation);
+        setActivePageId(snapshot.activePageId);
         setCalibrations(snapshot.calibrations);
         setLayerVisibility(snapshot.layerVisibility);
         setLineWeight(snapshot.lineWeight);
         setMeasurements(snapshot.measurements);
+        setPages(snapshot.pages);
         setSectors(snapshot.sectors);
         setSnapRadius(snapshot.snapRadius);
 
@@ -508,18 +566,11 @@ function CalibreView() {
         ]
     );
 
-    function resetViewport() {
-
-        setViewportScale(1);
-        fitToScreenRef.current();
-
-    }
-
-
     function addImportedPage(
         page: CalibrePage
     ) {
 
+        pushHistory();
         setPages(
             currentPages => [
                 ...currentPages,
@@ -543,7 +594,8 @@ function CalibreView() {
 
 
     async function handlePlanSelected(
-        file: File
+        file: File,
+        source: CalibreImportSource = "local"
     ) {
 
         setImportError("");
@@ -558,7 +610,20 @@ function CalibreView() {
                 setPendingPdf({
                     fileName: file.name,
                     data,
-                    pageCount: pdf.numPages
+                    pageCount: pdf.numPages,
+                    source
+                });
+                setPendingPlanFields({
+                    pageNumber: 1,
+                    planName: defaultPlanName(
+                        file.name,
+                        1
+                    ),
+                    planDate: new Date().toISOString().slice(
+                        0,
+                        10
+                    ),
+                    revisionNumber: "0"
                 });
             }
             catch (error) {
@@ -580,9 +645,21 @@ function CalibreView() {
 
         addImportedPage({
             id: createPageId(),
-            name: file.name,
-            sourceName: file.name,
+            name: defaultPlanName(
+                file.name,
+                1
+            ),
             pageNumber: 1,
+            planDate: new Date().toISOString().slice(
+                0,
+                10
+            ),
+            planName: defaultPlanName(
+                file.name,
+                1
+            ),
+            revisionNumber: "0",
+            sourceName: file.name,
             imageUrl: URL.createObjectURL(file)
         });
         setPendingPdf(null);
@@ -590,12 +667,22 @@ function CalibreView() {
     }
 
 
-    async function handlePdfPageImport(
-        pageNumber: number
-    ) {
+    async function handlePdfPageImport() {
 
         if (!pendingPdf)
             return;
+
+        const pageNumber = Math.max(
+            1,
+            Math.min(
+                pendingPdf.pageCount,
+                pendingPlanFields.pageNumber
+            )
+        );
+        const planName = pendingPlanFields.planName.trim() || defaultPlanName(
+            pendingPdf.fileName,
+            pageNumber
+        );
 
         setIsImportingPdfPage(true);
         setImportError("");
@@ -642,11 +729,24 @@ function CalibreView() {
 
             addImportedPage({
                 id: createPageId(),
-                name: `${pendingPdf.fileName} - page ${pageNumber}`,
-                sourceName: pendingPdf.fileName,
+                name: planName,
                 pageNumber,
+                planDate: pendingPlanFields.planDate,
+                planName,
+                revisionNumber: pendingPlanFields.revisionNumber.trim() || "0",
+                sourceName: pendingPdf.fileName,
                 imageUrl: URL.createObjectURL(blob)
             });
+            setPendingPlanFields(
+                currentFields => ({
+                    ...currentFields,
+                    pageNumber: Math.min(
+                        pendingPdf.pageCount,
+                        pageNumber + 1
+                    ),
+                    planName: ""
+                })
+            );
         }
         catch (error) {
             setImportError(
@@ -758,23 +858,6 @@ function CalibreView() {
     );
 
 
-    function zoomBy(
-        factor: number
-    ) {
-
-        setViewportScale(
-            currentScale => Math.max(
-                CALIBRE_MIN_ZOOM,
-                Math.min(
-                    CALIBRE_MAX_ZOOM,
-                    currentScale * factor
-                )
-            )
-        );
-
-    }
-
-
     async function toggleFullscreen() {
 
         if (document.fullscreenElement) {
@@ -807,6 +890,16 @@ function CalibreView() {
     }
 
 
+    function updateOperation(
+        nextOperation: CalibreOperation
+    ) {
+
+        pushHistory();
+        setActiveOperation(nextOperation);
+
+    }
+
+
     function updateLineWeight(
         nextLineWeight: number
     ) {
@@ -831,9 +924,11 @@ function CalibreView() {
         <section
             ref={pageRef}
             className={
-                isFullscreen ?
-                    "calibre-page fullscreen" :
-                    "calibre-page"
+                [
+                    "calibre-page",
+                    isFullscreen ? "fullscreen" : "",
+                    activeOperation === "subtract" ? "subtract-mode" : ""
+                ].filter(Boolean).join(" ")
             }
         >
             <CalibreToolbar
@@ -849,12 +944,12 @@ function CalibreView() {
                 lineWeight={lineWeight}
                 pages={pages}
                 pendingPdf={pendingPdf}
+                pendingPlanFields={pendingPlanFields}
                 redoAvailable={redoStack.length > 0}
                 saveStatus={saveStatus}
                 scalePercent={Math.round(viewportScale * 100)}
                 unitSystem={unitSystem}
                 undoAvailable={undoStack.length > 0}
-                onFitToScreen={resetViewport}
                 onFullscreenToggle={toggleFullscreen}
                 onLayersToggle={
                     () => setIsLayersOpen(
@@ -862,8 +957,9 @@ function CalibreView() {
                     )
                 }
                 onLineWeightChange={updateLineWeight}
-                onOperationChange={setActiveOperation}
+                onOperationChange={updateOperation}
                 onPageChange={handlePageChange}
+                onPendingPlanFieldsChange={setPendingPlanFields}
                 onPdfPageImport={handlePdfPageImport}
                 onPlanSelected={handlePlanSelected}
                 onRedo={redo}
@@ -875,12 +971,6 @@ function CalibreView() {
                 onToolChange={setActiveTool}
                 onUndo={undo}
                 onUnitSystemChange={handleUnitSystemChange}
-                onZoomIn={
-                    () => zoomBy(1.15)
-                }
-                onZoomOut={
-                    () => zoomBy(0.85)
-                }
             />
 
             <div className="calibre-workspace">
@@ -910,6 +1000,7 @@ function CalibreView() {
                     activeLayer={activeLayer}
                     activeSectorId={activeSectorId}
                     measurements={activePageMeasurements}
+                    onActiveSectorChange={setActiveSectorId}
                     sectors={sectors}
                 />
 

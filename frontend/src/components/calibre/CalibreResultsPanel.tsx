@@ -18,6 +18,7 @@ type CalibreResultsPanelProps = {
     activeLayer: CalibreLayerKind;
     activeSectorId: string;
     measurements: CalibreMeasurement[];
+    onActiveSectorChange: (sectorId: string) => void;
     sectors: CalibreSector[];
 };
 
@@ -39,7 +40,14 @@ type DragState = {
 } | null;
 
 
+type ResultDisplayMode =
+    "metric" |
+    "imperialDecimal" |
+    "imperialFraction";
+
+
 const STORAGE_KEY = "sercora.calibre.resultsPanel";
+const DISPLAY_STORAGE_KEY = "sercora.calibre.resultsDisplay";
 
 const DEFAULT_POSITION: PanelPosition = {
     dock: "right",
@@ -65,6 +73,22 @@ function storedPosition() {
     catch {
         return DEFAULT_POSITION;
     }
+
+}
+
+
+function storedDisplayMode(): ResultDisplayMode {
+
+    const value = localStorage.getItem(DISPLAY_STORAGE_KEY);
+
+    if (
+        value === "metric" ||
+        value === "imperialDecimal" ||
+        value === "imperialFraction"
+    )
+        return value;
+
+    return "imperialDecimal";
 
 }
 
@@ -95,9 +119,72 @@ function signedLength(
 }
 
 
-function formatArea(
+function nearestFraction(
     value: number
 ) {
+
+    const denominator = 16;
+    const numerator = Math.round(value * denominator);
+
+    if (numerator === 0)
+        return "";
+
+    const divisor = greatestCommonDivisor(
+        numerator,
+        denominator
+    );
+
+    return `${numerator / divisor}/${denominator / divisor}`;
+
+}
+
+
+function greatestCommonDivisor(
+    first: number,
+    second: number
+): number {
+
+    if (!second)
+        return first;
+
+    return greatestCommonDivisor(
+        second,
+        first % second
+    );
+
+}
+
+
+function formatFeetFraction(
+    value: number,
+    unitLabel: string
+) {
+
+    const sign = value < 0 ? "-" : "";
+    const absoluteValue = Math.abs(value);
+    const feet = Math.floor(absoluteValue);
+    const rawInches = (absoluteValue - feet) * 12;
+    const inches = Math.floor(rawInches);
+    const fraction = nearestFraction(rawInches - inches);
+    const inchLabel = fraction ?
+        `${inches} ${fraction}` :
+        `${inches}`;
+
+    return `${sign}${feet}'-${inchLabel}" ${unitLabel}`;
+
+}
+
+
+function formatArea(
+    value: number,
+    displayMode: ResultDisplayMode
+) {
+
+    if (displayMode === "metric")
+        return `${(value * 0.09290304).toFixed(1)} m²`;
+
+    if (displayMode === "imperialFraction")
+        return `${value.toFixed(1)} pi²`;
 
     return `${value.toFixed(1)} pi²`;
 
@@ -105,8 +192,18 @@ function formatArea(
 
 
 function formatLength(
-    value: number
+    value: number,
+    displayMode: ResultDisplayMode
 ) {
+
+    if (displayMode === "metric")
+        return `${(value * 0.3048).toFixed(1)} m lin.`;
+
+    if (displayMode === "imperialFraction")
+        return formatFeetFraction(
+            value,
+            "lin."
+        );
 
     return `${value.toFixed(1)} pi lin.`;
 
@@ -117,10 +214,12 @@ function CalibreResultsPanel({
     activeLayer,
     activeSectorId,
     measurements,
+    onActiveSectorChange,
     sectors
 }: CalibreResultsPanelProps) {
 
     const [position, setPosition] = useState(storedPosition);
+    const [displayMode, setDisplayMode] = useState(storedDisplayMode);
     const [drag, setDrag] = useState<DragState>(null);
 
     const activeLayerDefinition = CALIBRE_LAYERS.find(
@@ -128,12 +227,25 @@ function CalibreResultsPanel({
     ) || CALIBRE_LAYERS[0];
     const activeSector = sectors.find(
         sector => sector.id === activeSectorId
+    ) || sectors[0];
+    const activeSectorIndex = Math.max(
+        0,
+        sectors.findIndex(
+            sector => sector.id === activeSector?.id
+        )
     );
+    const previousSector = sectors[
+        (activeSectorIndex - 1 + sectors.length) % sectors.length
+    ];
+    const nextSector = sectors[
+        (activeSectorIndex + 1) % sectors.length
+    ];
 
     const totals = useMemo(
         () => {
             const scopedMeasurements = measurements.filter(
-                measurement => measurement.layer === activeLayer
+                measurement => measurement.layer === activeLayer &&
+                    measurement.sectorId === activeSector?.id
             );
 
             return scopedMeasurements.reduce(
@@ -171,6 +283,7 @@ function CalibreResultsPanel({
         },
         [
             activeLayer,
+            activeSector?.id,
             measurements
         ]
     );
@@ -184,6 +297,18 @@ function CalibreResultsPanel({
         },
         [
             position
+        ]
+    );
+
+    useEffect(
+        () => {
+            localStorage.setItem(
+                DISPLAY_STORAGE_KEY,
+                displayMode
+            );
+        },
+        [
+            displayMode
         ]
     );
 
@@ -346,21 +471,72 @@ function CalibreResultsPanel({
                         <strong>{activeSector?.name || "Secteur principal"}</strong>
                     </div>
 
+                    <div className="calibre-results-options">
+                        <button
+                            type="button"
+                            className={displayMode === "metric" ? "active" : ""}
+                            onClick={
+                                () => setDisplayMode("metric")
+                            }
+                        >
+                            Métrique
+                        </button>
+                        <button
+                            type="button"
+                            className={displayMode === "imperialDecimal" ? "active" : ""}
+                            onClick={
+                                () => setDisplayMode("imperialDecimal")
+                            }
+                        >
+                            Pi déc.
+                        </button>
+                        <button
+                            type="button"
+                            className={displayMode === "imperialFraction" ? "active" : ""}
+                            onClick={
+                                () => setDisplayMode("imperialFraction")
+                            }
+                        >
+                            Pi frac.
+                        </button>
+                    </div>
+
                     <div className="calibre-results-total">
                         <span>Surface totale</span>
-                        <strong>{formatArea(totals.netArea)}</strong>
+                        <strong>{formatArea(totals.netArea, displayMode)}</strong>
                     </div>
 
                     <div className="calibre-results-grid">
                         <span>Ajouts</span>
-                        <strong className="positive">+{formatArea(totals.additions)}</strong>
+                        <strong className="positive">+{formatArea(totals.additions, displayMode)}</strong>
                         <span>Retraits</span>
-                        <strong className="negative">-{formatArea(totals.removals)}</strong>
+                        <strong className="negative">-{formatArea(totals.removals, displayMode)}</strong>
                         <span>Périmètre</span>
-                        <strong>{formatLength(totals.perimeter)}</strong>
+                        <strong>{formatLength(totals.perimeter, displayMode)}</strong>
                         <span>Objets</span>
                         <strong>{totals.count}</strong>
                     </div>
+
+                    {sectors.length > 1 && (
+                        <div className="calibre-results-navigation">
+                            <button
+                                type="button"
+                                onClick={
+                                    () => onActiveSectorChange(previousSector.id)
+                                }
+                            >
+                                ← {previousSector.room}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={
+                                    () => onActiveSectorChange(nextSector.id)
+                                }
+                            >
+                                {nextSector.room} →
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </aside>

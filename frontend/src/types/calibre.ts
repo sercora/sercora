@@ -47,6 +47,9 @@ export type CalibreSector = {
 export type CalibrePage = {
     id: string;
     name: string;
+    planDate: string;
+    planName: string;
+    revisionNumber: string;
     sourceName: string;
     pageNumber: number;
     imageUrl: string;
@@ -90,6 +93,8 @@ export type CalibreMeasurement = {
     layer: CalibreLayerKind;
     sectorId: string;
     operation: CalibreOperation;
+    estimateLineIds?: number[];
+    productId?: number | null;
     points: CalibrePoint[];
     lengthFeet: number | null;
     areaSquareFeet: number | null;

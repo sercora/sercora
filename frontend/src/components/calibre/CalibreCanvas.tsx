@@ -90,6 +90,16 @@ type RightPanState = {
 } | null;
 
 
+type CalibrationDialogState = {
+    pixelDistance: number;
+    metricAmount: string;
+    metricUnit: "mm" | "cm" | "m";
+    feet: string;
+    inches: string;
+    fraction: string;
+} | null;
+
+
 function distance(
     first: CalibrePoint,
     second: CalibrePoint
@@ -157,110 +167,6 @@ function parseFraction(
         return null;
 
     return numerator / denominator;
-
-}
-
-
-function parseInchesToken(
-    value: string
-) {
-
-    const normalized = value.trim();
-
-    if (!normalized)
-        return 0;
-
-    if (normalized.includes("/"))
-        return parseFraction(normalized) || 0;
-
-    return parsePositiveNumber(normalized) || 0;
-
-}
-
-
-function parseMetricFeet(
-    value: string
-) {
-
-    const normalized = value.trim().toLowerCase().replace(",", ".");
-    const match = normalized.match(/^([0-9.]+)\s*(mm|millimetres|millimètres|cm|m|metres|mètres)?$/u);
-
-    if (!match)
-        return null;
-
-    const amount = parsePositiveNumber(match[1]);
-    const unit = match[2] || "mm";
-
-    if (!amount)
-        return null;
-
-    if (unit === "m" || unit === "metres" || unit === "mètres")
-        return amount * 3.280839895;
-
-    if (unit === "cm")
-        return amount / 30.48;
-
-    return amount / 304.8;
-
-}
-
-
-function parseImperialFeet(
-    value: string
-) {
-
-    const normalized = value
-        .trim()
-        .toLowerCase()
-        .replace(/,/g, ".")
-        .replace(/′/g, "'")
-        .replace(/″/g, "\"")
-        .replace(/pouces|pouce|po/g, "\"")
-        .replace(/pieds|pied|pi|ft/g, "'")
-        .replace(/\s+/g, " ");
-
-    if (!normalized)
-        return null;
-
-    const feetMatch = normalized.match(/([0-9.]+)\s*'/);
-    const inchMatch = normalized.match(/([0-9.]+)\s*"/);
-    const fractionMatch = normalized.match(/([0-9]+\s*\/\s*[0-9]+)/);
-
-    if (feetMatch || inchMatch || fractionMatch) {
-        const feet = feetMatch ? parsePositiveNumber(feetMatch[1]) || 0 : 0;
-        const inches = inchMatch ? parsePositiveNumber(inchMatch[1]) || 0 : 0;
-        const fraction = fractionMatch ? parseFraction(fractionMatch[1].replace(/\s/g, "")) || 0 : 0;
-
-        return feet + (inches + fraction) / 12;
-    }
-
-    const parts = normalized.split(" ").filter(Boolean);
-
-    if (parts.length >= 2) {
-        const feet = parsePositiveNumber(parts[0]);
-        const inches = parseInchesToken(parts[1]);
-        const fraction = parts[2] ? parseInchesToken(parts[2]) : 0;
-
-        if (feet)
-            return feet + (inches + fraction) / 12;
-    }
-
-    return parsePositiveNumber(normalized);
-
-}
-
-
-function parseDistanceFeet(
-    value: string | null,
-    unitSystem: CalibreUnitSystem
-) {
-
-    if (!value)
-        return null;
-
-    return unitSystem === "metric" ?
-        parseMetricFeet(value) :
-        parseImperialFeet(value);
 
 }
 
@@ -472,6 +378,8 @@ function CalibreCanvas({
     const [draft, setDraft] = useState<DraftShape | null>(null);
     const [pointerPoint, setPointerPoint] = useState<CalibrePoint | null>(null);
     const [rightPan, setRightPan] = useState<RightPanState>(null);
+    const [calibrationDialog, setCalibrationDialog] =
+        useState<CalibrationDialogState>(null);
     const image = useLoadedImage(imageUrl);
 
     useEffect(
@@ -740,27 +648,14 @@ function CalibreCanvas({
                 firstPoint,
                 point
             );
-            const promptLabel = unitSystem === "metric" ?
-                "Distance réelle (ex: 2500mm, 2.5m)" :
-                "Distance réelle (ex: 10, 8' 2\" 7/16)";
-            const enteredValue = window.prompt(
-                promptLabel,
-                unitSystem === "metric" ? "2500mm" : "10"
-            );
-            const feet = parseDistanceFeet(
-                enteredValue,
-                unitSystem
-            );
-
-            if (feet) {
-                onCalibrationChange({
-                    pixelsPerFoot: pixelDistance / feet,
-                    referenceFeet: feet,
-                    unitSystem,
-                    referenceLabel: enteredValue || ""
-                });
-            }
-
+            setCalibrationDialog({
+                pixelDistance,
+                metricAmount: "2500",
+                metricUnit: "mm",
+                feet: "8",
+                inches: "0",
+                fraction: ""
+            });
             setDraft(null);
             return;
         }
@@ -953,6 +848,68 @@ function CalibreCanvas({
             x: event.target.x(),
             y: event.target.y()
         });
+
+    }
+
+
+    function metricFeetFromDialog(
+        dialog: NonNullable<CalibrationDialogState>
+    ) {
+
+        const amount = parsePositiveNumber(dialog.metricAmount);
+
+        if (!amount)
+            return null;
+
+        if (dialog.metricUnit === "m")
+            return amount * 3.280839895;
+
+        if (dialog.metricUnit === "cm")
+            return amount / 30.48;
+
+        return amount / 304.8;
+
+    }
+
+
+    function imperialFeetFromDialog(
+        dialog: NonNullable<CalibrationDialogState>
+    ) {
+
+        const feet = parsePositiveNumber(dialog.feet) || 0;
+        const inches = parsePositiveNumber(dialog.inches) || 0;
+        const fraction = dialog.fraction.trim() ?
+            parseFraction(dialog.fraction.trim()) || 0 :
+            0;
+
+        return feet + (inches + fraction) / 12;
+
+    }
+
+
+    function submitCalibration() {
+
+        if (!calibrationDialog)
+            return;
+
+        const referenceFeet = unitSystem === "metric" ?
+            metricFeetFromDialog(calibrationDialog) :
+            imperialFeetFromDialog(calibrationDialog);
+
+        if (!referenceFeet)
+            return;
+
+        const referenceLabel = unitSystem === "metric" ?
+            `${calibrationDialog.metricAmount}${calibrationDialog.metricUnit}` :
+            `${calibrationDialog.feet || "0"}'-${calibrationDialog.inches || "0"}${calibrationDialog.fraction ? ` ${calibrationDialog.fraction}` : ""}"`;
+
+        onCalibrationChange({
+            pixelsPerFoot: calibrationDialog.pixelDistance / referenceFeet,
+            referenceFeet,
+            referenceLabel,
+            unitSystem
+        });
+        setCalibrationDialog(null);
 
     }
 
@@ -1273,6 +1230,116 @@ function CalibreCanvas({
             {image && rightPan && (
                 <div className="calibre-canvas-hint calibre-pan-hint">
                     Déplacement du fond de plan
+                </div>
+            )}
+
+            {calibrationDialog && (
+                <div className="calibre-calibration-dialog">
+                    <header>
+                        <strong>Calibration</strong>
+                        <span>
+                            {Math.round(calibrationDialog.pixelDistance)} px
+                        </span>
+                    </header>
+
+                    {unitSystem === "metric" ? (
+                        <div className="calibre-calibration-grid metric">
+                            <label>
+                                Distance
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={calibrationDialog.metricAmount}
+                                    onChange={
+                                        event => setCalibrationDialog({
+                                            ...calibrationDialog,
+                                            metricAmount: event.target.value
+                                        })
+                                    }
+                                />
+                            </label>
+                            <label>
+                                Unité
+                                <select
+                                    value={calibrationDialog.metricUnit}
+                                    onChange={
+                                        event => setCalibrationDialog({
+                                            ...calibrationDialog,
+                                            metricUnit: event.target.value as "mm" | "cm" | "m"
+                                        })
+                                    }
+                                >
+                                    <option value="mm">mm</option>
+                                    <option value="cm">cm</option>
+                                    <option value="m">m</option>
+                                </select>
+                            </label>
+                        </div>
+                    ) : (
+                        <div className="calibre-calibration-grid imperial">
+                            <label>
+                                Pieds
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={calibrationDialog.feet}
+                                    onChange={
+                                        event => setCalibrationDialog({
+                                            ...calibrationDialog,
+                                            feet: event.target.value
+                                        })
+                                    }
+                                />
+                            </label>
+                            <label>
+                                Pouces
+                                <input
+                                    type="number"
+                                    min={0}
+                                    max={11}
+                                    value={calibrationDialog.inches}
+                                    onChange={
+                                        event => setCalibrationDialog({
+                                            ...calibrationDialog,
+                                            inches: event.target.value
+                                        })
+                                    }
+                                />
+                            </label>
+                            <label>
+                                Fraction
+                                <input
+                                    type="text"
+                                    placeholder="1/2"
+                                    value={calibrationDialog.fraction}
+                                    onChange={
+                                        event => setCalibrationDialog({
+                                            ...calibrationDialog,
+                                            fraction: event.target.value
+                                        })
+                                    }
+                                />
+                            </label>
+                        </div>
+                    )}
+
+                    <footer>
+                        <button
+                            type="button"
+                            onClick={
+                                () => setCalibrationDialog(null)
+                            }
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="button"
+                            className="primary"
+                            onClick={submitCalibration}
+                        >
+                            Appliquer
+                        </button>
+                    </footer>
                 </div>
             )}
 
