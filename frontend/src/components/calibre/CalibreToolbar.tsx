@@ -22,11 +22,15 @@ type CalibreToolbarProps = {
     isFullscreen: boolean;
     isImportingPdfPage: boolean;
     isLayersOpen: boolean;
+    isStyleOpen: boolean;
     lineWeight: number;
     pages: CalibrePage[];
     pendingPdf: PendingPdfToolbarState | null;
+    redoAvailable: boolean;
+    saveStatus: string;
     scalePercent: number;
     unitSystem: CalibreUnitSystem;
+    undoAvailable: boolean;
     onFitToScreen: () => void;
     onFullscreenToggle: () => void;
     onLayersToggle: () => void;
@@ -35,7 +39,10 @@ type CalibreToolbarProps = {
     onPageChange: (pageId: string) => void;
     onPdfPageImport: (pageNumber: number) => void;
     onPlanSelected: (file: File) => void;
+    onRedo: () => void;
+    onStyleToggle: () => void;
     onToolChange: (tool: CalibreTool) => void;
+    onUndo: () => void;
     onUnitSystemChange: (unitSystem: CalibreUnitSystem) => void;
     onZoomIn: () => void;
     onZoomOut: () => void;
@@ -68,11 +75,15 @@ function CalibreToolbar({
     isFullscreen,
     isImportingPdfPage,
     isLayersOpen,
+    isStyleOpen,
     lineWeight,
     pages,
     pendingPdf,
+    redoAvailable,
+    saveStatus,
     scalePercent,
     unitSystem,
+    undoAvailable,
     onFitToScreen,
     onFullscreenToggle,
     onLayersToggle,
@@ -81,7 +92,10 @@ function CalibreToolbar({
     onPageChange,
     onPdfPageImport,
     onPlanSelected,
+    onRedo,
+    onStyleToggle,
     onToolChange,
+    onUndo,
     onUnitSystemChange,
     onZoomIn,
     onZoomOut
@@ -206,6 +220,25 @@ function CalibreToolbar({
             )}
 
             <div className="calibre-toolbar-controls">
+                <div className="calibre-history-group">
+                    <button
+                        type="button"
+                        className="calibre-tool-button"
+                        disabled={!undoAvailable}
+                        onClick={onUndo}
+                    >
+                        Annuler
+                    </button>
+                    <button
+                        type="button"
+                        className="calibre-tool-button"
+                        disabled={!redoAvailable}
+                        onClick={onRedo}
+                    >
+                        Rétablir
+                    </button>
+                </div>
+
                 <div className="calibre-tool-group">
                     {toolItems.map(
                         tool => (
@@ -303,6 +336,17 @@ function CalibreToolbar({
                     <button
                         type="button"
                         className={
+                            isStyleOpen ?
+                                "calibre-tool-button active" :
+                                "calibre-tool-button"
+                        }
+                        onClick={onStyleToggle}
+                    >
+                        Styles
+                    </button>
+                    <button
+                        type="button"
+                        className={
                             isFullscreen ?
                                 "calibre-tool-button active" :
                                 "calibre-tool-button"
@@ -334,6 +378,10 @@ function CalibreToolbar({
                         Ajuster
                     </button>
                 </div>
+            </div>
+
+            <div className="calibre-save-status">
+                {saveStatus}
             </div>
         </header>
     );

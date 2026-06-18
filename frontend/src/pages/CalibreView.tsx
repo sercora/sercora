@@ -9,16 +9,20 @@ import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.mjs?url";
 
 import CalibreCanvas from "../components/calibre/CalibreCanvas";
+import CalibreAnnotationStylePanel from "../components/calibre/CalibreAnnotationStylePanel";
 import CalibreLayersPanel from "../components/calibre/CalibreLayersPanel";
+import CalibreResultsPanel from "../components/calibre/CalibreResultsPanel";
 import CalibreToolbar from "../components/calibre/CalibreToolbar";
 import {
     CALIBRE_MAX_ZOOM,
     CALIBRE_MIN_ZOOM,
+    DEFAULT_CALIBRE_ANNOTATION_STYLE,
     DEFAULT_CALIBRE_CALIBRATION,
     DEFAULT_CALIBRE_SECTORS,
     DEFAULT_LAYER_VISIBILITY
 } from "../types/calibre";
 import type {
+    CalibreAnnotationStyle,
     CalibreCalibration,
     CalibreLayerKind,
     CalibreLayerVisibility,
@@ -46,6 +50,36 @@ type PendingPdf = {
     data: ArrayBuffer;
     pageCount: number;
 };
+
+
+type CalibreHistoryEntry = {
+    annotationStyle: CalibreAnnotationStyle;
+    calibrations: CalibrePageCalibrationMap;
+    layerVisibility: CalibreLayerVisibility;
+    lineWeight: number;
+    measurements: CalibreMeasurement[];
+    sectors: CalibreSector[];
+    snapRadius: number;
+};
+
+
+type StoredCalibreSession = {
+    activeLayer?: CalibreLayerKind;
+    activeOperation?: CalibreOperation;
+    activeSectorId?: string;
+    annotationStyle?: CalibreAnnotationStyle;
+    calibrations?: CalibrePageCalibrationMap;
+    layerVisibility?: CalibreLayerVisibility;
+    lineWeight?: number;
+    measurements?: CalibreMeasurement[];
+    sectors?: CalibreSector[];
+    snapRadius?: number;
+    unitSystem?: CalibreUnitSystem;
+};
+
+
+const CALIBRE_SESSION_STORAGE_KEY = "sercora.calibre.session.v2";
+const CALIBRE_HISTORY_LIMIT = 100;
 
 
 function createPageId() {
@@ -124,30 +158,87 @@ function pdfPageRenderScale(
 }
 
 
+function readStoredCalibreSession() {
+
+    try {
+        if (typeof window === "undefined")
+            return null;
+
+        const rawValue = localStorage.getItem(CALIBRE_SESSION_STORAGE_KEY);
+
+        if (!rawValue)
+            return null;
+
+        return JSON.parse(rawValue) as StoredCalibreSession;
+    }
+    catch {
+        return null;
+    }
+
+}
+
+
+const INITIAL_STORED_CALIBRE_SESSION = readStoredCalibreSession();
+
+
 function CalibreView() {
 
     const pageRef = useRef<HTMLElement | null>(null);
     const fitToScreenRef = useRef<() => void>(() => undefined);
     const pagesRef = useRef<CalibrePage[]>([]);
+    const storedSession = INITIAL_STORED_CALIBRE_SESSION;
     const [pages, setPages] = useState<CalibrePage[]>([]);
     const [activePageId, setActivePageId] = useState("");
     const [pendingPdf, setPendingPdf] = useState<PendingPdf | null>(null);
     const [isImportingPdfPage, setIsImportingPdfPage] = useState(false);
     const [importError, setImportError] = useState("");
     const [activeTool, setActiveTool] = useState<CalibreTool>("select");
-    const [activeLayer, setActiveLayer] = useState<CalibreLayerKind>("floor");
-    const [activeSectorId, setActiveSectorId] = useState("main");
-    const [activeOperation, setActiveOperation] = useState<CalibreOperation>("add");
-    const [unitSystem, setUnitSystem] = useState<CalibreUnitSystem>("imperial");
-    const [sectors, setSectors] = useState<CalibreSector[]>(DEFAULT_CALIBRE_SECTORS);
+    const [activeLayer, setActiveLayer] = useState<CalibreLayerKind>(
+        storedSession?.activeLayer || "floor"
+    );
+    const [activeSectorId, setActiveSectorId] = useState(
+        storedSession?.activeSectorId || "main"
+    );
+    const [activeOperation, setActiveOperation] = useState<CalibreOperation>(
+        storedSession?.activeOperation || "add"
+    );
+    const [unitSystem, setUnitSystem] = useState<CalibreUnitSystem>(
+        storedSession?.unitSystem || "imperial"
+    );
+    const [sectors, setSectors] = useState<CalibreSector[]>(
+        storedSession?.sectors?.length ?
+            storedSession.sectors :
+            DEFAULT_CALIBRE_SECTORS
+    );
     const [layerVisibility, setLayerVisibility] =
-        useState<CalibreLayerVisibility>(DEFAULT_LAYER_VISIBILITY);
-    const [measurements, setMeasurements] = useState<CalibreMeasurement[]>([]);
-    const [calibrations, setCalibrations] = useState<CalibrePageCalibrationMap>({});
-    const [lineWeight, setLineWeight] = useState(1);
+        useState<CalibreLayerVisibility>({
+            ...DEFAULT_LAYER_VISIBILITY,
+            ...storedSession?.layerVisibility
+        });
+    const [measurements, setMeasurements] = useState<CalibreMeasurement[]>(
+        storedSession?.measurements || []
+    );
+    const [calibrations, setCalibrations] = useState<CalibrePageCalibrationMap>(
+        storedSession?.calibrations || {}
+    );
+    const [lineWeight, setLineWeight] = useState(storedSession?.lineWeight || 1);
+    const [snapRadius, setSnapRadius] = useState(storedSession?.snapRadius || 14);
+    const [annotationStyle, setAnnotationStyle] =
+        useState<CalibreAnnotationStyle>({
+            ...DEFAULT_CALIBRE_ANNOTATION_STYLE,
+            ...storedSession?.annotationStyle
+        });
     const [viewportScale, setViewportScale] = useState(1);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isLayersOpen, setIsLayersOpen] = useState(false);
+    const [isStyleOpen, setIsStyleOpen] = useState(false);
+    const [undoStack, setUndoStack] = useState<CalibreHistoryEntry[]>([]);
+    const [redoStack, setRedoStack] = useState<CalibreHistoryEntry[]>([]);
+    const [saveStatus, setSaveStatus] = useState(
+        storedSession ?
+            "Session locale restaurée" :
+            "Session locale prête"
+    );
 
     useEffect(
         () => {
@@ -163,6 +254,52 @@ function CalibreView() {
             revokePageUrls(pagesRef.current);
         },
         []
+    );
+
+    useEffect(
+        () => {
+            const timeoutId = window.setTimeout(
+                () => {
+                    const session: StoredCalibreSession = {
+                        activeLayer,
+                        activeOperation,
+                        activeSectorId,
+                        annotationStyle,
+                        calibrations,
+                        layerVisibility,
+                        lineWeight,
+                        measurements,
+                        sectors,
+                        snapRadius,
+                        unitSystem
+                    };
+
+                    localStorage.setItem(
+                        CALIBRE_SESSION_STORAGE_KEY,
+                        JSON.stringify(session)
+                    );
+                    setSaveStatus("Session locale sauvegardée");
+                },
+                350
+            );
+
+            return () => {
+                window.clearTimeout(timeoutId);
+            };
+        },
+        [
+            activeLayer,
+            activeOperation,
+            activeSectorId,
+            annotationStyle,
+            calibrations,
+            layerVisibility,
+            lineWeight,
+            measurements,
+            sectors,
+            snapRadius,
+            unitSystem
+        ]
     );
 
     useEffect(
@@ -186,6 +323,167 @@ function CalibreView() {
             };
         },
         []
+    );
+
+    function isEditableTarget(
+        target: EventTarget | null
+    ) {
+
+        if (!(target instanceof HTMLElement))
+            return false;
+
+        return Boolean(
+            target.closest("input, textarea, select, [contenteditable='true']")
+        );
+
+    }
+
+
+    function historySnapshot(): CalibreHistoryEntry {
+
+        return {
+            annotationStyle,
+            calibrations,
+            layerVisibility,
+            lineWeight,
+            measurements,
+            sectors,
+            snapRadius
+        };
+
+    }
+
+
+    function pushHistory() {
+
+        const snapshot = historySnapshot();
+
+        setUndoStack(
+            currentStack => [
+                ...currentStack,
+                snapshot
+            ].slice(-CALIBRE_HISTORY_LIMIT)
+        );
+        setRedoStack([]);
+
+    }
+
+
+    function restoreHistory(
+        snapshot: CalibreHistoryEntry
+    ) {
+
+        setAnnotationStyle(snapshot.annotationStyle);
+        setCalibrations(snapshot.calibrations);
+        setLayerVisibility(snapshot.layerVisibility);
+        setLineWeight(snapshot.lineWeight);
+        setMeasurements(snapshot.measurements);
+        setSectors(snapshot.sectors);
+        setSnapRadius(snapshot.snapRadius);
+
+    }
+
+
+    function undo() {
+
+        setUndoStack(
+            currentStack => {
+                const previousSnapshot = currentStack[currentStack.length - 1];
+
+                if (!previousSnapshot)
+                    return currentStack;
+
+                setRedoStack(
+                    currentRedoStack => [
+                        ...currentRedoStack,
+                        historySnapshot()
+                    ].slice(-CALIBRE_HISTORY_LIMIT)
+                );
+                restoreHistory(previousSnapshot);
+
+                return currentStack.slice(
+                    0,
+                    -1
+                );
+            }
+        );
+
+    }
+
+
+    function redo() {
+
+        setRedoStack(
+            currentStack => {
+                const nextSnapshot = currentStack[currentStack.length - 1];
+
+                if (!nextSnapshot)
+                    return currentStack;
+
+                setUndoStack(
+                    currentUndoStack => [
+                        ...currentUndoStack,
+                        historySnapshot()
+                    ].slice(-CALIBRE_HISTORY_LIMIT)
+                );
+                restoreHistory(nextSnapshot);
+
+                return currentStack.slice(
+                    0,
+                    -1
+                );
+            }
+        );
+
+    }
+
+
+    useEffect(
+        () => {
+            function handleKeyDown(
+                event: KeyboardEvent
+            ) {
+
+                if (isEditableTarget(event.target))
+                    return;
+
+                const isModifierPressed = event.ctrlKey || event.metaKey;
+                const key = event.key.toLowerCase();
+
+                if (isModifierPressed && key === "z" && !event.shiftKey) {
+                    event.preventDefault();
+                    undo();
+                    return;
+                }
+
+                if (
+                    isModifierPressed &&
+                    (
+                        key === "y" ||
+                        (
+                            key === "z" &&
+                            event.shiftKey
+                        )
+                    )
+                ) {
+                    event.preventDefault();
+                    redo();
+                }
+
+            }
+
+            window.addEventListener(
+                "keydown",
+                handleKeyDown
+            );
+
+            return () => {
+                window.removeEventListener(
+                    "keydown",
+                    handleKeyDown
+                );
+            };
+        }
     );
 
     const activePage = useMemo(
@@ -370,6 +668,7 @@ function CalibreView() {
         visible: boolean
     ) {
 
+        pushHistory();
         setLayerVisibility(
             currentVisibility => ({
                 ...currentVisibility,
@@ -387,6 +686,7 @@ function CalibreView() {
         if (!activePageId)
             return;
 
+        pushHistory();
         setCalibrations(
             currentCalibrations => ({
                 ...currentCalibrations,
@@ -401,6 +701,7 @@ function CalibreView() {
         pageMeasurements: CalibreMeasurement[]
     ) {
 
+        pushHistory();
         setMeasurements(
             currentMeasurements => [
                 ...currentMeasurements.filter(
@@ -428,6 +729,7 @@ function CalibreView() {
         nextUnitSystem: CalibreUnitSystem
     ) {
 
+        pushHistory();
         setUnitSystem(nextUnitSystem);
 
         if (!activePageId)
@@ -485,6 +787,46 @@ function CalibreView() {
     }
 
 
+    function updateSectors(
+        nextSectors: CalibreSector[]
+    ) {
+
+        pushHistory();
+        setSectors(nextSectors);
+
+    }
+
+
+    function updateAnnotationStyle(
+        nextStyle: CalibreAnnotationStyle
+    ) {
+
+        pushHistory();
+        setAnnotationStyle(nextStyle);
+
+    }
+
+
+    function updateLineWeight(
+        nextLineWeight: number
+    ) {
+
+        pushHistory();
+        setLineWeight(nextLineWeight);
+
+    }
+
+
+    function updateSnapRadius(
+        nextSnapRadius: number
+    ) {
+
+        pushHistory();
+        setSnapRadius(nextSnapRadius);
+
+    }
+
+
     return (
         <section
             ref={pageRef}
@@ -503,11 +845,15 @@ function CalibreView() {
                 isFullscreen={isFullscreen}
                 isImportingPdfPage={isImportingPdfPage}
                 isLayersOpen={isLayersOpen}
+                isStyleOpen={isStyleOpen}
                 lineWeight={lineWeight}
                 pages={pages}
                 pendingPdf={pendingPdf}
+                redoAvailable={redoStack.length > 0}
+                saveStatus={saveStatus}
                 scalePercent={Math.round(viewportScale * 100)}
                 unitSystem={unitSystem}
+                undoAvailable={undoStack.length > 0}
                 onFitToScreen={resetViewport}
                 onFullscreenToggle={toggleFullscreen}
                 onLayersToggle={
@@ -515,12 +861,19 @@ function CalibreView() {
                         currentValue => !currentValue
                     )
                 }
-                onLineWeightChange={setLineWeight}
+                onLineWeightChange={updateLineWeight}
                 onOperationChange={setActiveOperation}
                 onPageChange={handlePageChange}
                 onPdfPageImport={handlePdfPageImport}
                 onPlanSelected={handlePlanSelected}
+                onRedo={redo}
+                onStyleToggle={
+                    () => setIsStyleOpen(
+                        currentValue => !currentValue
+                    )
+                }
                 onToolChange={setActiveTool}
+                onUndo={undo}
                 onUnitSystemChange={handleUnitSystemChange}
                 onZoomIn={
                     () => zoomBy(1.15)
@@ -538,17 +891,26 @@ function CalibreView() {
                     activePageId={activePageId}
                     activeSectorId={activeSectorId}
                     activeTool={activeTool}
+                    annotationStyle={annotationStyle}
                     calibration={activeCalibration}
                     imageUrl={activePage?.imageUrl || ""}
                     layerVisibility={layerVisibility}
                     lineWeight={lineWeight}
                     measurements={activePageMeasurements}
+                    snapRadius={snapRadius}
                     unitSystem={unitSystem}
                     viewportScale={viewportScale}
                     onCalibrationChange={updateActivePageCalibration}
                     onFitToScreenReady={registerFitToScreen}
                     onMeasurementsChange={updateActivePageMeasurements}
                     onViewportScaleChange={setViewportScale}
+                />
+
+                <CalibreResultsPanel
+                    activeLayer={activeLayer}
+                    activeSectorId={activeSectorId}
+                    measurements={activePageMeasurements}
+                    sectors={sectors}
                 />
 
                 {isLayersOpen && (
@@ -564,8 +926,22 @@ function CalibreView() {
                             onClose={
                                 () => setIsLayersOpen(false)
                             }
-                            onSectorsChange={setSectors}
+                            onSectorsChange={updateSectors}
                             onVisibilityChange={updateLayerVisibility}
+                        />
+                    </div>
+                )}
+
+                {isStyleOpen && (
+                    <div className="calibre-floating-panel style-panel">
+                        <CalibreAnnotationStylePanel
+                            snapRadius={snapRadius}
+                            style={annotationStyle}
+                            onClose={
+                                () => setIsStyleOpen(false)
+                            }
+                            onSnapRadiusChange={updateSnapRadius}
+                            onStyleChange={updateAnnotationStyle}
                         />
                     </div>
                 )}

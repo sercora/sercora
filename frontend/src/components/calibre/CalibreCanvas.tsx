@@ -26,6 +26,7 @@ import {
     CALIBRE_LAYERS
 } from "../../types/calibre";
 import type {
+    CalibreAnnotationStyle,
     CalibreCalibration,
     CalibreLayerKind,
     CalibreLayerVisibility,
@@ -43,11 +44,13 @@ type CalibreCanvasProps = {
     activePageId: string;
     activeSectorId: string;
     activeTool: CalibreTool;
+    annotationStyle: CalibreAnnotationStyle;
     calibration: CalibreCalibration;
     imageUrl: string;
     layerVisibility: CalibreLayerVisibility;
     lineWeight: number;
     measurements: CalibreMeasurement[];
+    snapRadius: number;
     unitSystem: CalibreUnitSystem;
     viewportScale: number;
     onCalibrationChange: (calibration: CalibreCalibration) => void;
@@ -264,30 +267,34 @@ function parseDistanceFeet(
 
 function feetLabel(
     value: number | null,
-    operation: CalibreOperation = "add"
+    operation: CalibreOperation = "add",
+    showUnits = true
 ) {
 
     if (value === null)
         return "Non calibré";
 
     const prefix = operation === "subtract" ? "-" : "";
+    const suffix = showUnits ? " pi" : "";
 
-    return `${prefix}${value.toFixed(2)} pi`;
+    return `${prefix}${value.toFixed(2)}${suffix}`;
 
 }
 
 
 function areaLabel(
     value: number | null,
-    operation: CalibreOperation = "add"
+    operation: CalibreOperation = "add",
+    showUnits = true
 ) {
 
     if (value === null)
         return "Non calibré";
 
     const prefix = operation === "subtract" ? "-" : "";
+    const suffix = showUnits ? " pi²" : "";
 
-    return `${prefix}${value.toFixed(2)} pi²`;
+    return `${prefix}${value.toFixed(2)}${suffix}`;
 
 }
 
@@ -437,11 +444,13 @@ function CalibreCanvas({
     activePageId,
     activeSectorId,
     activeTool,
+    annotationStyle,
     calibration,
     imageUrl,
     layerVisibility,
     lineWeight,
     measurements,
+    snapRadius,
     unitSystem,
     viewportScale,
     onCalibrationChange,
@@ -605,6 +614,40 @@ function CalibreCanvas({
             x: (pointer.x - viewport.x) / viewportScale,
             y: (pointer.y - viewport.y) / viewportScale
         };
+
+    }
+
+
+    function isNearPolygonStart(
+        point: CalibrePoint,
+        points: CalibrePoint[]
+    ) {
+
+        if (points.length < 3)
+            return false;
+
+        return distance(
+            point,
+            points[0]
+        ) * viewportScale <= snapRadius;
+
+    }
+
+
+    function snapPolygonPoint(
+        point: CalibrePoint
+    ) {
+
+        if (
+            draft?.type !== "polygon" ||
+            !isNearPolygonStart(
+                point,
+                draft.points
+            )
+        )
+            return point;
+
+        return draft.points[0];
 
     }
 
@@ -781,6 +824,17 @@ function CalibreCanvas({
         }
 
         if (activeTool === "polygon") {
+            if (
+                draft?.type === "polygon" &&
+                isNearPolygonStart(
+                    point,
+                    draft.points
+                )
+            ) {
+                finishPolygon();
+                return;
+            }
+
             setDraft(
                 currentDraft => {
                     if (!currentDraft || currentDraft.type !== "polygon") {
@@ -834,7 +888,13 @@ function CalibreCanvas({
         if (handleRightPanMove(event))
             return;
 
-        setPointerPoint(pointerToWorld());
+        const point = pointerToWorld();
+
+        setPointerPoint(
+            point ?
+                snapPolygonPoint(point) :
+                null
+        );
 
     }
 
@@ -907,10 +967,16 @@ function CalibreCanvas({
         const layer = layerDefinition(measurement.layer);
         const labelPoint = measurement.points[0];
         const isSubtract = measurement.operation === "subtract";
+        const operationFill = isSubtract ?
+            "rgba(204,55,47,0.28)" :
+            "rgba(47,147,40,0.24)";
         const strokeWidth = isSubtract ?
             Math.max(0.5, lineWeight * 0.8) :
             lineWeight;
         const labelScale = 1 / viewportScale;
+        const labelOffset = annotationStyle.position === "above" ?
+            -(annotationStyle.fontSize + 12) / viewportScale :
+            8;
         const dash = isSubtract ? [
             7,
             5
@@ -932,9 +998,15 @@ function CalibreCanvas({
                         y={(measurement.points[0].y + measurement.points[1].y) / 2}
                         scaleX={labelScale}
                         scaleY={labelScale}
+                        rotation={annotationStyle.rotation}
+                        opacity={annotationStyle.opacity}
                     >
                         <Tag
-                            fill="#ffffff"
+                            fill={
+                                annotationStyle.halo ?
+                                    annotationStyle.haloColor :
+                                    "transparent"
+                            }
                             stroke={layer.color}
                             strokeWidth={0.75}
                             strokeScaleEnabled={false}
@@ -943,12 +1015,14 @@ function CalibreCanvas({
                         <Text
                             text={feetLabel(
                                 measurement.lengthFeet,
-                                measurement.operation
+                                measurement.operation,
+                                annotationStyle.showUnits
                             )}
                             padding={3}
-                            fill="#172016"
-                            fontSize={10}
-                            fontStyle="bold"
+                            fill={annotationStyle.color}
+                            fontFamily={annotationStyle.fontFamily}
+                            fontSize={annotationStyle.fontSize}
+                            fontStyle={annotationStyle.bold ? "bold" : "normal"}
                         />
                     </Label>
                 </Group>
@@ -966,7 +1040,7 @@ function CalibreCanvas({
                         y={Math.min(first.y, second.y)}
                         width={Math.abs(second.x - first.x)}
                         height={Math.abs(second.y - first.y)}
-                        fill={isSubtract ? "rgba(255,255,255,0.24)" : layer.fill}
+                        fill={operationFill}
                         stroke={layer.color}
                         strokeWidth={strokeWidth}
                         strokeScaleEnabled={false}
@@ -974,12 +1048,18 @@ function CalibreCanvas({
                     />
                     <Label
                         x={Math.min(first.x, second.x) + 8}
-                        y={Math.min(first.y, second.y) + 8}
+                        y={Math.min(first.y, second.y) + labelOffset}
                         scaleX={labelScale}
                         scaleY={labelScale}
+                        rotation={annotationStyle.rotation}
+                        opacity={annotationStyle.opacity}
                     >
                         <Tag
-                            fill="#ffffff"
+                            fill={
+                                annotationStyle.halo ?
+                                    annotationStyle.haloColor :
+                                    "transparent"
+                            }
                             stroke={layer.color}
                             strokeWidth={0.75}
                             strokeScaleEnabled={false}
@@ -988,12 +1068,14 @@ function CalibreCanvas({
                         <Text
                             text={areaLabel(
                                 measurement.areaSquareFeet,
-                                measurement.operation
+                                measurement.operation,
+                                annotationStyle.showUnits
                             )}
                             padding={3}
-                            fill="#172016"
-                            fontSize={10}
-                            fontStyle="bold"
+                            fill={annotationStyle.color}
+                            fontFamily={annotationStyle.fontFamily}
+                            fontSize={annotationStyle.fontSize}
+                            fontStyle={annotationStyle.bold ? "bold" : "normal"}
                         />
                     </Label>
                 </Group>
@@ -1005,7 +1087,7 @@ function CalibreCanvas({
                 <Line
                     points={pointsToArray(measurement.points)}
                     closed
-                    fill={isSubtract ? "rgba(255,255,255,0.24)" : layer.fill}
+                    fill={operationFill}
                     stroke={layer.color}
                     strokeWidth={strokeWidth}
                     strokeScaleEnabled={false}
@@ -1013,12 +1095,18 @@ function CalibreCanvas({
                 />
                 <Label
                     x={labelPoint.x + 8}
-                    y={labelPoint.y + 8}
+                    y={labelPoint.y + labelOffset}
                     scaleX={labelScale}
                     scaleY={labelScale}
+                    rotation={annotationStyle.rotation}
+                    opacity={annotationStyle.opacity}
                 >
                     <Tag
-                        fill="#ffffff"
+                        fill={
+                            annotationStyle.halo ?
+                                annotationStyle.haloColor :
+                                "transparent"
+                        }
                         stroke={layer.color}
                         strokeWidth={0.75}
                         strokeScaleEnabled={false}
@@ -1027,12 +1115,14 @@ function CalibreCanvas({
                     <Text
                         text={areaLabel(
                             measurement.areaSquareFeet,
-                            measurement.operation
+                            measurement.operation,
+                            annotationStyle.showUnits
                         )}
                         padding={3}
-                        fill="#172016"
-                        fontSize={10}
-                        fontStyle="bold"
+                        fill={annotationStyle.color}
+                        fontFamily={annotationStyle.fontFamily}
+                        fontSize={annotationStyle.fontSize}
+                        fontStyle={annotationStyle.bold ? "bold" : "normal"}
                     />
                 </Label>
             </Group>
@@ -1096,20 +1186,62 @@ function CalibreCanvas({
             );
         }
 
+        const snapActive = pointerPoint &&
+            draft.points.length >= 3 &&
+            distance(
+                pointerPoint,
+                draft.points[0]
+            ) * viewportScale <= snapRadius;
+        const firstPoint = draft.points[0];
+
         return (
-            <Line
-                points={pointsToArray([
-                    ...draft.points,
-                    pointerPoint
-                ])}
-                stroke={layer.color}
-                strokeWidth={draftStrokeWidth}
-                strokeScaleEnabled={false}
-                dash={[
-                    8,
-                    6
-                ]}
-            />
+            <Group>
+                <Line
+                    points={pointsToArray([
+                        ...draft.points,
+                        pointerPoint
+                    ])}
+                    stroke={layer.color}
+                    strokeWidth={draftStrokeWidth}
+                    strokeScaleEnabled={false}
+                    dash={[
+                        8,
+                        6
+                    ]}
+                />
+
+                {snapActive && (
+                    <>
+                        <Circle
+                            x={firstPoint.x}
+                            y={firstPoint.y}
+                            radius={snapRadius / viewportScale}
+                            fill="rgba(47,147,40,0.14)"
+                            stroke="#2f9328"
+                            strokeWidth={1.5}
+                            strokeScaleEnabled={false}
+                        />
+                        <Label
+                            x={firstPoint.x + 12 / viewportScale}
+                            y={firstPoint.y - 30 / viewportScale}
+                            scaleX={1 / viewportScale}
+                            scaleY={1 / viewportScale}
+                        >
+                            <Tag
+                                fill="#172016"
+                                cornerRadius={4}
+                            />
+                            <Text
+                                text="Fermer le polygone"
+                                padding={5}
+                                fill="#ffffff"
+                                fontSize={11}
+                                fontStyle="bold"
+                            />
+                        </Label>
+                    </>
+                )}
+            </Group>
         );
 
     }
@@ -1182,14 +1314,32 @@ function CalibreCanvas({
                         {renderDraft()}
 
                         {draft?.points.map(
-                            point => (
+                            (
+                                point,
+                                index
+                            ) => (
                                 <Circle
                                     key={`${point.x}-${point.y}`}
                                     x={point.x}
                                     y={point.y}
-                                    radius={4 / viewportScale}
-                                    fill="#ffffff"
-                                    stroke="#101611"
+                                    radius={
+                                        index === 0 &&
+                                        draft.type === "polygon" ?
+                                            5 / viewportScale :
+                                            4 / viewportScale
+                                    }
+                                    fill={
+                                        index === 0 &&
+                                        draft.type === "polygon" ?
+                                            "#7cff44" :
+                                            "#ffffff"
+                                    }
+                                    stroke={
+                                        index === 0 &&
+                                        draft.type === "polygon" ?
+                                            "#1f6f18" :
+                                            "#101611"
+                                    }
                                     strokeWidth={1}
                                     strokeScaleEnabled={false}
                                 />

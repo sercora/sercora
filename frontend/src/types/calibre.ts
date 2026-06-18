@@ -17,6 +17,26 @@ export type CalibreOperation =
     "subtract";
 
 
+export type CalibreAnnotationPosition =
+    "inside" |
+    "above";
+
+
+export type CalibreAnnotationStyle = {
+    preset: string;
+    fontSize: number;
+    fontFamily: string;
+    bold: boolean;
+    color: string;
+    halo: boolean;
+    haloColor: string;
+    opacity: number;
+    rotation: number;
+    showUnits: boolean;
+    position: CalibreAnnotationPosition;
+};
+
+
 export type CalibreSector = {
     id: string;
     name: string;
@@ -106,6 +126,54 @@ export const DEFAULT_CALIBRE_SECTORS: CalibreSector[] = [
 
 export const CALIBRE_MIN_ZOOM = 0.25;
 export const CALIBRE_MAX_ZOOM = 16;
+export const CALIBRE_MIN_SNAP_RADIUS = 10;
+export const CALIBRE_MAX_SNAP_RADIUS = 20;
+
+
+export const DEFAULT_CALIBRE_ANNOTATION_STYLE: CalibreAnnotationStyle = {
+    preset: "compact",
+    fontSize: 8,
+    fontFamily: "Arial",
+    bold: true,
+    color: "#172016",
+    halo: true,
+    haloColor: "#ffffff",
+    opacity: 0.92,
+    rotation: 0,
+    showUnits: true,
+    position: "inside"
+};
+
+
+export const CALIBRE_ANNOTATION_PRESETS: CalibreAnnotationStyle[] = [
+    {
+        ...DEFAULT_CALIBRE_ANNOTATION_STYLE,
+        preset: "compact",
+        fontSize: 8,
+        opacity: 0.86
+    },
+    {
+        ...DEFAULT_CALIBRE_ANNOTATION_STYLE,
+        preset: "normal",
+        fontSize: 10,
+        opacity: 0.92
+    },
+    {
+        ...DEFAULT_CALIBRE_ANNOTATION_STYLE,
+        preset: "presentation",
+        fontSize: 13,
+        haloColor: "#f8fff7",
+        opacity: 0.96
+    },
+    {
+        ...DEFAULT_CALIBRE_ANNOTATION_STYLE,
+        preset: "print",
+        fontSize: 16,
+        color: "#000000",
+        haloColor: "#ffffff",
+        opacity: 1
+    }
+];
 
 
 export const CALIBRE_LAYERS: CalibreLayerDefinition[] = [
