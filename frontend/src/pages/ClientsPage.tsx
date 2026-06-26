@@ -1,11 +1,13 @@
 import {
     useEffect,
     useMemo,
+    useRef,
     useState
 } from "react";
 import type { FormEvent } from "react";
 
 import {
+    bulkUpdateClients,
     createClient,
     fetchClientTypes,
     fetchClients,
@@ -33,18 +35,41 @@ const EMPTY_CLIENT: ClientInput = {
 };
 
 
+function getUniformValue<T>(
+    clients: Client[],
+    getter: (client: Client) => T | null
+) {
+
+    if (clients.length === 0)
+        return null;
+
+    const firstValue = getter(clients[0]);
+
+    return clients.every(
+        client =>
+            getter(client) === firstValue
+    ) ?
+        firstValue :
+        null;
+
+}
+
+
 function ClientsPage() {
 
     const [clients, setClients] = useState<Client[]>([]);
     const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
     const [search, setSearch] = useState("");
+    const [selectedClientIds, setSelectedClientIds] = useState<number[]>([]);
     const [editingClient, setEditingClient] = useState<Client | null>(null);
     const [form, setForm] = useState<ClientInput>(EMPTY_CLIENT);
+    const [bulkActiveChoice, setBulkActiveChoice] = useState<"" | "true" | "false">("");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [status, setStatus] = useState("");
     const [error, setError] = useState("");
+    const selectAllRef = useRef<HTMLInputElement | null>(null);
 
     const filteredClients = useMemo(
         () => {
@@ -76,11 +101,55 @@ function ClientsPage() {
         ]
     );
 
+    const selectedClients = useMemo(
+        () =>
+            clients.filter(
+                client =>
+                    selectedClientIds.includes(client.id)
+            ),
+        [
+            clients,
+            selectedClientIds
+        ]
+    );
+
+    const selectedVisibleCount = useMemo(
+        () =>
+            filteredClients.filter(
+                client =>
+                    selectedClientIds.includes(client.id)
+            ).length,
+        [
+            filteredClients,
+            selectedClientIds
+        ]
+    );
+
+    const allVisibleSelected =
+        filteredClients.length > 0 &&
+        selectedVisibleCount === filteredClients.length;
+
+    const someVisibleSelected =
+        selectedVisibleCount > 0 &&
+        !allVisibleSelected;
+
+
+    useEffect(
+        () => {
+            if (selectAllRef.current)
+                selectAllRef.current.indeterminate = someVisibleSelected;
+        },
+        [
+            someVisibleSelected
+        ]
+    );
+
 
     function loadClients() {
 
         setIsLoading(true);
         setError("");
+        setSelectedClientIds([]);
 
         Promise.all(
             [
@@ -112,7 +181,9 @@ function ClientsPage() {
     function openNewClient() {
 
         setEditingClient(null);
+        setSelectedClientIds([]);
         setForm(EMPTY_CLIENT);
+        setBulkActiveChoice("");
         setStatus("");
         setError("");
         setIsModalOpen(true);
@@ -125,6 +196,11 @@ function ClientsPage() {
     ) {
 
         setEditingClient(client);
+        setSelectedClientIds(
+            [
+                client.id
+            ]
+        );
         setForm(
             {
                 name: client.name,
@@ -138,8 +214,143 @@ function ClientsPage() {
                 active: client.active
             }
         );
+        setBulkActiveChoice(
+            client.active ?
+                "true" :
+                "false"
+        );
         setStatus("");
         setError("");
+        setIsModalOpen(true);
+
+    }
+
+
+    function toggleClientSelection(
+        clientId: number
+    ) {
+
+        setSelectedClientIds(
+            currentIds =>
+                currentIds.includes(clientId) ?
+                    currentIds.filter(
+                        currentId =>
+                            currentId !== clientId
+                    ) :
+                    [
+                        ...currentIds,
+                        clientId
+                    ]
+        );
+
+    }
+
+
+    function toggleVisibleClients() {
+
+        setSelectedClientIds(
+            currentIds => {
+                if (allVisibleSelected) {
+                    return currentIds.filter(
+                        clientId =>
+                            !filteredClients.some(
+                                client =>
+                                    client.id === clientId
+                            )
+                    );
+                }
+
+                return [
+                    ...new Set(
+                        [
+                            ...currentIds,
+                            ...filteredClients.map(
+                                client =>
+                                    client.id
+                            )
+                        ]
+                    )
+                ];
+            }
+        );
+
+    }
+
+
+    function openSelectedClients() {
+
+        if (selectedClients.length === 0)
+            return;
+
+        setStatus("");
+        setError("");
+
+        if (selectedClients.length === 1) {
+            openEditClient(
+                selectedClients[0]
+            );
+            return;
+        }
+
+        setEditingClient(null);
+        setForm(
+            {
+                name: "",
+                client_type_id: getUniformValue(
+                    selectedClients,
+                    client =>
+                        client.client_type_id
+                ),
+                phone: getUniformValue(
+                    selectedClients,
+                    client =>
+                        client.phone
+                ) || "",
+                fax: getUniformValue(
+                    selectedClients,
+                    client =>
+                        client.fax
+                ) || "",
+                mobile: getUniformValue(
+                    selectedClients,
+                    client =>
+                        client.mobile
+                ) || "",
+                billing_address: getUniformValue(
+                    selectedClients,
+                    client =>
+                        client.billing_address
+                ) || "",
+                billing_postal_code: getUniformValue(
+                    selectedClients,
+                    client =>
+                        client.billing_postal_code
+                ) || "",
+                rbq: getUniformValue(
+                    selectedClients,
+                    client =>
+                        client.rbq
+                ) || "",
+                active: true
+            }
+        );
+        setBulkActiveChoice(
+            getUniformValue(
+                selectedClients,
+                client =>
+                    client.active
+            ) === null ?
+                "" :
+                (
+                    getUniformValue(
+                        selectedClients,
+                        client =>
+                            client.active
+                    ) ?
+                        "true" :
+                        "false"
+                )
+        );
         setIsModalOpen(true);
 
     }
@@ -150,6 +361,7 @@ function ClientsPage() {
         setIsModalOpen(false);
         setEditingClient(null);
         setForm(EMPTY_CLIENT);
+        setBulkActiveChoice("");
 
     }
 
@@ -180,7 +392,40 @@ function ClientsPage() {
                     editingClient.id,
                     payload
                 ) :
-                createClient(payload);
+                selectedClients.length > 1 ?
+                    bulkUpdateClients(
+                        {
+                            client_ids: selectedClients.map(
+                                client =>
+                                    client.id
+                            ),
+                            ...(form.client_type_id !== null ? {
+                                client_type_id: form.client_type_id
+                            } : {}),
+                            ...(form.phone.trim() ? {
+                                phone: form.phone.trim()
+                            } : {}),
+                            ...(form.fax.trim() ? {
+                                fax: form.fax.trim()
+                            } : {}),
+                            ...(form.mobile.trim() ? {
+                                mobile: form.mobile.trim()
+                            } : {}),
+                            ...(form.billing_address.trim() ? {
+                                billing_address: form.billing_address.trim()
+                            } : {}),
+                            ...(form.billing_postal_code.trim() ? {
+                                billing_postal_code: form.billing_postal_code.trim()
+                            } : {}),
+                            ...(form.rbq.trim() ? {
+                                rbq: form.rbq.trim()
+                            } : {}),
+                            ...(bulkActiveChoice === "" ? {} : {
+                                active: bulkActiveChoice === "true"
+                            })
+                        }
+                    ) :
+                    createClient(payload);
 
         request
             .then(
@@ -188,9 +433,12 @@ function ClientsPage() {
                     setStatus(
                         editingClient ?
                             "Client sauvegardé." :
-                            "Client créé."
+                            selectedClients.length > 1 ?
+                                "Clients sauvegardés." :
+                                "Client créé."
                     );
                     closeModal();
+                    setSelectedClientIds([]);
                     loadClients();
                 }
             )
@@ -232,6 +480,13 @@ function ClientsPage() {
                 </button>
                 <button
                     type="button"
+                    onClick={openSelectedClients}
+                    disabled={selectedClients.length === 0}
+                >
+                    Modifier
+                </button>
+                <button
+                    type="button"
                     onClick={loadClients}
                     disabled={isLoading}
                 >
@@ -241,6 +496,12 @@ function ClientsPage() {
                     <strong>{filteredClients.length}</strong>
                     <span>clients</span>
                 </div>
+                {selectedClientIds.length > 0 && (
+                    <div className="business-summary selection">
+                        <strong>{selectedClientIds.length}</strong>
+                        <span>sélectionnés</span>
+                    </div>
+                )}
             </div>
 
             {status && (
@@ -255,6 +516,15 @@ function ClientsPage() {
                 <table className="business-table clients-table">
                     <thead>
                         <tr>
+                            <th className="clients-select-cell">
+                                <input
+                                    ref={selectAllRef}
+                                    type="checkbox"
+                                    checked={allVisibleSelected}
+                                    onChange={toggleVisibleClients}
+                                    aria-label="Sélectionner tous les clients visibles"
+                                />
+                            </th>
                             <th>Nom</th>
                             <th>Type</th>
                             <th>Coordonnées</th>
@@ -262,23 +532,34 @@ function ClientsPage() {
                             <th>RBQ</th>
                             <th>Projets</th>
                             <th>État</th>
-                            <th>Créé</th>
-                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {isLoading ? (
                             <tr>
-                                <td colSpan={9}>Chargement...</td>
+                                <td colSpan={8}>Chargement...</td>
                             </tr>
                         ) : filteredClients.length === 0 ? (
                             <tr>
-                                <td colSpan={9}>Aucun client.</td>
+                                <td colSpan={8}>Aucun client.</td>
                             </tr>
                         ) : (
                             filteredClients.map(
                                 client => (
                                     <tr key={client.id}>
+                                        <td className="clients-select-cell">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedClientIds.includes(client.id)}
+                                                onChange={
+                                                    () =>
+                                                        toggleClientSelection(
+                                                            client.id
+                                                        )
+                                                }
+                                                aria-label={`Sélectionner ${client.name}`}
+                                            />
+                                        </td>
                                         <td>{client.name}</td>
                                         <td>{client.client_type_name || "-"}</td>
                                         <td>
@@ -313,25 +594,6 @@ function ClientsPage() {
                                                 {client.active ? "Actif" : "Inactif"}
                                             </span>
                                         </td>
-                                        <td>
-                                            {client.created_at ?
-                                                new Date(
-                                                    client.created_at
-                                                ).toLocaleDateString("fr-CA") :
-                                                "-"}
-                                        </td>
-                                        <td>
-                                            <button
-                                                type="button"
-                                                className="business-table-action"
-                                                onClick={
-                                                    () =>
-                                                        openEditClient(client)
-                                                }
-                                            >
-                                                Modifier
-                                            </button>
-                                        </td>
                                     </tr>
                                 )
                             )
@@ -348,7 +610,11 @@ function ClientsPage() {
                     >
                         <header>
                             <h2>
-                                {editingClient ? "Modifier client" : "Ajouter client"}
+                                {editingClient ?
+                                    "Modifier client" :
+                                    selectedClients.length > 1 ?
+                                        `Modifier ${selectedClients.length} clients` :
+                                        "Ajouter client"}
                             </h2>
                             <button
                                 type="button"
@@ -359,22 +625,24 @@ function ClientsPage() {
                         </header>
 
                         <div className="business-form-grid compact">
-                            <label className="business-field">
-                                <span>Nom</span>
-                                <input
-                                    value={form.name}
-                                    required
-                                    onChange={
-                                        event =>
-                                            setForm(
-                                                {
-                                                    ...form,
-                                                    name: event.target.value
-                                                }
-                                            )
-                                    }
-                                />
-                            </label>
+                            {selectedClients.length <= 1 && (
+                                <label className="business-field">
+                                    <span>Nom</span>
+                                    <input
+                                        value={form.name}
+                                        required
+                                        onChange={
+                                            event =>
+                                                setForm(
+                                                    {
+                                                        ...form,
+                                                        name: event.target.value
+                                                    }
+                                                )
+                                        }
+                                    />
+                                </label>
+                            )}
 
                             <label className="business-field">
                                 <span>Type</span>
@@ -393,7 +661,11 @@ function ClientsPage() {
                                             )
                                     }
                                 >
-                                    <option value="">Non classé</option>
+                                    <option value="">
+                                        {selectedClients.length > 1 ?
+                                            "Sans changement" :
+                                            "Non classé"}
+                                    </option>
                                     {clientTypes.map(
                                         clientType => (
                                             <option
@@ -487,6 +759,42 @@ function ClientsPage() {
                                 />
                             </label>
 
+                            {selectedClients.length > 1 ? (
+                                <label className="business-field">
+                                    <span>État</span>
+                                    <select
+                                        value={bulkActiveChoice}
+                                        onChange={
+                                            event =>
+                                                setBulkActiveChoice(
+                                                    event.target.value as "" | "true" | "false"
+                                                )
+                                        }
+                                    >
+                                        <option value="">Sans changement</option>
+                                        <option value="true">Actif</option>
+                                        <option value="false">Inactif</option>
+                                    </select>
+                                </label>
+                            ) : (
+                                <label className="business-checkbox">
+                                    <input
+                                        type="checkbox"
+                                        checked={form.active}
+                                        onChange={
+                                            event =>
+                                                setForm(
+                                                    {
+                                                        ...form,
+                                                        active: event.target.checked
+                                                    }
+                                                )
+                                        }
+                                    />
+                                    <span>Client actif</span>
+                                </label>
+                            )}
+
                             <label className="business-field">
                                 <span>RBQ</span>
                                 <input
@@ -504,22 +812,11 @@ function ClientsPage() {
                             </label>
                         </div>
 
-                        <label className="business-checkbox">
-                            <input
-                                type="checkbox"
-                                checked={form.active}
-                                onChange={
-                                    event =>
-                                        setForm(
-                                            {
-                                                ...form,
-                                                active: event.target.checked
-                                            }
-                                        )
-                                }
-                            />
-                            <span>Client actif</span>
-                        </label>
+                        {selectedClients.length > 1 && (
+                            <div className="business-muted-panel">
+                                Les valeurs saisies seront appliquées à tous les clients sélectionnés. Les champs laissés vides ne seront pas modifiés.
+                            </div>
+                        )}
 
                         <footer>
                             <button

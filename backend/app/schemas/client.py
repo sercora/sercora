@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 
@@ -20,4 +20,17 @@ class ClientSave(BaseModel):
     billing_postal_code: Optional[str] = None
     rbq: Optional[str] = None
     active: bool = True
-    estimators: list[ClientEstimatorSave] = []
+    estimators: list[ClientEstimatorSave] = Field(default_factory=list)
+
+
+class ClientBulkUpdate(BaseModel):
+    client_ids: list[int] = Field(default_factory=list)
+    name: Optional[str] = None
+    client_type_id: Optional[int] = None
+    phone: Optional[str] = None
+    fax: Optional[str] = None
+    mobile: Optional[str] = None
+    billing_address: Optional[str] = None
+    billing_postal_code: Optional[str] = None
+    rbq: Optional[str] = None
+    active: Optional[bool] = None

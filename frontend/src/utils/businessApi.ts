@@ -38,6 +38,20 @@ export type ClientInput = {
 };
 
 
+export type ClientBulkUpdateInput = {
+    client_ids: number[];
+    name?: string;
+    client_type_id?: number | null;
+    phone?: string;
+    fax?: string;
+    mobile?: string;
+    billing_address?: string;
+    billing_postal_code?: string;
+    rbq?: string;
+    active?: boolean;
+};
+
+
 export type ProjectSummary = {
     id: number;
     project_number: string | null;
@@ -253,6 +267,26 @@ export function updateClient(
                 "Content-Type": "application/json"
             },
             body: JSON.stringify(client)
+        }
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function bulkUpdateClients(
+    payload: ClientBulkUpdateInput
+) {
+
+    return fetch(
+        API_URL + "/clients/bulk",
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
         }
     )
 

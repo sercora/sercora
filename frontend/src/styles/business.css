@@ -125,6 +125,13 @@
 }
 
 
+.business-summary.selection {
+
+    margin-left: 0;
+
+}
+
+
 .business-summary strong {
 
     color: #1f252d;
@@ -271,6 +278,22 @@
 .clients-table {
 
     min-width: 1280px;
+
+}
+
+
+.clients-select-cell {
+
+    width: 42px;
+
+    text-align: center;
+
+}
+
+
+.clients-select-cell input {
+
+    cursor: pointer;
 
 }
 

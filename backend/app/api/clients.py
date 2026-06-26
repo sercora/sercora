@@ -7,7 +7,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from sqlalchemy import text
 
 from app.database.database import SessionLocal
-from app.schemas.client import ClientSave
+from app.schemas.client import ClientBulkUpdate, ClientSave
 
 router = APIRouter()
 
@@ -666,4 +666,131 @@ def update_client(
     return {
         "id": row.id,
         "message": "Client updated"
+    }
+
+
+@router.put("/clients/bulk")
+def bulk_update_clients(
+    client: ClientBulkUpdate
+):
+
+    client_ids = sorted(
+        set(client.client_ids)
+    )
+
+    if not client_ids:
+        raise HTTPException(
+            status_code=422,
+            detail="Client ids are required"
+        )
+
+    db = SessionLocal()
+    ensure_client_schema(db)
+
+    existing_rows = db.execute(
+        text(
+            """
+            SELECT id
+            FROM client
+            WHERE id = ANY(:client_ids)
+            """
+        ),
+        {
+            "client_ids": client_ids
+        }
+    ).mappings().all()
+
+    existing_ids = {
+        row["id"]
+        for row in existing_rows
+    }
+    missing_ids = [
+        client_id
+        for client_id in client_ids
+        if client_id not in existing_ids
+    ]
+
+    if missing_ids:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="One or more clients were not found"
+        )
+
+    provided_values = client.model_dump(
+        exclude_unset=True
+    )
+    provided_values.pop(
+        "client_ids",
+        None
+    )
+
+    updates = {}
+
+    if "name" in provided_values:
+        updates["name"] = clean_text(
+            provided_values["name"]
+        )
+
+        if not updates["name"]:
+            db.close()
+            raise HTTPException(
+                status_code=422,
+                detail="Client name is required"
+            )
+
+    if "client_type_id" in provided_values:
+        updates["client_type_id"] = provided_values["client_type_id"]
+
+    for field_name in (
+        "phone",
+        "fax",
+        "mobile",
+        "billing_address",
+        "billing_postal_code",
+        "rbq"
+    ):
+        if field_name in provided_values:
+            updates[field_name] = none_if_blank(
+                provided_values[field_name]
+            )
+
+    if "active" in provided_values:
+        updates["active"] = provided_values["active"]
+
+    if not updates:
+        db.close()
+        raise HTTPException(
+            status_code=422,
+            detail="At least one field is required"
+        )
+
+    update_clause = ", ".join(
+        f"{field_name} = :{field_name}"
+        for field_name in updates
+    )
+
+    params = {
+        **updates,
+        "client_ids": client_ids
+    }
+
+    rows = db.execute(
+        text(
+            f"""
+            UPDATE client
+            SET {update_clause}
+            WHERE id = ANY(:client_ids)
+            RETURNING id
+            """
+        ),
+        params
+    ).mappings().all()
+
+    db.commit()
+    db.close()
+
+    return {
+        "message": f"{len(rows)} clients updated",
+        "updated": len(rows)
     }
