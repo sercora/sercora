@@ -94,6 +94,7 @@ cd backend
 auth.py                 login, profil, usagers, roles, telephones
 email.py                SMTP, VoIP/SMS, invitations, reset mot de passe
 clients.py             clients et types
+contacts.py            contacts, types et taches
 projects.py            projets, creation, invitations, addenda, NAS
 products.py            produits, fournisseurs, imports catalogues, escomptes
 prosol.py              integration Prosol

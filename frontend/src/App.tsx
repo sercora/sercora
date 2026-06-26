@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import CalibreView from "./pages/CalibreView";
 import ClientsPage from "./pages/ClientsPage";
+import ContactsPage from "./pages/ContactsPage";
 import ConfigurationPage from "./pages/ConfigurationPage";
 import LoginPage from "./pages/LoginPage";
 import MatrixView from "./pages/MatrixView";
@@ -22,7 +23,7 @@ import {
 import "./App.css";
 
 
-type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Calibre" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
+type PageKey = "Clients" | "Contacts" | "Projets" | "Produits" | "Outils" | "Calibre" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura" | "Olympia";
 type ProjectMenuKey = "En cours" | "En Soumission" | "Création";
 type ProjectSubmissionMenuKey = "Nouveaux" | "Approuvés" | "Indécis" | "Refusés" | "Envoyés";
@@ -33,6 +34,7 @@ type ConfigurationMenuKey = "Courriel" | "VoIP/SMS" | "Mobile-Punch" | "Importat
 
 const NAV_ITEMS: PageKey[] = [
     "Clients",
+    "Contacts",
     "Projets",
     "Produits",
     "Outils",
@@ -108,6 +110,7 @@ const DISABLED_CONFIGURATION_MENU_ITEMS: ConfigurationMenuKey[] = [
 
 const PAGE_CONTEXT: Record<PageKey, string> = {
     Clients: "Relations et comptes",
+    Contacts: "Répertoire des personnes",
     Projets: "Chantiers et suivis",
     Produits: "Catalogue, prix et fournisseurs",
     Outils: "Inventaire Snipe-IT",
@@ -685,6 +688,10 @@ function App() {
                 <main className="app-content">
                     {activePage === "Clients" && (
                         <ClientsPage key={`clients-${navigationRefreshKey}`} />
+                    )}
+
+                    {activePage === "Contacts" && (
+                        <ContactsPage key={`contacts-${navigationRefreshKey}`} />
                     )}
 
                     {activePage === "Projets" && (
