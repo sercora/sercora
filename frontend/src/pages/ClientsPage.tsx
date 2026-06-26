@@ -23,6 +23,12 @@ import "../styles/business.css";
 const EMPTY_CLIENT: ClientInput = {
     name: "",
     client_type_id: null,
+    phone: "",
+    fax: "",
+    mobile: "",
+    billing_address: "",
+    billing_postal_code: "",
+    rbq: "",
     active: true
 };
 
@@ -51,7 +57,13 @@ function ClientsPage() {
                 client =>
                     [
                         client.name,
-                        client.client_type_name || ""
+                        client.client_type_name || "",
+                        client.phone || "",
+                        client.fax || "",
+                        client.mobile || "",
+                        client.billing_address || "",
+                        client.billing_postal_code || "",
+                        client.rbq || ""
                     ].some(
                         value =>
                             value.toLowerCase().includes(normalizedSearch)
@@ -117,6 +129,12 @@ function ClientsPage() {
             {
                 name: client.name,
                 client_type_id: client.client_type_id,
+                phone: client.phone || "",
+                fax: client.fax || "",
+                mobile: client.mobile || "",
+                billing_address: client.billing_address || "",
+                billing_postal_code: client.billing_postal_code || "",
+                rbq: client.rbq || "",
                 active: client.active
             }
         );
@@ -147,7 +165,13 @@ function ClientsPage() {
 
         const payload: ClientInput = {
             ...form,
-            name: form.name.trim()
+            name: form.name.trim(),
+            phone: form.phone.trim(),
+            fax: form.fax.trim(),
+            mobile: form.mobile.trim(),
+            billing_address: form.billing_address.trim(),
+            billing_postal_code: form.billing_postal_code.trim(),
+            rbq: form.rbq.trim()
         };
 
         const request =
@@ -198,7 +222,7 @@ function ClientsPage() {
                         event =>
                             setSearch(event.target.value)
                     }
-                    placeholder="Rechercher un client"
+                    placeholder="Rechercher un client, une adresse ou un numéro"
                 />
                 <button
                     type="button"
@@ -228,11 +252,14 @@ function ClientsPage() {
             )}
 
             <div className="business-table-wrap">
-                <table className="business-table">
+                <table className="business-table clients-table">
                     <thead>
                         <tr>
                             <th>Nom</th>
                             <th>Type</th>
+                            <th>Coordonnées</th>
+                            <th>Adresse</th>
+                            <th>RBQ</th>
                             <th>Projets</th>
                             <th>État</th>
                             <th>Créé</th>
@@ -242,11 +269,11 @@ function ClientsPage() {
                     <tbody>
                         {isLoading ? (
                             <tr>
-                                <td colSpan={6}>Chargement...</td>
+                                <td colSpan={9}>Chargement...</td>
                             </tr>
                         ) : filteredClients.length === 0 ? (
                             <tr>
-                                <td colSpan={6}>Aucun client.</td>
+                                <td colSpan={9}>Aucun client.</td>
                             </tr>
                         ) : (
                             filteredClients.map(
@@ -254,6 +281,28 @@ function ClientsPage() {
                                     <tr key={client.id}>
                                         <td>{client.name}</td>
                                         <td>{client.client_type_name || "-"}</td>
+                                        <td>
+                                            {client.phone || "-"}
+                                            {client.fax && (
+                                                <span className="business-muted-line">
+                                                    Fax: {client.fax}
+                                                </span>
+                                            )}
+                                            {client.mobile && (
+                                                <span className="business-muted-line">
+                                                    Mobile: {client.mobile}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            {client.billing_address || "-"}
+                                            {client.billing_postal_code && (
+                                                <span className="business-muted-line">
+                                                    {client.billing_postal_code}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td>{client.rbq || "-"}</td>
                                         <td>{client.project_count}</td>
                                         <td>
                                             <span className={
@@ -294,7 +343,7 @@ function ClientsPage() {
             {isModalOpen && (
                 <div className="business-modal-backdrop">
                     <form
-                        className="business-modal"
+                        className="business-modal client-modal"
                         onSubmit={saveClient}
                     >
                         <header>
@@ -309,53 +358,151 @@ function ClientsPage() {
                             </button>
                         </header>
 
-                        <label className="business-field">
-                            <span>Nom</span>
-                            <input
-                                value={form.name}
-                                required
-                                onChange={
-                                    event =>
-                                        setForm(
-                                            {
-                                                ...form,
-                                                name: event.target.value
-                                            }
-                                        )
-                                }
-                            />
-                        </label>
+                        <div className="business-form-grid compact">
+                            <label className="business-field">
+                                <span>Nom</span>
+                                <input
+                                    value={form.name}
+                                    required
+                                    onChange={
+                                        event =>
+                                            setForm(
+                                                {
+                                                    ...form,
+                                                    name: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
 
-                        <label className="business-field">
-                            <span>Type</span>
-                            <select
-                                value={form.client_type_id || ""}
-                                onChange={
-                                    event =>
-                                        setForm(
-                                            {
-                                                ...form,
-                                                client_type_id:
-                                                    event.target.value ?
-                                                        Number(event.target.value) :
-                                                        null
-                                            }
+                            <label className="business-field">
+                                <span>Type</span>
+                                <select
+                                    value={form.client_type_id || ""}
+                                    onChange={
+                                        event =>
+                                            setForm(
+                                                {
+                                                    ...form,
+                                                    client_type_id:
+                                                        event.target.value ?
+                                                            Number(event.target.value) :
+                                                            null
+                                                }
+                                            )
+                                    }
+                                >
+                                    <option value="">Non classé</option>
+                                    {clientTypes.map(
+                                        clientType => (
+                                            <option
+                                                key={clientType.id}
+                                                value={clientType.id}
+                                            >
+                                                {clientType.name}
+                                            </option>
                                         )
-                                }
-                            >
-                                <option value="">Non classé</option>
-                                {clientTypes.map(
-                                    clientType => (
-                                        <option
-                                            key={clientType.id}
-                                            value={clientType.id}
-                                        >
-                                            {clientType.name}
-                                        </option>
-                                    )
-                                )}
-                            </select>
-                        </label>
+                                    )}
+                                </select>
+                            </label>
+
+                            <label className="business-field">
+                                <span>Téléphone</span>
+                                <input
+                                    value={form.phone}
+                                    onChange={
+                                        event =>
+                                            setForm(
+                                                {
+                                                    ...form,
+                                                    phone: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Fax</span>
+                                <input
+                                    value={form.fax}
+                                    onChange={
+                                        event =>
+                                            setForm(
+                                                {
+                                                    ...form,
+                                                    fax: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Mobile</span>
+                                <input
+                                    value={form.mobile}
+                                    onChange={
+                                        event =>
+                                            setForm(
+                                                {
+                                                    ...form,
+                                                    mobile: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Code postal de facturation</span>
+                                <input
+                                    value={form.billing_postal_code}
+                                    onChange={
+                                        event =>
+                                            setForm(
+                                                {
+                                                    ...form,
+                                                    billing_postal_code: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field wide">
+                                <span>Adresse de facturation</span>
+                                <input
+                                    value={form.billing_address}
+                                    onChange={
+                                        event =>
+                                            setForm(
+                                                {
+                                                    ...form,
+                                                    billing_address: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>RBQ</span>
+                                <input
+                                    value={form.rbq}
+                                    onChange={
+                                        event =>
+                                            setForm(
+                                                {
+                                                    ...form,
+                                                    rbq: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+                        </div>
 
                         <label className="business-checkbox">
                             <input

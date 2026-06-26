@@ -268,6 +268,13 @@
 }
 
 
+.clients-table {
+
+    min-width: 1280px;
+
+}
+
+
 .business-table th,
 .business-table td {
 
@@ -812,6 +819,13 @@
     border: 1px solid #c4ccd2;
 
     background-color: #ffffff;
+
+}
+
+
+.client-modal {
+
+    width: min(760px, 100%);
 
 }
 
