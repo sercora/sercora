@@ -498,7 +498,7 @@ function ContactsPage({
                     type="button"
                     onClick={openNewContact}
                 >
-                    Ajouter
+                    {defaultContactTypeCode === "supplier" ? "Ajouter contact" : "Ajouter"}
                 </button>
                 <button
                     type="button"
@@ -508,8 +508,12 @@ function ContactsPage({
                     Rafraîchir
                 </button>
                 <div className="business-summary">
-                    <strong>{filteredContacts.length}</strong>
-                    <span>{summaryLabel}</span>
+                    <strong>
+                        {defaultContactTypeCode === "supplier" ? filteredSuppliers.length : filteredContacts.length}
+                    </strong>
+                    <span>
+                        {defaultContactTypeCode === "supplier" ? "fiches fournisseurs" : summaryLabel}
+                    </span>
                 </div>
             </div>
 
@@ -525,8 +529,8 @@ function ContactsPage({
                 <section className="business-supplier-panel">
                     <div className="business-panel-heading">
                         <div>
-                            <h2>Fournisseurs</h2>
-                            <span>Informations fiscales pour la facturation future</span>
+                            <h2>Fiches fournisseurs</h2>
+                            <span>No taxes fédérales et provinciales requis pour la facturation future</span>
                         </div>
                         <strong>{filteredSuppliers.length}</strong>
                     </div>
@@ -571,7 +575,7 @@ function ContactsPage({
                                                                 openSupplierEditor(supplier)
                                                         }
                                                     >
-                                                        Taxes
+                                                        Modifier fiche
                                                     </button>
                                                 </td>
                                             </tr>
@@ -582,6 +586,13 @@ function ContactsPage({
                         </table>
                     </div>
                 </section>
+            )}
+
+            {defaultContactTypeCode === "supplier" && (
+                <div className="business-subsection-heading">
+                    <h2>Contacts fournisseurs</h2>
+                    <span>Personnes et tâches de transmission</span>
+                </div>
             )}
 
             <div className="business-table-wrap">
@@ -943,7 +954,7 @@ function ContactsPage({
                         onSubmit={saveSupplier}
                     >
                         <header>
-                            <h2>Modifier fournisseur</h2>
+                            <h2>Modifier fiche fournisseur</h2>
                             <button
                                 type="button"
                                 onClick={closeSupplierModal}
