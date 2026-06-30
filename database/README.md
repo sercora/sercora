@@ -39,6 +39,7 @@ migrations/
 app_user
 app_email_settings
 app_sms_settings
+app_snipeit_settings
 client
 client_type
 supplier

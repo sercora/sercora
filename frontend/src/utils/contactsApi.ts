@@ -30,6 +30,23 @@ export type ContactOptions = {
 };
 
 
+export type Supplier = {
+    id: number;
+    name: string;
+    federal_tax_number: string;
+    provincial_tax_number: string;
+    active: boolean;
+};
+
+
+export type SupplierInput = {
+    name: string;
+    federal_tax_number: string;
+    provincial_tax_number: string;
+    active: boolean;
+};
+
+
 export type Contact = {
     id: number;
     contact_type_id: number;
@@ -128,6 +145,38 @@ export function fetchContacts(): Promise<Contact[]> {
 
     return fetch(
         API_URL + "/contacts"
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function fetchSuppliers(): Promise<Supplier[]> {
+
+    return fetch(
+        API_URL + "/suppliers"
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function updateSupplier(
+    supplierId: number,
+    supplier: SupplierInput
+): Promise<Supplier> {
+
+    return fetch(
+        API_URL + "/suppliers/" + supplierId,
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(supplier)
+        }
     )
 
     .then(parseResponse);

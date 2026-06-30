@@ -27,3 +27,10 @@ class ContactSave(BaseModel):
     mobile: Optional[str] = None
     active: bool = True
     task_ids: list[int] = Field(default_factory=list)
+
+
+class SupplierSave(BaseModel):
+    name: str
+    federal_tax_number: Optional[str] = None
+    provincial_tax_number: Optional[str] = None
+    active: bool = True
