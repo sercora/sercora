@@ -39,7 +39,14 @@ const EMPTY_CONTACT: ContactInput = {
 };
 
 
-function ContactsPage() {
+type ContactsPageProps = {
+    defaultContactTypeCode?: "client" | "supplier" | null;
+};
+
+
+function ContactsPage({
+    defaultContactTypeCode = null
+}: ContactsPageProps) {
 
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [contactTypes, setContactTypes] = useState<ContactType[]>([]);
@@ -95,32 +102,42 @@ function ContactsPage() {
     const filteredContacts = useMemo(
         () => {
             const normalizedSearch = search.trim().toLowerCase();
-
-            if (!normalizedSearch)
-                return contacts;
+            const normalizedType = defaultContactTypeCode
+                ? defaultContactTypeCode.trim().toLowerCase()
+                : "";
 
             return contacts.filter(
                 contact =>
-                    [
-                        contact.contact_type_name,
-                        contact.client_name || contact.supplier_name || "",
-                        contact.name,
-                        contact.title || "",
-                        contact.email || "",
-                        contact.phone || "",
-                        contact.mobile || "",
-                        contact.tasks.map(task => task.name).join(" ")
-                    ].some(
-                        value =>
-                            value.toLowerCase().includes(normalizedSearch)
+                    (
+                        !normalizedType ||
+                        contact.contact_type_code.toLowerCase() === normalizedType
+                    ) &&
+                    (
+                        !normalizedSearch ||
+                        [
+                            contact.contact_type_name,
+                            contact.client_name || contact.supplier_name || "",
+                            contact.name,
+                            contact.title || "",
+                            contact.email || "",
+                            contact.phone || "",
+                            contact.mobile || "",
+                            contact.tasks.map(task => task.name).join(" ")
+                        ].some(
+                            value =>
+                                value.toLowerCase().includes(normalizedSearch)
+                        )
                     )
             );
         },
         [
             contacts,
-            search
+            search,
+            defaultContactTypeCode
         ]
     );
+
+    const summaryLabel = defaultContactTypeCode === "supplier" ? "fournisseurs" : "contacts";
 
 
     function loadContacts() {
@@ -350,7 +367,11 @@ function ContactsPage() {
                         event =>
                             setSearch(event.target.value)
                     }
-                    placeholder="Rechercher un contact, une société, un courriel ou une tâche"
+                    placeholder={
+                        defaultContactTypeCode === "supplier" ?
+                            "Rechercher un fournisseur, une société, un courriel ou une tâche" :
+                            "Rechercher un contact, une société, un courriel ou une tâche"
+                    }
                 />
                 <button
                     type="button"
@@ -367,7 +388,7 @@ function ContactsPage() {
                 </button>
                 <div className="business-summary">
                     <strong>{filteredContacts.length}</strong>
-                    <span>contacts</span>
+                    <span>{summaryLabel}</span>
                 </div>
             </div>
 

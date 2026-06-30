@@ -606,69 +606,6 @@ def create_client(
     }
 
 
-@router.put("/clients/{client_id}")
-def update_client(
-    client_id: int,
-    client: ClientSave
-):
-
-    client_name = validate_client(client)
-    db = SessionLocal()
-    ensure_client_schema(db)
-
-    row = db.execute(
-        text(
-            """
-            UPDATE client
-            SET
-                name = :name,
-                client_type_id = :client_type_id,
-                phone = :phone,
-                fax = :fax,
-                mobile = :mobile,
-                billing_address = :billing_address,
-                billing_postal_code = :billing_postal_code,
-                rbq = :rbq,
-                active = :active
-            WHERE id = :id
-            RETURNING id
-            """
-        ),
-        {
-            "id": client_id,
-            "name": client_name,
-            "client_type_id": client.client_type_id,
-            "phone": none_if_blank(client.phone),
-            "fax": none_if_blank(client.fax),
-            "mobile": none_if_blank(client.mobile),
-            "billing_address": none_if_blank(client.billing_address),
-            "billing_postal_code": none_if_blank(client.billing_postal_code),
-            "rbq": none_if_blank(client.rbq),
-            "active": client.active
-        }
-    ).fetchone()
-
-    if row is None:
-        db.close()
-        raise HTTPException(
-            status_code=404,
-            detail="Client not found"
-        )
-
-    replace_client_estimators(
-        db,
-        client_id,
-        client
-    )
-    db.commit()
-    db.close()
-
-    return {
-        "id": row.id,
-        "message": "Client updated"
-    }
-
-
 @router.put("/clients/bulk")
 def bulk_update_clients(
     client: ClientBulkUpdate
@@ -793,4 +730,67 @@ def bulk_update_clients(
     return {
         "message": f"{len(rows)} clients updated",
         "updated": len(rows)
+    }
+
+
+@router.put("/clients/{client_id}")
+def update_client(
+    client_id: int,
+    client: ClientSave
+):
+
+    client_name = validate_client(client)
+    db = SessionLocal()
+    ensure_client_schema(db)
+
+    row = db.execute(
+        text(
+            """
+            UPDATE client
+            SET
+                name = :name,
+                client_type_id = :client_type_id,
+                phone = :phone,
+                fax = :fax,
+                mobile = :mobile,
+                billing_address = :billing_address,
+                billing_postal_code = :billing_postal_code,
+                rbq = :rbq,
+                active = :active
+            WHERE id = :id
+            RETURNING id
+            """
+        ),
+        {
+            "id": client_id,
+            "name": client_name,
+            "client_type_id": client.client_type_id,
+            "phone": none_if_blank(client.phone),
+            "fax": none_if_blank(client.fax),
+            "mobile": none_if_blank(client.mobile),
+            "billing_address": none_if_blank(client.billing_address),
+            "billing_postal_code": none_if_blank(client.billing_postal_code),
+            "rbq": none_if_blank(client.rbq),
+            "active": client.active
+        }
+    ).fetchone()
+
+    if row is None:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Client not found"
+        )
+
+    replace_client_estimators(
+        db,
+        client_id,
+        client
+    )
+    db.commit()
+    db.close()
+
+    return {
+        "id": row.id,
+        "message": "Client updated"
     }

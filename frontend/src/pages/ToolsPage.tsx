@@ -5,15 +5,23 @@ import {
 
 import {
     API_URL,
-    fetchTools
+    checkoutTool,
+    fetchLocations,
+    fetchStatusLabels,
+    fetchTools,
+    updateTool
 } from "../utils/toolsApi";
 import type {
+    SnipeLocation,
+    StatusLabel,
     ToolAsset,
+    ToolInput,
     ToolScope,
     ToolSort,
     ToolSortOrder
 } from "../utils/toolsApi";
 
+import AssetQrCode from "../components/AssetQrCode";
 import "../styles/tools.css";
 
 
@@ -25,6 +33,32 @@ type ToolsPageProps = {
 
 const DEFAULT_PAGE_SIZE = 20;
 const ALL_PAGE_LIMIT = 10000;
+const EMPTY_TOOL_FORM: ToolInput = {
+    asset_tag: "",
+    name: "",
+    serial: "",
+    notes: ""
+};
+
+
+function defaultCheckoutStatus(
+    statusLabels: StatusLabel[]
+) {
+
+    return (
+        statusLabels.find(
+            statusLabel =>
+                statusLabel.type === "deployable" &&
+                !statusLabel.archived
+        ) ||
+        statusLabels.find(
+            statusLabel =>
+                statusLabel.name.toLowerCase().includes("ready")
+        ) ||
+        statusLabels[0]
+    );
+
+}
 
 
 function statusClass(
@@ -70,7 +104,15 @@ function ToolsPage({
     const [sortOrder, setSortOrder] = useState<ToolSortOrder>("asc");
     const [total, setTotal] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
+    const [isSavingTool, setIsSavingTool] = useState(false);
     const [statusMessage, setStatusMessage] = useState("");
+    const [editingTool, setEditingTool] = useState<ToolAsset | null>(null);
+    const [toolForm, setToolForm] = useState<ToolInput>(EMPTY_TOOL_FORM);
+    const [locations, setLocations] = useState<SnipeLocation[]>([]);
+    const [statusLabels, setStatusLabels] = useState<StatusLabel[]>([]);
+    const [checkoutLocationId, setCheckoutLocationId] = useState("");
+    const [checkoutStatusId, setCheckoutStatusId] = useState("");
+    const [checkoutNote, setCheckoutNote] = useState("");
     const [lastRefresh, setLastRefresh] = useState("");
 
     const effectiveLimit =
@@ -245,6 +287,54 @@ function ToolsPage({
     );
 
 
+    useEffect(
+        () => {
+            let isCurrent = true;
+
+            Promise.all(
+                [
+                    fetchLocations(
+                        {
+                            limit: ALL_PAGE_LIMIT,
+                            sort: "name",
+                            order: "asc"
+                        }
+                    ),
+                    fetchStatusLabels()
+                ]
+            )
+            .then(
+                ([
+                    locationResponse,
+                    statusResponse
+                ]) => {
+                    if (!isCurrent)
+                        return;
+
+                    setLocations(locationResponse.rows);
+                    setStatusLabels(statusResponse.rows);
+
+                    const defaultStatus = defaultCheckoutStatus(statusResponse.rows);
+
+                    if (defaultStatus)
+                        setCheckoutStatusId(String(defaultStatus.id));
+                }
+            )
+            .catch(
+                () => {
+                    if (isCurrent)
+                        setStatusMessage("Impossible de charger les options Snipe-IT.");
+                }
+            );
+
+            return () => {
+                isCurrent = false;
+            };
+        },
+        []
+    );
+
+
     function submitSearch() {
 
         setSubmittedQuery(query);
@@ -363,6 +453,102 @@ function ToolsPage({
             pageSize,
             sortBy,
             sortOrder
+        );
+
+    }
+
+
+    function openToolEditor(
+        tool: ToolAsset
+    ) {
+
+        setEditingTool(tool);
+        setToolForm(
+            {
+                asset_tag: tool.asset_tag || "",
+                name: tool.name || "",
+                serial: tool.serial || "",
+                notes: tool.notes || ""
+            }
+        );
+        setCheckoutLocationId("");
+        setCheckoutNote("");
+        setStatusMessage("");
+
+    }
+
+
+    function closeToolEditor() {
+
+        setEditingTool(null);
+        setToolForm(EMPTY_TOOL_FORM);
+
+    }
+
+
+    function saveTool() {
+
+        if (!editingTool)
+            return;
+
+        setIsSavingTool(true);
+        setStatusMessage("");
+
+        const updatePayload: ToolInput = {
+            asset_tag: toolForm.asset_tag.trim(),
+            name: toolForm.name.trim(),
+            serial: toolForm.serial.trim()
+        };
+        const nextNotes = (toolForm.notes || "").trim();
+
+        if (nextNotes !== (editingTool.notes || "").trim())
+            updatePayload.notes = nextNotes;
+
+        let request = updateTool(
+            editingTool.id,
+            updatePayload
+        );
+
+        if (checkoutLocationId && checkoutStatusId)
+            request = request.then(
+                () =>
+                    checkoutTool(
+                        editingTool.id,
+                        {
+                            location_id: Number(checkoutLocationId),
+                            status_id: Number(checkoutStatusId),
+                            note: checkoutNote.trim()
+                        }
+                    )
+            );
+
+        request
+        .then(
+            () => {
+                closeToolEditor();
+                setStatusMessage("Outil sauvegardé dans Snipe-IT.");
+                loadTools(
+                    submittedQuery,
+                    pageIndex,
+                    pageSize,
+                    sortBy,
+                    sortOrder
+                );
+            }
+        )
+        .catch(
+            error => {
+                setStatusMessage(
+                    error instanceof Error ?
+                        error.message :
+                        "Impossible de sauvegarder l'outil."
+                );
+            }
+        )
+        .finally(
+            () => {
+                setIsSavingTool(false);
+            }
         );
 
     }
@@ -564,6 +750,7 @@ function ToolsPage({
                             <th>{sortLabel("location", "Chantier")}</th>
                             <th>{sortLabel("status", "État")}</th>
                             <th>{sortLabel("updated_at", "Mis à jour")}</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
 
@@ -606,6 +793,15 @@ function ToolsPage({
                                         </span>
                                     </td>
                                     <td>{tool.updated_at}</td>
+                                    <td>
+                                        <button
+                                            type="button"
+                                            className="tools-row-action"
+                                            onClick={() => openToolEditor(tool)}
+                                        >
+                                            Modifier
+                                        </button>
+                                    </td>
                                 </tr>
                             )
                         )}
@@ -625,6 +821,168 @@ function ToolsPage({
                 )}
 
             </div>
+
+            {editingTool && (
+                <div className="tools-modal-backdrop">
+                    <section className="tools-modal">
+                        <header>
+                            <h2>Modifier outil</h2>
+                            <button
+                                type="button"
+                                onClick={closeToolEditor}
+                            >
+                                Fermer
+                            </button>
+                        </header>
+                        <div className="tools-modal-grid">
+                            <label>
+                                <span>Tag</span>
+                                <input
+                                    value={toolForm.asset_tag}
+                                    onChange={
+                                        event =>
+                                            setToolForm(
+                                                current => ({
+                                                    ...current,
+                                                    asset_tag: event.target.value
+                                                })
+                                            )
+                                    }
+                                />
+                            </label>
+                            <label>
+                                <span>Nom</span>
+                                <input
+                                    value={toolForm.name}
+                                    onChange={
+                                        event =>
+                                            setToolForm(
+                                                current => ({
+                                                    ...current,
+                                                    name: event.target.value
+                                                })
+                                            )
+                                    }
+                                />
+                            </label>
+                            <label>
+                                <span>Série</span>
+                                <input
+                                    value={toolForm.serial}
+                                    onChange={
+                                        event =>
+                                            setToolForm(
+                                                current => ({
+                                                    ...current,
+                                                    serial: event.target.value
+                                                })
+                                            )
+                                    }
+                                />
+                            </label>
+                            <label className="tools-modal-wide">
+                                <span>Notes</span>
+                                <textarea
+                                    value={toolForm.notes}
+                                    onChange={
+                                        event =>
+                                            setToolForm(
+                                                current => ({
+                                                    ...current,
+                                                    notes: event.target.value
+                                                })
+                                            )
+                                    }
+                                />
+                            </label>
+                            <label>
+                                <span>Déplacer vers chantier</span>
+                                <select
+                                    value={checkoutLocationId}
+                                    onChange={
+                                        event => setCheckoutLocationId(event.target.value)
+                                    }
+                                >
+                                    <option value="">Ne pas déplacer</option>
+                                    {locations.map(
+                                        location => (
+                                            <option
+                                                key={location.id}
+                                                value={location.id}
+                                            >
+                                                {location.name}
+                                            </option>
+                                        )
+                                    )}
+                                </select>
+                            </label>
+                            <label>
+                                <span>Statut checkout</span>
+                                <select
+                                    value={checkoutStatusId}
+                                    disabled={!checkoutLocationId}
+                                    onChange={
+                                        event => setCheckoutStatusId(event.target.value)
+                                    }
+                                >
+                                    <option value="">Sélectionner</option>
+                                    {statusLabels.map(
+                                        statusLabel => (
+                                            <option
+                                                key={statusLabel.id}
+                                                value={statusLabel.id}
+                                            >
+                                                {statusLabel.name}
+                                            </option>
+                                        )
+                                    )}
+                                </select>
+                            </label>
+                            <label className="tools-modal-wide">
+                                <span>Note déplacement</span>
+                                <textarea
+                                    value={checkoutNote}
+                                    disabled={!checkoutLocationId}
+                                    onChange={
+                                        event => setCheckoutNote(event.target.value)
+                                    }
+                                />
+                            </label>
+                        </div>
+                        <div className="tools-qr-panel">
+                            <AssetQrCode
+                                value={editingTool.asset_url}
+                                label={"QR " + editingTool.asset_tag}
+                            />
+                            {editingTool.asset_url && (
+                                <a
+                                    href={editingTool.asset_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    Ouvrir dans Snipe-IT
+                                </a>
+                            )}
+                        </div>
+                        <footer>
+                            <button
+                                type="button"
+                                onClick={closeToolEditor}
+                                disabled={isSavingTool}
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="button"
+                                onClick={saveTool}
+                                disabled={isSavingTool}
+                            >
+                                {isSavingTool ? "Sauvegarde..." : "Sauvegarder"}
+                            </button>
+                        </footer>
+                    </section>
+                </div>
+            )}
 
         </section>
 

@@ -1,0 +1,531 @@
+.chantiers-page {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid rgba(24, 32, 25, 0.08);
+    border-radius: 22px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(241, 245, 241, 0.9));
+    box-shadow:
+        0 16px 34px rgba(30, 38, 31, 0.06),
+        0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+}
+
+.chantiers-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.chantiers-toolbar input,
+.chantiers-toolbar select,
+.chantiers-toolbar button,
+.chantiers-editor input,
+.chantiers-editor button,
+.chantiers-tool-search input,
+.chantiers-tool-search button,
+.chantiers-table button,
+.chantiers-row-action,
+.chantiers-page-controls button {
+    border: 1px solid rgba(24, 32, 25, 0.12);
+    border-radius: 12px;
+    background: linear-gradient(180deg, #ffffff, #f1f5f2);
+    color: #182019;
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 13px;
+}
+
+.chantiers-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 320px;
+    min-width: 240px;
+    color: #4f5952;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.chantiers-search input {
+    flex: 1 1 auto;
+    min-width: 140px;
+    height: 34px;
+    padding: 0 10px;
+}
+
+.chantiers-toolbar button {
+    height: 34px;
+    padding: 0 14px;
+    cursor: pointer;
+}
+
+.chantiers-page-size {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #4f5952;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.chantiers-tool-count-filter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #4f5952;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.chantiers-tool-count-filter input {
+    width: 74px;
+    height: 34px;
+    padding: 0 8px;
+}
+
+.chantiers-page-size select {
+    height: 34px;
+    padding: 0 8px;
+}
+
+.chantiers-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    color: #5d665f;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.chantiers-summary strong {
+    color: #17311b;
+    font-size: 14px;
+}
+
+.chantiers-refresh {
+    color: #6a756d;
+}
+
+.chantiers-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 4px 2px;
+    color: #4f5952;
+    font-size: 12px;
+}
+
+.chantiers-page-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.chantiers-page-controls button {
+    height: 30px;
+    padding: 0 12px;
+    cursor: pointer;
+}
+
+.chantiers-page-controls button:disabled {
+    cursor: default;
+    opacity: 0.55;
+}
+
+.chantiers-alert {
+    padding: 10px 12px;
+    border: 1px solid rgba(179, 55, 55, 0.2);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255, 245, 245, 0.95), rgba(251, 236, 236, 0.95));
+    color: #7d2d2d;
+    font-size: 13px;
+}
+
+.chantiers-status {
+    padding: 10px 12px;
+    border: 1px solid rgba(79, 182, 65, 0.22);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(244, 252, 242, 0.95), rgba(235, 247, 232, 0.95));
+    color: #1d5123;
+    font-size: 13px;
+}
+
+.chantiers-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+    gap: 12px;
+    min-width: 0;
+    min-height: 0;
+}
+
+.chantiers-list-panel,
+.chantiers-detail-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    min-height: 0;
+}
+
+.chantiers-table-wrap {
+    position: relative;
+    overflow: auto;
+    min-height: 260px;
+    border: 1px solid rgba(24, 32, 25, 0.08);
+    border-radius: 18px;
+    background: #ffffff;
+}
+
+.chantiers-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 680px;
+}
+
+.chantiers-table th,
+.chantiers-table td {
+    padding: 12px 12px;
+    border-bottom: 1px solid rgba(24, 32, 25, 0.08);
+    color: #1f2520;
+    font-size: 13px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.chantiers-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: linear-gradient(180deg, #f6f8f6, #eef2ef);
+    color: #4a544d;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.chantiers-table th button {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.chantiers-table tbody tr:hover td {
+    background: rgba(79, 182, 65, 0.04);
+}
+
+.chantiers-table tbody tr.selected td {
+    background: rgba(79, 182, 65, 0.08);
+}
+
+.chantiers-muted-line {
+    display: block;
+    margin-top: 4px;
+    color: #6a756d;
+    font-size: 12px;
+}
+
+.chantiers-row-action {
+    height: 30px;
+    padding: 0 12px;
+    cursor: pointer;
+}
+
+.chantiers-pill {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.chantiers-pill.active {
+    border: 1px solid rgba(79, 182, 65, 0.25);
+    background: rgba(79, 182, 65, 0.12);
+    color: #1d4322;
+}
+
+.chantiers-pill.inactive {
+    border: 1px solid rgba(120, 129, 122, 0.18);
+    background: rgba(120, 129, 122, 0.08);
+    color: #5d665f;
+}
+
+.chantiers-empty {
+    padding: 18px 14px;
+    color: #5d665f;
+    font-size: 13px;
+}
+
+.chantiers-editor,
+.chantiers-tools-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+    padding: 14px;
+    border: 1px solid rgba(24, 32, 25, 0.08);
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 10px 20px rgba(30, 38, 31, 0.05);
+}
+
+.chantiers-editor header,
+.chantiers-tools-panel header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.chantiers-editor h2,
+.chantiers-tools-panel h2 {
+    margin: 2px 0 0;
+    color: #182019;
+    font-size: 18px;
+    line-height: 22px;
+}
+
+.chantiers-kicker {
+    display: block;
+    color: #6a756d;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.chantiers-editor header button,
+.chantiers-tool-search button {
+    height: 34px;
+    padding: 0 14px;
+    cursor: pointer;
+}
+
+.chantiers-editor header button:disabled,
+.chantiers-tool-search button:disabled {
+    cursor: default;
+    opacity: 0.55;
+}
+
+.chantiers-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.chantiers-form-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+    color: #4f5952;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.chantiers-form-grid input {
+    height: 34px;
+    padding: 0 10px;
+}
+
+.chantiers-tool-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.chantiers-tool-search input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 34px;
+    padding: 0 10px;
+}
+
+.chantiers-tools-table-wrap {
+    flex: 1 1 auto;
+    overflow: auto;
+    min-height: 220px;
+    max-height: 360px;
+    border: 1px solid rgba(24, 32, 25, 0.08);
+    border-radius: 14px;
+}
+
+.chantiers-tools-table {
+    width: 100%;
+    min-width: 520px;
+    border-collapse: collapse;
+}
+
+.chantiers-tools-table th,
+.chantiers-tools-table td {
+    padding: 10px;
+    border-bottom: 1px solid rgba(24, 32, 25, 0.08);
+    color: #1f2520;
+    font-size: 12px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.chantiers-tools-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: linear-gradient(180deg, #f6f8f6, #eef2ef);
+    color: #4a544d;
+    font-weight: 700;
+}
+
+.chantiers-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background-color: rgba(16, 22, 17, 0.42);
+}
+
+.chantiers-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: min(520px, 100%);
+    padding: 16px;
+    border: 1px solid rgba(24, 32, 25, 0.12);
+    border-radius: 8px;
+    background-color: #ffffff;
+    box-shadow: 0 18px 50px rgba(16, 22, 17, 0.25);
+}
+
+.chantiers-modal header,
+.chantiers-modal footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.chantiers-modal h2 {
+    margin: 0;
+    color: #182019;
+    font-size: 18px;
+}
+
+.chantiers-modal button,
+.chantiers-modal input,
+.chantiers-modal select,
+.chantiers-modal textarea {
+    border: 1px solid rgba(24, 32, 25, 0.12);
+    border-radius: 8px;
+    background: linear-gradient(180deg, #ffffff, #f1f5f2);
+    color: #182019;
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 13px;
+}
+
+.chantiers-modal button {
+    height: 32px;
+    padding: 0 12px;
+    cursor: pointer;
+}
+
+.chantiers-modal button:disabled {
+    cursor: default;
+    opacity: 0.55;
+}
+
+.chantiers-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.chantiers-modal-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    color: #4f5952;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.chantiers-modal-grid input {
+    height: 34px;
+    padding: 0 10px;
+}
+
+.chantiers-modal-grid select {
+    height: 34px;
+    padding: 0 10px;
+}
+
+.chantiers-modal-grid textarea {
+    height: 66px;
+    padding: 8px 10px;
+    resize: vertical;
+}
+
+.chantiers-modal-wide {
+    grid-column: 1 / -1;
+}
+
+.chantiers-qr-panel {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border: 1px solid rgba(24, 32, 25, 0.08);
+    border-radius: 8px;
+    background: #f8faf8;
+}
+
+.chantiers-qr-panel svg {
+    width: 112px;
+    height: 112px;
+    object-fit: contain;
+    border: 1px solid rgba(24, 32, 25, 0.12);
+    background: #ffffff;
+}
+
+.chantiers-qr-panel a {
+    color: #2f5f39;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.chantiers-qr-panel a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 860px) {
+    .chantiers-summary {
+        margin-left: 0;
+    }
+
+    .chantiers-pagination {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .chantiers-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .chantiers-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
