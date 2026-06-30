@@ -18,7 +18,7 @@ from app.api.email import router as email_router
 
 app = FastAPI(
     title="Sercora",
-    version="0.1"
+    version="0.1.2"
 )
 
 
@@ -57,7 +57,7 @@ def root():
 
     return {
         "application": "Sercora",
-        "version": "0.1"
+        "version": "0.1.2"
     }
 
 
@@ -74,5 +74,5 @@ def version():
 
     return {
         "application": "Sercora",
-        "version": "0.1"
+        "version": "0.1.2"
     }
