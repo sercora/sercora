@@ -20,6 +20,7 @@ import {
     projectFilePreviewUrl,
     projectFileUrl
 } from "../utils/matrixApi";
+import { openPdfPreviewWindow } from "../utils/filePreview";
 import { clickableMsgHtml } from "../utils/msgPreviewHtml";
 import type {
     BsdqProjectSearchResult,
@@ -1102,6 +1103,19 @@ function ProjectsPage({
                                 }
                             >
                                 Ouvrir
+                            </button>
+                        )}
+                        {projectFilePreview?.type === "pdf" && projectPdfPreviewUrl && (
+                            <button
+                                type="button"
+                                onClick={
+                                    () => openPdfPreviewWindow(
+                                        projectPdfPreviewUrl,
+                                        projectFilePreview.name
+                                    )
+                                }
+                            >
+                                Plein écran
                             </button>
                         )}
                         <button

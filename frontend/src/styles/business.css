@@ -125,6 +125,38 @@
 }
 
 
+.business-summary.selection {
+
+    margin-left: 0;
+
+}
+
+
+.business-tag {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    height: 20px;
+
+    margin: 0 6px 6px 0;
+
+    padding: 0 8px;
+
+    border-radius: 999px;
+
+    background-color: #eef3f8;
+
+    color: #2e4156;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+}
+
+
 .business-summary strong {
 
     color: #1f252d;
@@ -264,6 +296,36 @@
     border-collapse: collapse;
 
     background-color: #ffffff;
+
+}
+
+
+.clients-table {
+
+    min-width: 1280px;
+
+}
+
+
+.contacts-table {
+
+    min-width: 1240px;
+
+}
+
+
+.clients-select-cell {
+
+    width: 42px;
+
+    text-align: center;
+
+}
+
+
+.clients-select-cell input {
+
+    cursor: pointer;
 
 }
 
@@ -816,6 +878,20 @@
 }
 
 
+.client-modal {
+
+    width: min(760px, 100%);
+
+}
+
+
+.contact-modal {
+
+    width: min(860px, 100%);
+
+}
+
+
 .business-modal header,
 .business-modal footer,
 .business-section-heading {
@@ -872,6 +948,13 @@
 .business-field.wide {
 
     grid-column: span 2;
+
+}
+
+
+.contact-task-grid {
+
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
 
 }
 

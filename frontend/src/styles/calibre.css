@@ -18,6 +18,10 @@
     background: #eef3ef;
 }
 
+.calibre-page.subtract-mode {
+    box-shadow: inset 0 0 0 3px rgba(192, 47, 43, 0.72);
+}
+
 .calibre-toolbar {
     display: flex;
     flex-direction: column;
@@ -84,6 +88,12 @@
     font-size: 14px;
     font-weight: 800;
     cursor: pointer;
+}
+
+.calibre-upload-button.secondary {
+    border-color: #81908a;
+    background: #f6f8f6;
+    color: #263028;
 }
 
 .calibre-secondary-button {
@@ -157,7 +167,7 @@
 
 .calibre-pdf-strip {
     display: grid;
-    grid-template-columns: minmax(160px, 280px) minmax(0, 1fr);
+    grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);
     align-items: center;
     gap: 10px;
     padding: 8px;
@@ -167,6 +177,9 @@
 }
 
 .calibre-pdf-strip > span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     overflow: hidden;
     color: #263028;
     font-size: 13px;
@@ -175,11 +188,46 @@
     white-space: nowrap;
 }
 
+.calibre-pdf-strip small {
+    color: #647068;
+    font-size: 11px;
+    font-weight: 800;
+}
+
 .calibre-pdf-strip > div {
     display: flex;
     gap: 6px;
     overflow-x: auto;
     padding-bottom: 2px;
+}
+
+.calibre-plan-import-fields {
+    display: grid;
+    grid-template-columns: 74px minmax(120px, 1fr) 150px 80px auto;
+    align-items: end;
+    gap: 8px;
+    min-width: 0;
+}
+
+.calibre-plan-import-fields label {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    color: #647068;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.calibre-plan-import-fields input {
+    min-width: 0;
+    height: 30px;
+    padding: 0 8px;
+    border: 1px solid #b9c4bc;
+    border-radius: 5px;
+    background: #ffffff;
+    color: #263028;
+    font: 800 12px Calibri, Arial, sans-serif;
 }
 
 .calibre-import-error {
@@ -193,8 +241,10 @@
 }
 
 .calibre-tool-group,
+.calibre-history-group,
 .calibre-zoom-group,
 .calibre-segmented-control,
+.calibre-operation-switch,
 .calibre-inline-field {
     display: flex;
     align-items: center;
@@ -253,7 +303,7 @@
 
 .calibre-tool-button:disabled {
     opacity: 0.55;
-    cursor: wait;
+    cursor: not-allowed;
 }
 
 .calibre-tool-button:hover,
@@ -263,6 +313,42 @@
     border-color: #2e8d25;
     background: #e7f4e5;
     color: #1f6f18;
+}
+
+.calibre-operation-switch {
+    padding: 2px;
+    border: 1px solid #8fc487;
+    border-radius: 6px;
+    background: #eef8ec;
+}
+
+.calibre-operation-switch.subtract {
+    border-color: #d88986;
+    background: #fff0ef;
+}
+
+.calibre-operation-switch button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 30px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: #263028;
+    font: 900 18px Calibri, Arial, sans-serif;
+    cursor: pointer;
+}
+
+.calibre-operation-switch.add button.active {
+    background: #2f9328;
+    color: #ffffff;
+}
+
+.calibre-operation-switch.subtract button.active {
+    background: #c02f2b;
+    color: #ffffff;
 }
 
 .calibre-workspace {
@@ -284,6 +370,295 @@
     max-height: calc(100% - 24px);
     display: flex;
     min-height: 0;
+}
+
+.calibre-floating-panel.style-panel {
+    right: 368px;
+}
+
+.calibre-save-status {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 5px 8px;
+    border: 1px solid #c5d6c8;
+    border-radius: 5px;
+    background: #eef8ec;
+    color: #647068;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 14px;
+    text-align: right;
+    text-transform: uppercase;
+}
+
+.calibre-save-status strong {
+    color: #1f7f18;
+}
+
+.calibre-save-status.subtract {
+    border-color: #d88986;
+    background: #fff0ef;
+}
+
+.calibre-save-status.subtract strong {
+    color: #c02f2b;
+}
+
+.calibre-results-panel {
+    position: absolute;
+    z-index: 5;
+    width: min(310px, calc(100% - 32px));
+    min-width: 240px;
+    max-width: 440px;
+    min-height: 58px;
+    max-height: calc(100% - 32px);
+    overflow: auto;
+    resize: both;
+    border: 1px solid rgba(20, 42, 20, 0.22);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 16px 36px rgba(16, 22, 17, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+.calibre-results-panel header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px;
+    border-bottom: 1px solid #d7dfda;
+    background: #172016;
+    color: #ffffff;
+    cursor: move;
+    user-select: none;
+}
+
+.calibre-results-panel header span {
+    display: block;
+    color: #7cff44;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 14px;
+    text-transform: uppercase;
+}
+
+.calibre-results-panel header strong {
+    display: block;
+    overflow: hidden;
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.calibre-panel-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 5px;
+}
+
+.calibre-panel-actions button {
+    height: 24px;
+    padding: 0 7px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    font: 800 11px Calibri, Arial, sans-serif;
+    cursor: pointer;
+}
+
+.calibre-results-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 11px;
+}
+
+.calibre-results-context {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.calibre-results-context span,
+.calibre-results-total span,
+.calibre-results-grid span {
+    color: #647068;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.calibre-results-context strong {
+    color: #263028;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.calibre-results-total {
+    display: grid;
+    gap: 3px;
+    padding: 10px;
+    border: 1px solid #c5d6c8;
+    border-radius: 6px;
+    background: #eef8ec;
+}
+
+.calibre-results-total strong {
+    color: #172016;
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 28px;
+}
+
+.calibre-results-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 12px;
+}
+
+.calibre-results-grid strong {
+    color: #263028;
+    font-size: 13px;
+    font-weight: 900;
+    text-align: right;
+}
+
+.calibre-results-grid .positive {
+    color: #1f7f18;
+}
+
+.calibre-results-grid .negative {
+    color: #c02f2b;
+}
+
+.calibre-results-options,
+.calibre-results-navigation {
+    display: flex;
+    gap: 6px;
+}
+
+.calibre-results-options button,
+.calibre-results-navigation button {
+    flex: 1 1 auto;
+    min-height: 28px;
+    padding: 4px 7px;
+    border: 1px solid #b9c4bc;
+    border-radius: 5px;
+    background: #ffffff;
+    color: #263028;
+    font: 800 11px Calibri, Arial, sans-serif;
+    cursor: pointer;
+}
+
+.calibre-results-options button.active,
+.calibre-results-navigation button:hover {
+    border-color: #2e8d25;
+    background: #e7f4e5;
+    color: #1f6f18;
+}
+
+.calibre-results-panel.collapsed {
+    resize: none;
+}
+
+.calibre-style-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-height: 100%;
+    padding: 12px;
+    overflow-y: auto;
+    border: 1px solid #ccd6cf;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 14px 34px rgba(16, 22, 17, 0.22);
+}
+
+.calibre-style-presets {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.calibre-style-presets button {
+    min-height: 32px;
+    padding: 5px 8px;
+    border: 1px solid #b9c4bc;
+    border-radius: 5px;
+    background: #ffffff;
+    color: #263028;
+    font: 800 12px Calibri, Arial, sans-serif;
+    cursor: pointer;
+}
+
+.calibre-style-presets button.active {
+    border-color: #2e8d25;
+    background: #e7f4e5;
+    color: #1f6f18;
+}
+
+.calibre-style-field {
+    display: grid;
+    grid-template-columns: 86px minmax(0, 1fr) 48px;
+    align-items: center;
+    gap: 8px;
+}
+
+.calibre-style-field span,
+.calibre-style-colors span {
+    color: #647068;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.calibre-style-field strong {
+    color: #263028;
+    font-size: 12px;
+    font-weight: 900;
+    text-align: right;
+}
+
+.calibre-style-field select {
+    height: 30px;
+    border: 1px solid #b9c4bc;
+    border-radius: 5px;
+    background: #ffffff;
+    color: #263028;
+    font: 800 12px Calibri, Arial, sans-serif;
+}
+
+.calibre-style-row,
+.calibre-style-colors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.calibre-style-row label,
+.calibre-style-colors label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #263028;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.calibre-style-colors input {
+    width: 36px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid #b9c4bc;
+    border-radius: 5px;
+    background: #ffffff;
 }
 
 .calibre-canvas-shell {
@@ -325,6 +700,96 @@
 
 .calibre-pan-hint {
     background: rgba(31, 111, 24, 0.94);
+    color: #ffffff;
+}
+
+.calibre-calibration-dialog {
+    position: absolute;
+    top: 58px;
+    left: 50%;
+    z-index: 8;
+    width: min(420px, calc(100% - 32px));
+    padding: 12px;
+    border: 1px solid #8fc487;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 18px 44px rgba(16, 22, 17, 0.24);
+    transform: translateX(-50%);
+}
+
+.calibre-calibration-dialog header,
+.calibre-calibration-dialog footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.calibre-calibration-dialog header {
+    margin-bottom: 10px;
+}
+
+.calibre-calibration-dialog header strong {
+    color: #172016;
+    font-size: 16px;
+    font-weight: 900;
+}
+
+.calibre-calibration-dialog header span {
+    color: #647068;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.calibre-calibration-grid {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.calibre-calibration-grid.metric {
+    grid-template-columns: minmax(0, 1fr) 110px;
+}
+
+.calibre-calibration-grid.imperial {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.calibre-calibration-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: #647068;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.calibre-calibration-grid input,
+.calibre-calibration-grid select {
+    height: 34px;
+    padding: 0 9px;
+    border: 1px solid #b9c4bc;
+    border-radius: 5px;
+    background: #ffffff;
+    color: #263028;
+    font: 800 13px Calibri, Arial, sans-serif;
+}
+
+.calibre-calibration-dialog footer button {
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid #b9c4bc;
+    border-radius: 5px;
+    background: #ffffff;
+    color: #263028;
+    font: 800 12px Calibri, Arial, sans-serif;
+    cursor: pointer;
+}
+
+.calibre-calibration-dialog footer button.primary {
+    border-color: #2e8d25;
+    background: #2f9328;
     color: #ffffff;
 }
 

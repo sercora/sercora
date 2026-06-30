@@ -13,6 +13,12 @@ export type Client = {
     name: string;
     client_type_id: number | null;
     client_type_name: string | null;
+    phone: string | null;
+    fax: string | null;
+    mobile: string | null;
+    billing_address: string | null;
+    billing_postal_code: string | null;
+    rbq: string | null;
     active: boolean;
     created_at: string | null;
     project_count: number;
@@ -22,7 +28,27 @@ export type Client = {
 export type ClientInput = {
     name: string;
     client_type_id: number | null;
+    phone: string;
+    fax: string;
+    mobile: string;
+    billing_address: string;
+    billing_postal_code: string;
+    rbq: string;
     active: boolean;
+};
+
+
+export type ClientBulkUpdateInput = {
+    client_ids: number[];
+    name?: string;
+    client_type_id?: number | null;
+    phone?: string;
+    fax?: string;
+    mobile?: string;
+    billing_address?: string;
+    billing_postal_code?: string;
+    rbq?: string;
+    active?: boolean;
 };
 
 
@@ -241,6 +267,26 @@ export function updateClient(
                 "Content-Type": "application/json"
             },
             body: JSON.stringify(client)
+        }
+    )
+
+    .then(parseResponse);
+
+}
+
+
+export function bulkUpdateClients(
+    payload: ClientBulkUpdateInput
+) {
+
+    return fetch(
+        API_URL + "/clients/bulk",
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
         }
     )
 

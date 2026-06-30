@@ -10,6 +10,15 @@ import type {
 type PendingPdfToolbarState = {
     fileName: string;
     pageCount: number;
+    source: string;
+};
+
+
+type PendingPlanFields = {
+    pageNumber: number;
+    planName: string;
+    planDate: string;
+    revisionNumber: string;
 };
 
 
@@ -22,41 +31,33 @@ type CalibreToolbarProps = {
     isFullscreen: boolean;
     isImportingPdfPage: boolean;
     isLayersOpen: boolean;
+    isStyleOpen: boolean;
     lineWeight: number;
     pages: CalibrePage[];
     pendingPdf: PendingPdfToolbarState | null;
+    pendingPlanFields: PendingPlanFields;
+    redoAvailable: boolean;
+    saveStatus: string;
     scalePercent: number;
     unitSystem: CalibreUnitSystem;
-    onFitToScreen: () => void;
+    undoAvailable: boolean;
     onFullscreenToggle: () => void;
     onLayersToggle: () => void;
     onLineWeightChange: (lineWeight: number) => void;
     onOperationChange: (operation: CalibreOperation) => void;
     onPageChange: (pageId: string) => void;
-    onPdfPageImport: (pageNumber: number) => void;
-    onPlanSelected: (file: File) => void;
+    onPendingPlanFieldsChange: (fields: PendingPlanFields) => void;
+    onPdfPageImport: () => void;
+    onPlanSelected: (
+        file: File,
+        source?: "projectPlans" | "legacyInProgress" | "local"
+    ) => void;
+    onRedo: () => void;
+    onStyleToggle: () => void;
     onToolChange: (tool: CalibreTool) => void;
+    onUndo: () => void;
     onUnitSystemChange: (unitSystem: CalibreUnitSystem) => void;
-    onZoomIn: () => void;
-    onZoomOut: () => void;
 };
-
-
-function pageNumbers(
-    pageCount: number
-) {
-
-    return Array.from(
-        {
-            length: pageCount
-        },
-        (
-            _,
-            index
-        ) => index + 1
-    );
-
-}
 
 
 function CalibreToolbar({
@@ -68,23 +69,29 @@ function CalibreToolbar({
     isFullscreen,
     isImportingPdfPage,
     isLayersOpen,
+    isStyleOpen,
     lineWeight,
     pages,
     pendingPdf,
+    pendingPlanFields,
+    redoAvailable,
+    saveStatus,
     scalePercent,
     unitSystem,
-    onFitToScreen,
+    undoAvailable,
     onFullscreenToggle,
     onLayersToggle,
     onLineWeightChange,
     onOperationChange,
     onPageChange,
+    onPendingPlanFieldsChange,
     onPdfPageImport,
     onPlanSelected,
+    onRedo,
+    onStyleToggle,
     onToolChange,
-    onUnitSystemChange,
-    onZoomIn,
-    onZoomOut
+    onUndo,
+    onUnitSystemChange
 }: CalibreToolbarProps) {
 
     const toolItems: {
@@ -134,13 +141,37 @@ function CalibreToolbar({
                                 const file = event.target.files?.[0];
 
                                 if (file)
-                                    onPlanSelected(file);
+                                    onPlanSelected(
+                                        file,
+                                        "projectPlans"
+                                    );
 
                                 event.currentTarget.value = "";
                             }
                         }
                     />
-                    Importer PDF/JPG/PNG
+                    Projet / plans
+                </label>
+
+                <label className="calibre-upload-button secondary">
+                    <input
+                        type="file"
+                        accept="application/pdf,image/png,image/jpeg"
+                        onChange={
+                            event => {
+                                const file = event.target.files?.[0];
+
+                                if (file)
+                                    onPlanSelected(
+                                        file,
+                                        "legacyInProgress"
+                                    );
+
+                                event.currentTarget.value = "";
+                            }
+                        }
+                    />
+                    Legacy / en cours
                 </label>
 
                 <div className="calibre-field-group">
@@ -178,23 +209,74 @@ function CalibreToolbar({
 
             {pendingPdf && (
                 <div className="calibre-pdf-strip">
-                    <span>{pendingPdf.fileName}</span>
-                    <div>
-                        {pageNumbers(pendingPdf.pageCount).map(
-                            pageNumber => (
-                                <button
-                                    key={pageNumber}
-                                    type="button"
-                                    className="calibre-tool-button"
-                                    disabled={isImportingPdfPage}
-                                    onClick={
-                                        () => onPdfPageImport(pageNumber)
-                                    }
-                                >
-                                    Page {pageNumber}
-                                </button>
-                            )
-                        )}
+                    <span>
+                        {pendingPdf.fileName}
+                        <small>{pendingPdf.pageCount} page(s)</small>
+                    </span>
+                    <div className="calibre-plan-import-fields">
+                        <label>
+                            Page
+                            <input
+                                type="number"
+                                min={1}
+                                max={pendingPdf.pageCount}
+                                value={pendingPlanFields.pageNumber}
+                                onChange={
+                                    event => onPendingPlanFieldsChange({
+                                        ...pendingPlanFields,
+                                        pageNumber: Number(event.target.value)
+                                    })
+                                }
+                            />
+                        </label>
+                        <label>
+                            Nom du plan
+                            <input
+                                type="text"
+                                value={pendingPlanFields.planName}
+                                placeholder="A-100"
+                                onChange={
+                                    event => onPendingPlanFieldsChange({
+                                        ...pendingPlanFields,
+                                        planName: event.target.value
+                                    })
+                                }
+                            />
+                        </label>
+                        <label>
+                            Date
+                            <input
+                                type="date"
+                                value={pendingPlanFields.planDate}
+                                onChange={
+                                    event => onPendingPlanFieldsChange({
+                                        ...pendingPlanFields,
+                                        planDate: event.target.value
+                                    })
+                                }
+                            />
+                        </label>
+                        <label>
+                            Rév.
+                            <input
+                                type="text"
+                                value={pendingPlanFields.revisionNumber}
+                                onChange={
+                                    event => onPendingPlanFieldsChange({
+                                        ...pendingPlanFields,
+                                        revisionNumber: event.target.value
+                                    })
+                                }
+                            />
+                        </label>
+                        <button
+                            type="button"
+                            className="calibre-tool-button active"
+                            disabled={isImportingPdfPage}
+                            onClick={onPdfPageImport}
+                        >
+                            Importer
+                        </button>
                     </div>
                 </div>
             )}
@@ -206,6 +288,25 @@ function CalibreToolbar({
             )}
 
             <div className="calibre-toolbar-controls">
+                <div className="calibre-history-group">
+                    <button
+                        type="button"
+                        className="calibre-tool-button"
+                        disabled={!undoAvailable}
+                        onClick={onUndo}
+                    >
+                        Annuler
+                    </button>
+                    <button
+                        type="button"
+                        className="calibre-tool-button"
+                        disabled={!redoAvailable}
+                        onClick={onRedo}
+                    >
+                        Rétablir
+                    </button>
+                </div>
+
                 <div className="calibre-tool-group">
                     {toolItems.map(
                         tool => (
@@ -248,15 +349,23 @@ function CalibreToolbar({
                     </button>
                 </div>
 
-                <div className="calibre-segmented-control" aria-label="Opération de mesure">
+                <div
+                    className={
+                        activeOperation === "subtract" ?
+                            "calibre-operation-switch subtract" :
+                            "calibre-operation-switch add"
+                    }
+                    aria-label="Opération de mesure"
+                >
                     <button
                         type="button"
                         className={activeOperation === "add" ? "active" : ""}
                         onClick={
                             () => onOperationChange("add")
                         }
+                        title="Addition"
                     >
-                        Addition
+                        +
                     </button>
                     <button
                         type="button"
@@ -264,8 +373,9 @@ function CalibreToolbar({
                         onClick={
                             () => onOperationChange("subtract")
                         }
+                        title="Soustraction"
                     >
-                        Soustraction
+                        -
                     </button>
                 </div>
 
@@ -303,6 +413,17 @@ function CalibreToolbar({
                     <button
                         type="button"
                         className={
+                            isStyleOpen ?
+                                "calibre-tool-button active" :
+                                "calibre-tool-button"
+                        }
+                        onClick={onStyleToggle}
+                    >
+                        Styles
+                    </button>
+                    <button
+                        type="button"
+                        className={
                             isFullscreen ?
                                 "calibre-tool-button active" :
                                 "calibre-tool-button"
@@ -311,29 +432,19 @@ function CalibreToolbar({
                     >
                         {isFullscreen ? "Quitter plein écran" : "Plein écran"}
                     </button>
-                    <button
-                        type="button"
-                        className="calibre-tool-button"
-                        onClick={onZoomOut}
-                    >
-                        Zoom -
-                    </button>
                     <span>{scalePercent}%</span>
-                    <button
-                        type="button"
-                        className="calibre-tool-button"
-                        onClick={onZoomIn}
-                    >
-                        Zoom +
-                    </button>
-                    <button
-                        type="button"
-                        className="calibre-tool-button"
-                        onClick={onFitToScreen}
-                    >
-                        Ajuster
-                    </button>
                 </div>
+            </div>
+
+            <div
+                className={
+                    activeOperation === "subtract" ?
+                        "calibre-save-status subtract" :
+                        "calibre-save-status"
+                }
+            >
+                <strong>{activeOperation === "subtract" ? "MODE - RETRAIT" : "MODE + AJOUT"}</strong>
+                {saveStatus}
             </div>
         </header>
     );

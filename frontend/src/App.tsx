@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 
 import CalibreView from "./pages/CalibreView";
+import ChantiersPage from "./pages/ChantiersPage";
 import ClientsPage from "./pages/ClientsPage";
+import ContactsPage from "./pages/ContactsPage";
 import ConfigurationPage from "./pages/ConfigurationPage";
 import LoginPage from "./pages/LoginPage";
 import MatrixView from "./pages/MatrixView";
@@ -22,25 +24,14 @@ import {
 import "./App.css";
 
 
-type PageKey = "Clients" | "Projets" | "Produits" | "Outils" | "Calibre" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
+type PageKey = "Clients" | "Contacts" | "Fournisseurs" | "Projets" | "Chantiers" | "Produits" | "Outils" | "Calibre" | "Soumissions" | "Profil" | "Usagers" | "Configuration";
+type NavGroupKey = "Clients" | "Contacts" | "Fournisseurs" | "Projets" | "Produits" | "Outils" | "Calibre" | "Soumissions" | "Usagers" | "Configuration";
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura" | "Olympia";
 type ProjectMenuKey = "En cours" | "En Soumission" | "Création";
 type ProjectSubmissionMenuKey = "Nouveaux" | "Approuvés" | "Indécis" | "Refusés" | "Envoyés";
 type EstimateMenuKey = "En cours" | "Envoyées" | "Refusé" | "Template";
-type ToolsMenuKey = "Disponible" | "Déployé";
+type ToolsMenuKey = "Tous les outils" | "Disponible" | "Déployé";
 type ConfigurationMenuKey = "Courriel" | "VoIP/SMS" | "Mobile-Punch" | "Importation" | "Statut";
-
-
-const NAV_ITEMS: PageKey[] = [
-    "Clients",
-    "Projets",
-    "Produits",
-    "Outils",
-    "Calibre",
-    "Soumissions",
-    "Usagers",
-    "Configuration"
-];
 
 
 const PRODUCT_MENU_ITEMS: ProductMenuKey[] = [
@@ -87,6 +78,7 @@ const ESTIMATE_MENU_ITEMS: EstimateMenuKey[] = [
 
 
 const TOOLS_MENU_ITEMS: ToolsMenuKey[] = [
+    "Tous les outils",
     "Disponible",
     "Déployé"
 ];
@@ -108,11 +100,14 @@ const DISABLED_CONFIGURATION_MENU_ITEMS: ConfigurationMenuKey[] = [
 
 const PAGE_CONTEXT: Record<PageKey, string> = {
     Clients: "Relations et comptes",
+    Contacts: "Répertoire des personnes",
+    Fournisseurs: "Répertoire des fournisseurs",
     Projets: "Chantiers et suivis",
+    Chantiers: "Lieux Snipe-IT",
     Produits: "Catalogue, prix et fournisseurs",
     Outils: "Inventaire Snipe-IT",
     Calibre: "Relevés et métrés",
-    Soumissions: "Estimations et quantités",
+    Soumissions: "Legacy",
     Profil: "Compte et mot de passe",
     Usagers: "Roles et acces",
     Configuration: "Parametres systeme"
@@ -121,13 +116,50 @@ const PAGE_CONTEXT: Record<PageKey, string> = {
 
 const AUTH_TOKEN_KEY = "sercora_auth_token";
 
+const MAIN_NAV_ITEMS: NavGroupKey[] = [
+    "Clients",
+    "Contacts",
+    "Fournisseurs",
+    "Projets",
+    "Produits",
+    "Outils",
+    "Calibre",
+    "Soumissions",
+    "Configuration"
+];
+
+const NAV_BUTTON_LABELS: Record<NavGroupKey, string> = {
+    Clients: "Clients",
+    Contacts: "Contacts",
+    Fournisseurs: "Fournisseurs",
+    Projets: "Projets",
+    Produits: "Produits",
+    Outils: "Outils",
+    Calibre: "Calibre",
+    Soumissions: "LEGACY",
+    Usagers: "Usagers",
+    Configuration: "Configuration"
+};
+
+const NAV_SUBTITLE: Partial<Record<NavGroupKey, string>> = {
+    Clients: "Comptes et fiches",
+    Contacts: "Répertoire",
+    Fournisseurs: "Partenaires",
+    Projets: "Chantiers",
+    Produits: "Catalogue",
+    Outils: "Inventaire",
+    Calibre: "Mesures",
+    Soumissions: "Legacy",
+    Configuration: "Paramètres"
+};
+
 
 function pageLabel(
     page: PageKey
 ) {
 
     return page === "Soumissions" ?
-        "Soumissions LEGACY" :
+        "LEGACY" :
         page;
 
 }
@@ -142,8 +174,9 @@ function App() {
         useState<ProjectSubmissionMenuKey>("Nouveaux");
     const [activeEstimateMenu, setActiveEstimateMenu] = useState<EstimateMenuKey>("En cours");
     const [activeEstimateId, setActiveEstimateId] = useState<number | null>(null);
-    const [activeToolsMenu, setActiveToolsMenu] = useState<ToolsMenuKey>("Disponible");
+    const [activeToolsMenu, setActiveToolsMenu] = useState<ToolsMenuKey>("Tous les outils");
     const [activeConfigurationMenu, setActiveConfigurationMenu] = useState<ConfigurationMenuKey>("Courriel");
+    const [openNavGroup, setOpenNavGroup] = useState<NavGroupKey | null>(null);
     const [navigationRefreshKey, setNavigationRefreshKey] = useState(0);
     const [token, setToken] = useState<string | null>(
         () => localStorage.getItem(AUTH_TOKEN_KEY)
@@ -260,6 +293,331 @@ function App() {
     }
 
 
+    function closeNavMenu() {
+
+        setOpenNavGroup(null);
+
+    }
+
+
+    function selectPage(
+        page: PageKey
+    ) {
+
+        setActivePage(page);
+        refreshNavigationView();
+        closeNavMenu();
+
+    }
+
+
+    function toggleNavMenu(
+        page: NavGroupKey
+    ) {
+
+        setOpenNavGroup(
+            previousPage =>
+                previousPage === page ?
+                    null :
+                    page
+        );
+
+    }
+
+
+    function navButtonActive(
+        page: NavGroupKey
+    ) {
+
+        return (
+            activePage === page ||
+            (
+                page === "Outils" &&
+                activePage === "Chantiers"
+            )
+        );
+
+    }
+
+
+    function navLabel(
+        page: NavGroupKey
+    ) {
+
+        return NAV_BUTTON_LABELS[page];
+
+    }
+
+
+    function renderSubmenu(
+        page: NavGroupKey
+    ) {
+
+        if (page === "Produits") {
+            return (
+                <div className="nav-dropdown-panel">
+                    <button
+                        type="button"
+                        className={
+                            activePage === "Produits" && activeProductMenu === "Tous" ?
+                                "nav-dropdown-item active" :
+                                "nav-dropdown-item"
+                        }
+                        onClick={() => {
+                            setActiveProductMenu("Tous");
+                            selectPage("Produits");
+                        }}
+                    >
+                        Tous les produits
+                    </button>
+                    {PRODUCT_MENU_ITEMS.map(
+                        productMenuItem => (
+                            <div
+                                key={productMenuItem}
+                                className="nav-dropdown-group"
+                            >
+                                <button
+                                    type="button"
+                                    className={
+                                        activePage === "Produits" && activeProductMenu === productMenuItem ?
+                                            "nav-dropdown-item active" :
+                                            "nav-dropdown-item"
+                                    }
+                                    onClick={() => {
+                                        setActiveProductMenu(productMenuItem);
+                                        selectPage("Produits");
+                                    }}
+                                >
+                                    {productMenuItem === "Tuile" ? "Tuiles" : productMenuItem === "Mapei" ? "Mapeï" : productMenuItem}
+                                </button>
+                                {productMenuItem === "Tuile" && (
+                                    <div className="nav-dropdown-nested">
+                                        {TILE_SUPPLIER_MENU_ITEMS.map(
+                                            tileSupplierMenuItem => (
+                                                <button
+                                                    key={tileSupplierMenuItem}
+                                                    type="button"
+                                                    className={
+                                                        activePage === "Produits" && activeProductMenu === tileSupplierMenuItem ?
+                                                            "nav-dropdown-item nested active" :
+                                                            "nav-dropdown-item nested"
+                                                    }
+                                                    onClick={() => {
+                                                        setActiveProductMenu(tileSupplierMenuItem);
+                                                        selectPage("Produits");
+                                                    }}
+                                                >
+                                                    {tileSupplierMenuItem}
+                                                </button>
+                                            )
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    )}
+                </div>
+            );
+        }
+
+        if (page === "Projets") {
+            return (
+                <div className="nav-dropdown-panel">
+                    {PROJECT_MENU_ITEMS.map(
+                        projectMenuItem => {
+                            const isProjectMenuDisabled =
+                                DISABLED_PROJECT_MENU_ITEMS.includes(projectMenuItem);
+
+                            return (
+                                <div
+                                    key={projectMenuItem}
+                                    className="nav-dropdown-group"
+                                >
+                                    <button
+                                        type="button"
+                                        className={
+                                            activePage === "Projets" && activeProjectMenu === projectMenuItem ?
+                                                "nav-dropdown-item active" :
+                                                "nav-dropdown-item"
+                                        }
+                                        disabled={isProjectMenuDisabled}
+                                        title={
+                                            isProjectMenuDisabled ?
+                                                "Disponible plus tard pour les projets obtenus par bon de commande." :
+                                                undefined
+                                        }
+                                        onClick={() => {
+                                            if (isProjectMenuDisabled)
+                                                return;
+
+                                            setActiveProjectMenu(projectMenuItem);
+                                            if (projectMenuItem === "En Soumission")
+                                                setActiveProjectSubmissionMenu("Nouveaux");
+                                            selectPage("Projets");
+                                        }}
+                                    >
+                                        {projectMenuItem}
+                                    </button>
+                                    {projectMenuItem === "En Soumission" && (
+                                        <div className="nav-dropdown-nested">
+                                            {PROJECT_SUBMISSION_MENU_ITEMS.map(
+                                                submissionMenuItem => (
+                                                    <button
+                                                        key={submissionMenuItem}
+                                                        type="button"
+                                                        className={
+                                                            activePage === "Projets" &&
+                                                            activeProjectMenu === "En Soumission" &&
+                                                            activeProjectSubmissionMenu === submissionMenuItem ?
+                                                                "nav-dropdown-item nested active" :
+                                                                "nav-dropdown-item nested"
+                                                        }
+                                                        onClick={() => {
+                                                            setActiveProjectMenu("En Soumission");
+                                                            setActiveProjectSubmissionMenu(submissionMenuItem);
+                                                            selectPage("Projets");
+                                                        }}
+                                                    >
+                                                        {submissionMenuItem === "Nouveaux" ? <strong>{submissionMenuItem}</strong> : submissionMenuItem}
+                                                    </button>
+                                                )
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        }
+                    )}
+                </div>
+            );
+        }
+
+        if (page === "Soumissions") {
+            return (
+                <div className="nav-dropdown-panel">
+                    {ESTIMATE_MENU_ITEMS.map(
+                        estimateMenuItem => (
+                            <button
+                                key={estimateMenuItem}
+                                type="button"
+                                className={
+                                    activePage === "Soumissions" && activeEstimateMenu === estimateMenuItem ?
+                                        "nav-dropdown-item active" :
+                                        "nav-dropdown-item"
+                                }
+                                onClick={() => {
+                                    setActiveEstimateMenu(estimateMenuItem);
+                                    setActiveEstimateId(null);
+                                    selectPage("Soumissions");
+                                }}
+                            >
+                                {estimateMenuItem}
+                            </button>
+                        )
+                    )}
+                </div>
+            );
+        }
+
+        if (page === "Outils") {
+            return (
+                <div className="nav-dropdown-panel">
+                    <button
+                        type="button"
+                        className={
+                            activePage === "Chantiers" ?
+                                "nav-dropdown-item active" :
+                                "nav-dropdown-item"
+                        }
+                        onClick={() => selectPage("Chantiers")}
+                    >
+                        Chantiers
+                    </button>
+                    {TOOLS_MENU_ITEMS.map(
+                        toolsMenuItem => (
+                            <button
+                                key={toolsMenuItem}
+                                type="button"
+                                className={
+                                    activePage === "Outils" && activeToolsMenu === toolsMenuItem ?
+                                        "nav-dropdown-item active" :
+                                        "nav-dropdown-item"
+                                }
+                                onClick={() => {
+                                    setActiveToolsMenu(toolsMenuItem);
+                                    selectPage("Outils");
+                                }}
+                            >
+                                {toolsMenuItem}
+                            </button>
+                        )
+                    )}
+                </div>
+            );
+        }
+
+        if (page === "Configuration") {
+            return (
+                <div className="nav-dropdown-panel">
+                    {currentUser?.role === "admin" && (
+                        <button
+                            type="button"
+                            className={
+                                activePage === "Usagers" ?
+                                    "nav-dropdown-item active" :
+                                    "nav-dropdown-item"
+                            }
+                            onClick={() => {
+                                setActivePage("Usagers");
+                                refreshNavigationView();
+                                closeNavMenu();
+                            }}
+                        >
+                            Usagers
+                        </button>
+                    )}
+                    {CONFIGURATION_MENU_ITEMS.map(
+                        configurationMenuItem => {
+                            const isConfigurationMenuDisabled =
+                                DISABLED_CONFIGURATION_MENU_ITEMS.includes(configurationMenuItem);
+
+                            return (
+                                <button
+                                    key={configurationMenuItem}
+                                    type="button"
+                                    className={
+                                        activePage === "Configuration" && activeConfigurationMenu === configurationMenuItem ?
+                                            "nav-dropdown-item active" :
+                                            "nav-dropdown-item"
+                                    }
+                                    disabled={isConfigurationMenuDisabled}
+                                    title={
+                                        isConfigurationMenuDisabled ?
+                                            "Integration en developpement." :
+                                            undefined
+                                    }
+                                    onClick={() => {
+                                        if (isConfigurationMenuDisabled)
+                                            return;
+
+                                        setActiveConfigurationMenu(configurationMenuItem);
+                                        selectPage("Configuration");
+                                    }}
+                                >
+                                    {configurationMenuItem}
+                                </button>
+                            );
+                        }
+                    )}
+                </div>
+            );
+        }
+
+        return null;
+
+    }
+
+
     if (setupToken) {
         return (
             <SetPasswordPage
@@ -359,325 +717,77 @@ function App() {
                     className="main-nav"
                     aria-label="Navigation principale"
                 >
-
-                    {NAV_ITEMS.filter(
+                    {MAIN_NAV_ITEMS.filter(
                         item => (
-                            (
-                                item !== "Usagers" &&
-                                item !== "Configuration"
-                            ) ||
-                            currentUser.role === "admin"
+                            item !== "Configuration" ||
+                            currentUser?.role === "admin"
                         )
                     ).map(
-                        item => (
-                            <div
-                                key={item}
-                                className="nav-group"
-                            >
-                                <button
-                                    type="button"
+                        item => {
+                            const hasDropdown =
+                                ![
+                                    "Clients",
+                                    "Contacts",
+                                    "Fournisseurs",
+                                    "Calibre"
+                                ].includes(item);
+
+                            return (
+                                <div
+                                    key={item}
                                     className={
-                                        item === activePage ?
-                                            "nav-item active" :
-                                            "nav-item"
-                                    }
-                                    aria-current={
-                                        item === activePage ?
-                                            "page" :
-                                            undefined
-                                    }
-                                    onClick={
-                                        () => {
-                                            setActivePage(item);
-                                            refreshNavigationView();
-
-                                            if (item === "Produits")
-                                                setActiveProductMenu("Tous");
-
-                                            if (item === "Projets")
-                                                setActiveProjectMenu("En Soumission");
-
-                                            if (item === "Projets")
-                                                setActiveProjectSubmissionMenu("Nouveaux");
-
-                                            if (item === "Soumissions")
-                                                setActiveEstimateMenu("En cours");
-
-                                            if (item === "Soumissions")
-                                                setActiveEstimateId(null);
-
-                                            if (item === "Outils")
-                                                setActiveToolsMenu("Disponible");
-
-                                            if (item === "Configuration")
-                                                setActiveConfigurationMenu("Courriel");
-                                        }
+                                        openNavGroup === item ?
+                                            "nav-group open" :
+                                            "nav-group"
                                     }
                                 >
-                                    {pageLabel(item)}
-                                </button>
-
-                                {item === "Produits" && (
-                                    <div className="nav-submenu">
-                                        {PRODUCT_MENU_ITEMS.map(
-                                            productMenuItem => (
-                                                <div
-                                                    key={productMenuItem}
-                                                    className="nav-subgroup"
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        className={
-                                                            (
-                                                                activePage === "Produits" &&
-                                                                activeProductMenu === productMenuItem
-                                                            ) ?
-                                                                "nav-subitem active" :
-                                                                "nav-subitem"
-                                                        }
-                                                        onClick={
-                                                            () => {
-                                                                setActiveProductMenu(productMenuItem);
-                                                                setActivePage("Produits");
-                                                                refreshNavigationView();
-                                                            }
-                                                        }
-                                                    >
-                                                        {productMenuItem === "Tuile" ?
-                                                            "Tuiles" :
-                                                            productMenuItem === "Mapei" ?
-                                                                "Mapeï" :
-                                                                productMenuItem}
-                                                    </button>
-
-                                                    {productMenuItem === "Tuile" && (
-                                                        <div className="nav-submenu nested">
-                                                            {TILE_SUPPLIER_MENU_ITEMS.map(
-                                                                tileSupplierMenuItem => (
-                                                                    <button
-                                                                        key={tileSupplierMenuItem}
-                                                                        type="button"
-                                                                        className={
-                                                                            (
-                                                                                activePage === "Produits" &&
-                                                                                activeProductMenu === tileSupplierMenuItem
-                                                                            ) ?
-                                                                                "nav-subitem nested active" :
-                                                                                "nav-subitem nested"
-                                                                        }
-                                                                        onClick={
-                                                                            () => {
-                                                                                setActiveProductMenu(tileSupplierMenuItem);
-                                                                                setActivePage("Produits");
-                                                                                refreshNavigationView();
-                                                                            }
-                                                                        }
-                                                                    >
-                                                                        {tileSupplierMenuItem}
-                                                                    </button>
-                                                                )
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )
-                                        )}
-                                    </div>
-                                )}
-
-                                {item === "Projets" && (
-                                    <div className="nav-submenu">
-                                        {PROJECT_MENU_ITEMS.map(
-                                            projectMenuItem => {
-                                                const isProjectMenuDisabled =
-                                                    DISABLED_PROJECT_MENU_ITEMS.includes(projectMenuItem);
-
-                                                return (
-                                                    <div
-                                                        key={projectMenuItem}
-                                                        className="nav-subgroup"
-                                                    >
-                                                        <button
-                                                            type="button"
-                                                            className={
-                                                                (
-                                                                    activePage === "Projets" &&
-                                                                    activeProjectMenu === projectMenuItem
-                                                                ) ?
-                                                                    "nav-subitem active" :
-                                                                    "nav-subitem"
-                                                            }
-                                                            disabled={isProjectMenuDisabled}
-                                                            title={
-                                                                isProjectMenuDisabled ?
-                                                                    "Disponible plus tard pour les projets obtenus par bon de commande." :
-                                                                    undefined
-                                                            }
-                                                            onClick={
-                                                                () => {
-                                                                    if (isProjectMenuDisabled)
-                                                                        return;
-
-                                                                    setActiveProjectMenu(projectMenuItem);
-                                                                    if (projectMenuItem === "En Soumission")
-                                                                        setActiveProjectSubmissionMenu("Nouveaux");
-                                                                    setActivePage("Projets");
-                                                                    refreshNavigationView();
-                                                                }
-                                                            }
-                                                        >
-                                                            {projectMenuItem}
-                                                        </button>
-
-                                                        {projectMenuItem === "En Soumission" && (
-                                                            <div className="nav-submenu nested">
-                                                                {PROJECT_SUBMISSION_MENU_ITEMS.map(
-                                                                    submissionMenuItem => (
-                                                                        <button
-                                                                            key={submissionMenuItem}
-                                                                            type="button"
-                                                                            className={
-                                                                                (
-                                                                                    activePage === "Projets" &&
-                                                                                    activeProjectMenu === "En Soumission" &&
-                                                                                    activeProjectSubmissionMenu === submissionMenuItem
-                                                                                ) ?
-                                                                                    "nav-subitem nested active" :
-                                                                                    "nav-subitem nested"
-                                                                            }
-                                                                            onClick={
-                                                                                () => {
-                                                                                    setActiveProjectMenu("En Soumission");
-                                                                                    setActiveProjectSubmissionMenu(submissionMenuItem);
-                                                                                    setActivePage("Projets");
-                                                                                    refreshNavigationView();
-                                                                                }
-                                                                            }
-                                                                        >
-                                                                            {submissionMenuItem === "Nouveaux" ? (
-                                                                                <strong>{submissionMenuItem}</strong>
-                                                                            ) : (
-                                                                                submissionMenuItem
-                                                                            )}
-                                                                        </button>
-                                                                    )
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
+                                    <button
+                                        type="button"
+                                        className={
+                                            navButtonActive(item) ?
+                                                "nav-item active" :
+                                                "nav-item"
+                                        }
+                                        aria-current={
+                                            navButtonActive(item) ?
+                                                "page" :
+                                                undefined
+                                        }
+                                        aria-haspopup={
+                                            hasDropdown ?
+                                                "menu" :
+                                                undefined
+                                        }
+                                        aria-expanded={openNavGroup === item}
+                                        onClick={() => {
+                                            if (!hasDropdown) {
+                                                setActivePage(item);
+                                                refreshNavigationView();
+                                                closeNavMenu();
+                                                return;
                                             }
+
+                                            toggleNavMenu(item);
+                                        }}
+                                    >
+                                        <span className="nav-item-label">
+                                            {navLabel(item)}
+                                        </span>
+                                        {hasDropdown && (
+                                            <span className="nav-item-chevron">▾</span>
                                         )}
-                                    </div>
-                                )}
+                                    </button>
 
-                                {item === "Soumissions" && (
-                                    <div className="nav-submenu">
-                                        {ESTIMATE_MENU_ITEMS.map(
-                                            estimateMenuItem => (
-                                                <button
-                                                    key={estimateMenuItem}
-                                                    type="button"
-                                                    className={
-                                                        (
-                                                            activePage === "Soumissions" &&
-                                                            activeEstimateMenu === estimateMenuItem
-                                                        ) ?
-                                                            "nav-subitem active" :
-                                                            "nav-subitem"
-                                                    }
-                                                    onClick={
-                                                        () => {
-                                                            setActiveEstimateMenu(estimateMenuItem);
-                                                            setActiveEstimateId(null);
-                                                            setActivePage("Soumissions");
-                                                            refreshNavigationView();
-                                                        }
-                                                    }
-                                                >
-                                                    {estimateMenuItem}
-                                                </button>
-                                            )
-                                        )}
+                                    {NAV_SUBTITLE[item] && (
+                                        <span className="nav-item-subtitle">
+                                            {NAV_SUBTITLE[item]}
+                                        </span>
+                                    )}
 
-                                    </div>
-                                )}
-
-                                {item === "Outils" && (
-                                    <div className="nav-submenu">
-                                        {TOOLS_MENU_ITEMS.map(
-                                            toolsMenuItem => (
-                                                <button
-                                                    key={toolsMenuItem}
-                                                    type="button"
-                                                    className={
-                                                        (
-                                                            activePage === "Outils" &&
-                                                            activeToolsMenu === toolsMenuItem
-                                                        ) ?
-                                                            "nav-subitem active" :
-                                                            "nav-subitem"
-                                                    }
-                                                    onClick={
-                                                        () => {
-                                                            setActiveToolsMenu(toolsMenuItem);
-                                                            setActivePage("Outils");
-                                                            refreshNavigationView();
-                                                        }
-                                                    }
-                                                >
-                                                    {toolsMenuItem}
-                                                </button>
-                                            )
-                                        )}
-                                    </div>
-                                )}
-
-                                {item === "Configuration" && currentUser.role === "admin" && (
-                                    <div className="nav-submenu">
-                                        {CONFIGURATION_MENU_ITEMS.map(
-                                            configurationMenuItem => {
-                                                const isConfigurationMenuDisabled =
-                                                    DISABLED_CONFIGURATION_MENU_ITEMS.includes(configurationMenuItem);
-
-                                                return (
-                                                    <button
-                                                        key={configurationMenuItem}
-                                                        type="button"
-                                                        className={
-                                                            (
-                                                                activePage === "Configuration" &&
-                                                                activeConfigurationMenu === configurationMenuItem
-                                                            ) ?
-                                                                "nav-subitem active" :
-                                                                "nav-subitem"
-                                                        }
-                                                        disabled={isConfigurationMenuDisabled}
-                                                        title={
-                                                            isConfigurationMenuDisabled ?
-                                                                "Integration en developpement." :
-                                                                undefined
-                                                        }
-                                                        onClick={
-                                                            () => {
-                                                                if (isConfigurationMenuDisabled)
-                                                                    return;
-
-                                                                setActiveConfigurationMenu(configurationMenuItem);
-                                                                setActivePage("Configuration");
-                                                                refreshNavigationView();
-                                                            }
-                                                        }
-                                                    >
-                                                        {configurationMenuItem}
-                                                    </button>
-                                                );
-                                            }
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        )
+                                    {openNavGroup === item && renderSubmenu(item)}
+                                </div>
+                            );
+                        }
                     )}
 
                 </nav>
@@ -685,6 +795,17 @@ function App() {
                 <main className="app-content">
                     {activePage === "Clients" && (
                         <ClientsPage key={`clients-${navigationRefreshKey}`} />
+                    )}
+
+                    {activePage === "Contacts" && (
+                        <ContactsPage key={`contacts-${navigationRefreshKey}`} />
+                    )}
+
+                    {activePage === "Fournisseurs" && (
+                        <ContactsPage
+                            key={`suppliers-${navigationRefreshKey}`}
+                            defaultContactTypeCode="supplier"
+                        />
                     )}
 
                     {activePage === "Projets" && (
@@ -703,6 +824,10 @@ function App() {
                         />
                     )}
 
+                    {activePage === "Chantiers" && (
+                        <ChantiersPage key={`chantiers-${navigationRefreshKey}`} />
+                    )}
+
                     {activePage === "Produits" && (
                         <ProductsPage
                             key={`${activeProductMenu}-${navigationRefreshKey}`}
@@ -717,7 +842,9 @@ function App() {
                                 (
                                     activeToolsMenu === "Disponible" ?
                                         "available" :
-                                        "deployed"
+                                        activeToolsMenu === "Déployé" ?
+                                            "deployed" :
+                                            "all"
                                 ) as ToolScope
                             }
                         />

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.clients import router as clients_router
+from app.api.contacts import router as contacts_router
 from app.api.products import router as products_router
 from app.api.projects import router as projects_router
 from app.api.estimates import router as estimates_router
@@ -37,6 +38,7 @@ app.add_middleware(
 # Routers
 #
 app.include_router(clients_router)
+app.include_router(contacts_router)
 app.include_router(products_router)
 app.include_router(projects_router)
 app.include_router(estimates_router)

@@ -14,6 +14,7 @@ migrations/
 
 - usagers et roles;
 - clients;
+- contacts;
 - fournisseurs;
 - produits;
 - prix;
@@ -52,6 +53,10 @@ supplier_discount
 project
 project_client
 project_invitation
+contact
+contact_task
+contact_task_link
+contact_type
 estimate
 room
 estimate_line

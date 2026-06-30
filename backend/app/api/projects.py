@@ -207,6 +207,137 @@ def ensure_project_columns(
             """
         )
     )
+    db.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS calibre_session (
+                id BIGSERIAL PRIMARY KEY,
+                project_id BIGINT NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+                session_folder TEXT NOT NULL,
+                active_plan_id BIGINT,
+                workspace JSONB NOT NULL DEFAULT '{}'::jsonb,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_calibre_session_project
+                ON calibre_session(project_id)
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS calibre_plan (
+                id BIGSERIAL PRIMARY KEY,
+                session_id BIGINT NOT NULL REFERENCES calibre_session(id) ON DELETE CASCADE,
+                project_id BIGINT NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                source_filename TEXT NOT NULL,
+                page_number INTEGER NOT NULL DEFAULT 1,
+                plan_relative_path TEXT NOT NULL,
+                thumbnail_relative_path TEXT,
+                render_relative_path TEXT,
+                calibration JSONB NOT NULL DEFAULT '{}'::jsonb,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            CREATE INDEX IF NOT EXISTS idx_calibre_plan_session
+                ON calibre_plan(session_id, page_number, id)
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS calibre_measurement (
+                id BIGSERIAL PRIMARY KEY,
+                plan_id BIGINT NOT NULL REFERENCES calibre_plan(id) ON DELETE CASCADE,
+                session_id BIGINT NOT NULL REFERENCES calibre_session(id) ON DELETE CASCADE,
+                project_id BIGINT NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+                external_id TEXT,
+                measurement_type TEXT NOT NULL,
+                layer_key TEXT NOT NULL,
+                sector_id TEXT,
+                operation TEXT NOT NULL,
+                points JSONB NOT NULL DEFAULT '[]'::jsonb,
+                length_feet NUMERIC(14, 4),
+                area_square_feet NUMERIC(14, 4),
+                style JSONB NOT NULL DEFAULT '{}'::jsonb,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            CREATE INDEX IF NOT EXISTS idx_calibre_measurement_plan
+                ON calibre_measurement(plan_id, layer_key, id)
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS calibre_annotation (
+                id BIGSERIAL PRIMARY KEY,
+                plan_id BIGINT NOT NULL REFERENCES calibre_plan(id) ON DELETE CASCADE,
+                session_id BIGINT NOT NULL REFERENCES calibre_session(id) ON DELETE CASCADE,
+                project_id BIGINT NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+                text_value TEXT NOT NULL,
+                position JSONB NOT NULL DEFAULT '{}'::jsonb,
+                style JSONB NOT NULL DEFAULT '{}'::jsonb,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            CREATE INDEX IF NOT EXISTS idx_calibre_annotation_plan
+                ON calibre_annotation(plan_id, id)
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS calibre_capture (
+                id BIGSERIAL PRIMARY KEY,
+                plan_id BIGINT NOT NULL REFERENCES calibre_plan(id) ON DELETE CASCADE,
+                session_id BIGINT NOT NULL REFERENCES calibre_session(id) ON DELETE CASCADE,
+                project_id BIGINT NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                capture_relative_path TEXT NOT NULL,
+                viewport JSONB NOT NULL DEFAULT '{}'::jsonb,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            CREATE INDEX IF NOT EXISTS idx_calibre_capture_plan
+                ON calibre_capture(plan_id, id)
+            """
+        )
+    )
     db.commit()
 
 
@@ -627,6 +758,76 @@ def copy_template_tree(
             )
 
 
+def ensure_calibre_project_tree(
+    project_folder: Path
+):
+
+    calibre_root = project_folder / "Calibre"
+
+    for directory in (
+        "plans",
+        "rendus",
+        "miniatures",
+        "exports",
+        "cache"
+    ):
+        (calibre_root / directory).mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+    session_path = calibre_root / "session.json"
+
+    if not session_path.exists():
+        session_path.write_text(
+            json.dumps(
+                {
+                    "version": 2,
+                    "plans": [],
+                    "measurements": [],
+                    "annotations": [],
+                    "captures": [],
+                    "workspace": {}
+                },
+                ensure_ascii=False,
+                indent=2
+            ),
+            encoding="utf-8"
+        )
+
+
+def ensure_calibre_project_session(
+    db,
+    project_id: int,
+    folder_name: str
+):
+
+    db.execute(
+        text(
+            """
+            INSERT INTO calibre_session (
+                project_id,
+                session_folder,
+                workspace
+            )
+            VALUES (
+                :project_id,
+                :session_folder,
+                '{}'::jsonb
+            )
+            ON CONFLICT (project_id)
+            DO UPDATE SET
+                session_folder = EXCLUDED.session_folder,
+                updated_at = CURRENT_TIMESTAMP
+            """
+        ),
+        {
+            "project_id": project_id,
+            "session_folder": f"{folder_name}/Calibre"
+        }
+    )
+
+
 def create_project_folder(
     project: ProjectCreate
 ):
@@ -639,6 +840,7 @@ def create_project_folder(
         template,
         destination
     )
+    ensure_calibre_project_tree(destination)
 
     return {
         "folder_name": folder_name,
@@ -666,6 +868,7 @@ def ensure_project_folder_for_update(
 
     if old_path.exists() and old_path != new_path:
         if new_path.exists():
+            ensure_calibre_project_tree(new_path)
             return {
                 "folder_name": new_name,
                 "folder_path": str(new_path),
@@ -674,6 +877,7 @@ def ensure_project_folder_for_update(
             }
 
         old_path.rename(new_path)
+        ensure_calibre_project_tree(new_path)
 
         return {
             "folder_name": new_name,
@@ -683,6 +887,7 @@ def ensure_project_folder_for_update(
         }
 
     if new_path.exists():
+        ensure_calibre_project_tree(new_path)
         return {
             "folder_name": new_name,
             "folder_path": str(new_path),
@@ -1487,6 +1692,11 @@ def create_project(project: ProjectCreate):
             db,
             project
         )
+        ensure_calibre_project_session(
+            db,
+            project_id,
+            folder_result["folder_name"]
+        )
         revision_zero_estimate_id, revision_created = ensure_revision_zero(
             db,
             project_id
@@ -1575,6 +1785,11 @@ async def create_project_with_files(
         project_id = insert_project_record(
             db,
             project
+        )
+        ensure_calibre_project_session(
+            db,
+            project_id,
+            folder_result["folder_name"]
         )
         revision_zero_estimate_id, revision_created = ensure_revision_zero(
             db,

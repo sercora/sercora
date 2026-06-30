@@ -26,6 +26,7 @@ import {
     CALIBRE_LAYERS
 } from "../../types/calibre";
 import type {
+    CalibreAnnotationStyle,
     CalibreCalibration,
     CalibreLayerKind,
     CalibreLayerVisibility,
@@ -43,11 +44,13 @@ type CalibreCanvasProps = {
     activePageId: string;
     activeSectorId: string;
     activeTool: CalibreTool;
+    annotationStyle: CalibreAnnotationStyle;
     calibration: CalibreCalibration;
     imageUrl: string;
     layerVisibility: CalibreLayerVisibility;
     lineWeight: number;
     measurements: CalibreMeasurement[];
+    snapRadius: number;
     unitSystem: CalibreUnitSystem;
     viewportScale: number;
     onCalibrationChange: (calibration: CalibreCalibration) => void;
@@ -84,6 +87,16 @@ type Viewport = {
 type RightPanState = {
     x: number;
     y: number;
+} | null;
+
+
+type CalibrationDialogState = {
+    pixelDistance: number;
+    metricAmount: string;
+    metricUnit: "mm" | "cm" | "m";
+    feet: string;
+    inches: string;
+    fraction: string;
 } | null;
 
 
@@ -158,136 +171,36 @@ function parseFraction(
 }
 
 
-function parseInchesToken(
-    value: string
-) {
-
-    const normalized = value.trim();
-
-    if (!normalized)
-        return 0;
-
-    if (normalized.includes("/"))
-        return parseFraction(normalized) || 0;
-
-    return parsePositiveNumber(normalized) || 0;
-
-}
-
-
-function parseMetricFeet(
-    value: string
-) {
-
-    const normalized = value.trim().toLowerCase().replace(",", ".");
-    const match = normalized.match(/^([0-9.]+)\s*(mm|millimetres|millimètres|cm|m|metres|mètres)?$/u);
-
-    if (!match)
-        return null;
-
-    const amount = parsePositiveNumber(match[1]);
-    const unit = match[2] || "mm";
-
-    if (!amount)
-        return null;
-
-    if (unit === "m" || unit === "metres" || unit === "mètres")
-        return amount * 3.280839895;
-
-    if (unit === "cm")
-        return amount / 30.48;
-
-    return amount / 304.8;
-
-}
-
-
-function parseImperialFeet(
-    value: string
-) {
-
-    const normalized = value
-        .trim()
-        .toLowerCase()
-        .replace(/,/g, ".")
-        .replace(/′/g, "'")
-        .replace(/″/g, "\"")
-        .replace(/pouces|pouce|po/g, "\"")
-        .replace(/pieds|pied|pi|ft/g, "'")
-        .replace(/\s+/g, " ");
-
-    if (!normalized)
-        return null;
-
-    const feetMatch = normalized.match(/([0-9.]+)\s*'/);
-    const inchMatch = normalized.match(/([0-9.]+)\s*"/);
-    const fractionMatch = normalized.match(/([0-9]+\s*\/\s*[0-9]+)/);
-
-    if (feetMatch || inchMatch || fractionMatch) {
-        const feet = feetMatch ? parsePositiveNumber(feetMatch[1]) || 0 : 0;
-        const inches = inchMatch ? parsePositiveNumber(inchMatch[1]) || 0 : 0;
-        const fraction = fractionMatch ? parseFraction(fractionMatch[1].replace(/\s/g, "")) || 0 : 0;
-
-        return feet + (inches + fraction) / 12;
-    }
-
-    const parts = normalized.split(" ").filter(Boolean);
-
-    if (parts.length >= 2) {
-        const feet = parsePositiveNumber(parts[0]);
-        const inches = parseInchesToken(parts[1]);
-        const fraction = parts[2] ? parseInchesToken(parts[2]) : 0;
-
-        if (feet)
-            return feet + (inches + fraction) / 12;
-    }
-
-    return parsePositiveNumber(normalized);
-
-}
-
-
-function parseDistanceFeet(
-    value: string | null,
-    unitSystem: CalibreUnitSystem
-) {
-
-    if (!value)
-        return null;
-
-    return unitSystem === "metric" ?
-        parseMetricFeet(value) :
-        parseImperialFeet(value);
-
-}
-
-
 function feetLabel(
     value: number | null,
-    operation: CalibreOperation = "add"
+    operation: CalibreOperation = "add",
+    showUnits = true
 ) {
 
     if (value === null)
         return "Non calibré";
 
     const prefix = operation === "subtract" ? "-" : "";
+    const suffix = showUnits ? " pi" : "";
 
-    return `${prefix}${value.toFixed(2)} pi`;
+    return `${prefix}${value.toFixed(2)}${suffix}`;
 
 }
 
 
 function areaLabel(
     value: number | null,
-    operation: CalibreOperation = "add"
+    operation: CalibreOperation = "add",
+    showUnits = true
 ) {
 
     if (value === null)
         return "Non calibré";
 
     const prefix = operation === "subtract" ? "-" : "";
+    const suffix = showUnits ? " pi²" : "";
 
-    return `${prefix}${value.toFixed(2)} pi²`;
+    return `${prefix}${value.toFixed(2)}${suffix}`;
 
 }
 
@@ -437,11 +350,13 @@ function CalibreCanvas({
     activePageId,
     activeSectorId,
     activeTool,
+    annotationStyle,
     calibration,
     imageUrl,
     layerVisibility,
     lineWeight,
     measurements,
+    snapRadius,
     unitSystem,
     viewportScale,
     onCalibrationChange,
@@ -463,6 +378,8 @@ function CalibreCanvas({
     const [draft, setDraft] = useState<DraftShape | null>(null);
     const [pointerPoint, setPointerPoint] = useState<CalibrePoint | null>(null);
     const [rightPan, setRightPan] = useState<RightPanState>(null);
+    const [calibrationDialog, setCalibrationDialog] =
+        useState<CalibrationDialogState>(null);
     const image = useLoadedImage(imageUrl);
 
     useEffect(
@@ -609,6 +526,40 @@ function CalibreCanvas({
     }
 
 
+    function isNearPolygonStart(
+        point: CalibrePoint,
+        points: CalibrePoint[]
+    ) {
+
+        if (points.length < 3)
+            return false;
+
+        return distance(
+            point,
+            points[0]
+        ) * viewportScale <= snapRadius;
+
+    }
+
+
+    function snapPolygonPoint(
+        point: CalibrePoint
+    ) {
+
+        if (
+            draft?.type !== "polygon" ||
+            !isNearPolygonStart(
+                point,
+                draft.points
+            )
+        )
+            return point;
+
+        return draft.points[0];
+
+    }
+
+
     function addMeasurement(
         measurement: CalibreMeasurement
     ) {
@@ -697,27 +648,14 @@ function CalibreCanvas({
                 firstPoint,
                 point
             );
-            const promptLabel = unitSystem === "metric" ?
-                "Distance réelle (ex: 2500mm, 2.5m)" :
-                "Distance réelle (ex: 10, 8' 2\" 7/16)";
-            const enteredValue = window.prompt(
-                promptLabel,
-                unitSystem === "metric" ? "2500mm" : "10"
-            );
-            const feet = parseDistanceFeet(
-                enteredValue,
-                unitSystem
-            );
-
-            if (feet) {
-                onCalibrationChange({
-                    pixelsPerFoot: pixelDistance / feet,
-                    referenceFeet: feet,
-                    unitSystem,
-                    referenceLabel: enteredValue || ""
-                });
-            }
-
+            setCalibrationDialog({
+                pixelDistance,
+                metricAmount: "2500",
+                metricUnit: "mm",
+                feet: "8",
+                inches: "0",
+                fraction: ""
+            });
             setDraft(null);
             return;
         }
@@ -781,6 +719,17 @@ function CalibreCanvas({
         }
 
         if (activeTool === "polygon") {
+            if (
+                draft?.type === "polygon" &&
+                isNearPolygonStart(
+                    point,
+                    draft.points
+                )
+            ) {
+                finishPolygon();
+                return;
+            }
+
             setDraft(
                 currentDraft => {
                     if (!currentDraft || currentDraft.type !== "polygon") {
@@ -834,7 +783,13 @@ function CalibreCanvas({
         if (handleRightPanMove(event))
             return;
 
-        setPointerPoint(pointerToWorld());
+        const point = pointerToWorld();
+
+        setPointerPoint(
+            point ?
+                snapPolygonPoint(point) :
+                null
+        );
 
     }
 
@@ -897,6 +852,68 @@ function CalibreCanvas({
     }
 
 
+    function metricFeetFromDialog(
+        dialog: NonNullable<CalibrationDialogState>
+    ) {
+
+        const amount = parsePositiveNumber(dialog.metricAmount);
+
+        if (!amount)
+            return null;
+
+        if (dialog.metricUnit === "m")
+            return amount * 3.280839895;
+
+        if (dialog.metricUnit === "cm")
+            return amount / 30.48;
+
+        return amount / 304.8;
+
+    }
+
+
+    function imperialFeetFromDialog(
+        dialog: NonNullable<CalibrationDialogState>
+    ) {
+
+        const feet = parsePositiveNumber(dialog.feet) || 0;
+        const inches = parsePositiveNumber(dialog.inches) || 0;
+        const fraction = dialog.fraction.trim() ?
+            parseFraction(dialog.fraction.trim()) || 0 :
+            0;
+
+        return feet + (inches + fraction) / 12;
+
+    }
+
+
+    function submitCalibration() {
+
+        if (!calibrationDialog)
+            return;
+
+        const referenceFeet = unitSystem === "metric" ?
+            metricFeetFromDialog(calibrationDialog) :
+            imperialFeetFromDialog(calibrationDialog);
+
+        if (!referenceFeet)
+            return;
+
+        const referenceLabel = unitSystem === "metric" ?
+            `${calibrationDialog.metricAmount}${calibrationDialog.metricUnit}` :
+            `${calibrationDialog.feet || "0"}'-${calibrationDialog.inches || "0"}${calibrationDialog.fraction ? ` ${calibrationDialog.fraction}` : ""}"`;
+
+        onCalibrationChange({
+            pixelsPerFoot: calibrationDialog.pixelDistance / referenceFeet,
+            referenceFeet,
+            referenceLabel,
+            unitSystem
+        });
+        setCalibrationDialog(null);
+
+    }
+
+
     function renderMeasurement(
         measurement: CalibreMeasurement
     ) {
@@ -907,10 +924,16 @@ function CalibreCanvas({
         const layer = layerDefinition(measurement.layer);
         const labelPoint = measurement.points[0];
         const isSubtract = measurement.operation === "subtract";
+        const operationFill = isSubtract ?
+            "rgba(204,55,47,0.28)" :
+            "rgba(47,147,40,0.24)";
         const strokeWidth = isSubtract ?
             Math.max(0.5, lineWeight * 0.8) :
             lineWeight;
         const labelScale = 1 / viewportScale;
+        const labelOffset = annotationStyle.position === "above" ?
+            -(annotationStyle.fontSize + 12) / viewportScale :
+            8;
         const dash = isSubtract ? [
             7,
             5
@@ -932,9 +955,15 @@ function CalibreCanvas({
                         y={(measurement.points[0].y + measurement.points[1].y) / 2}
                         scaleX={labelScale}
                         scaleY={labelScale}
+                        rotation={annotationStyle.rotation}
+                        opacity={annotationStyle.opacity}
                     >
                         <Tag
-                            fill="#ffffff"
+                            fill={
+                                annotationStyle.halo ?
+                                    annotationStyle.haloColor :
+                                    "transparent"
+                            }
                             stroke={layer.color}
                             strokeWidth={0.75}
                             strokeScaleEnabled={false}
@@ -943,12 +972,14 @@ function CalibreCanvas({
                         <Text
                             text={feetLabel(
                                 measurement.lengthFeet,
-                                measurement.operation
+                                measurement.operation,
+                                annotationStyle.showUnits
                             )}
                             padding={3}
-                            fill="#172016"
-                            fontSize={10}
-                            fontStyle="bold"
+                            fill={annotationStyle.color}
+                            fontFamily={annotationStyle.fontFamily}
+                            fontSize={annotationStyle.fontSize}
+                            fontStyle={annotationStyle.bold ? "bold" : "normal"}
                         />
                     </Label>
                 </Group>
@@ -966,7 +997,7 @@ function CalibreCanvas({
                         y={Math.min(first.y, second.y)}
                         width={Math.abs(second.x - first.x)}
                         height={Math.abs(second.y - first.y)}
-                        fill={isSubtract ? "rgba(255,255,255,0.24)" : layer.fill}
+                        fill={operationFill}
                         stroke={layer.color}
                         strokeWidth={strokeWidth}
                         strokeScaleEnabled={false}
@@ -974,12 +1005,18 @@ function CalibreCanvas({
                     />
                     <Label
                         x={Math.min(first.x, second.x) + 8}
-                        y={Math.min(first.y, second.y) + 8}
+                        y={Math.min(first.y, second.y) + labelOffset}
                         scaleX={labelScale}
                         scaleY={labelScale}
+                        rotation={annotationStyle.rotation}
+                        opacity={annotationStyle.opacity}
                     >
                         <Tag
-                            fill="#ffffff"
+                            fill={
+                                annotationStyle.halo ?
+                                    annotationStyle.haloColor :
+                                    "transparent"
+                            }
                             stroke={layer.color}
                             strokeWidth={0.75}
                             strokeScaleEnabled={false}
@@ -988,12 +1025,14 @@ function CalibreCanvas({
                         <Text
                             text={areaLabel(
                                 measurement.areaSquareFeet,
-                                measurement.operation
+                                measurement.operation,
+                                annotationStyle.showUnits
                             )}
                             padding={3}
-                            fill="#172016"
-                            fontSize={10}
-                            fontStyle="bold"
+                            fill={annotationStyle.color}
+                            fontFamily={annotationStyle.fontFamily}
+                            fontSize={annotationStyle.fontSize}
+                            fontStyle={annotationStyle.bold ? "bold" : "normal"}
                         />
                     </Label>
                 </Group>
@@ -1005,7 +1044,7 @@ function CalibreCanvas({
                 <Line
                     points={pointsToArray(measurement.points)}
                     closed
-                    fill={isSubtract ? "rgba(255,255,255,0.24)" : layer.fill}
+                    fill={operationFill}
                     stroke={layer.color}
                     strokeWidth={strokeWidth}
                     strokeScaleEnabled={false}
@@ -1013,12 +1052,18 @@ function CalibreCanvas({
                 />
                 <Label
                     x={labelPoint.x + 8}
-                    y={labelPoint.y + 8}
+                    y={labelPoint.y + labelOffset}
                     scaleX={labelScale}
                     scaleY={labelScale}
+                    rotation={annotationStyle.rotation}
+                    opacity={annotationStyle.opacity}
                 >
                     <Tag
-                        fill="#ffffff"
+                        fill={
+                            annotationStyle.halo ?
+                                annotationStyle.haloColor :
+                                "transparent"
+                        }
                         stroke={layer.color}
                         strokeWidth={0.75}
                         strokeScaleEnabled={false}
@@ -1027,12 +1072,14 @@ function CalibreCanvas({
                     <Text
                         text={areaLabel(
                             measurement.areaSquareFeet,
-                            measurement.operation
+                            measurement.operation,
+                            annotationStyle.showUnits
                         )}
                         padding={3}
-                        fill="#172016"
-                        fontSize={10}
-                        fontStyle="bold"
+                        fill={annotationStyle.color}
+                        fontFamily={annotationStyle.fontFamily}
+                        fontSize={annotationStyle.fontSize}
+                        fontStyle={annotationStyle.bold ? "bold" : "normal"}
                     />
                 </Label>
             </Group>
@@ -1096,20 +1143,62 @@ function CalibreCanvas({
             );
         }
 
+        const snapActive = pointerPoint &&
+            draft.points.length >= 3 &&
+            distance(
+                pointerPoint,
+                draft.points[0]
+            ) * viewportScale <= snapRadius;
+        const firstPoint = draft.points[0];
+
         return (
-            <Line
-                points={pointsToArray([
-                    ...draft.points,
-                    pointerPoint
-                ])}
-                stroke={layer.color}
-                strokeWidth={draftStrokeWidth}
-                strokeScaleEnabled={false}
-                dash={[
-                    8,
-                    6
-                ]}
-            />
+            <Group>
+                <Line
+                    points={pointsToArray([
+                        ...draft.points,
+                        pointerPoint
+                    ])}
+                    stroke={layer.color}
+                    strokeWidth={draftStrokeWidth}
+                    strokeScaleEnabled={false}
+                    dash={[
+                        8,
+                        6
+                    ]}
+                />
+
+                {snapActive && (
+                    <>
+                        <Circle
+                            x={firstPoint.x}
+                            y={firstPoint.y}
+                            radius={snapRadius / viewportScale}
+                            fill="rgba(47,147,40,0.14)"
+                            stroke="#2f9328"
+                            strokeWidth={1.5}
+                            strokeScaleEnabled={false}
+                        />
+                        <Label
+                            x={firstPoint.x + 12 / viewportScale}
+                            y={firstPoint.y - 30 / viewportScale}
+                            scaleX={1 / viewportScale}
+                            scaleY={1 / viewportScale}
+                        >
+                            <Tag
+                                fill="#172016"
+                                cornerRadius={4}
+                            />
+                            <Text
+                                text="Fermer le polygone"
+                                padding={5}
+                                fill="#ffffff"
+                                fontSize={11}
+                                fontStyle="bold"
+                            />
+                        </Label>
+                    </>
+                )}
+            </Group>
         );
 
     }
@@ -1141,6 +1230,116 @@ function CalibreCanvas({
             {image && rightPan && (
                 <div className="calibre-canvas-hint calibre-pan-hint">
                     Déplacement du fond de plan
+                </div>
+            )}
+
+            {calibrationDialog && (
+                <div className="calibre-calibration-dialog">
+                    <header>
+                        <strong>Calibration</strong>
+                        <span>
+                            {Math.round(calibrationDialog.pixelDistance)} px
+                        </span>
+                    </header>
+
+                    {unitSystem === "metric" ? (
+                        <div className="calibre-calibration-grid metric">
+                            <label>
+                                Distance
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={calibrationDialog.metricAmount}
+                                    onChange={
+                                        event => setCalibrationDialog({
+                                            ...calibrationDialog,
+                                            metricAmount: event.target.value
+                                        })
+                                    }
+                                />
+                            </label>
+                            <label>
+                                Unité
+                                <select
+                                    value={calibrationDialog.metricUnit}
+                                    onChange={
+                                        event => setCalibrationDialog({
+                                            ...calibrationDialog,
+                                            metricUnit: event.target.value as "mm" | "cm" | "m"
+                                        })
+                                    }
+                                >
+                                    <option value="mm">mm</option>
+                                    <option value="cm">cm</option>
+                                    <option value="m">m</option>
+                                </select>
+                            </label>
+                        </div>
+                    ) : (
+                        <div className="calibre-calibration-grid imperial">
+                            <label>
+                                Pieds
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={calibrationDialog.feet}
+                                    onChange={
+                                        event => setCalibrationDialog({
+                                            ...calibrationDialog,
+                                            feet: event.target.value
+                                        })
+                                    }
+                                />
+                            </label>
+                            <label>
+                                Pouces
+                                <input
+                                    type="number"
+                                    min={0}
+                                    max={11}
+                                    value={calibrationDialog.inches}
+                                    onChange={
+                                        event => setCalibrationDialog({
+                                            ...calibrationDialog,
+                                            inches: event.target.value
+                                        })
+                                    }
+                                />
+                            </label>
+                            <label>
+                                Fraction
+                                <input
+                                    type="text"
+                                    placeholder="1/2"
+                                    value={calibrationDialog.fraction}
+                                    onChange={
+                                        event => setCalibrationDialog({
+                                            ...calibrationDialog,
+                                            fraction: event.target.value
+                                        })
+                                    }
+                                />
+                            </label>
+                        </div>
+                    )}
+
+                    <footer>
+                        <button
+                            type="button"
+                            onClick={
+                                () => setCalibrationDialog(null)
+                            }
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="button"
+                            className="primary"
+                            onClick={submitCalibration}
+                        >
+                            Appliquer
+                        </button>
+                    </footer>
                 </div>
             )}
 
@@ -1182,14 +1381,32 @@ function CalibreCanvas({
                         {renderDraft()}
 
                         {draft?.points.map(
-                            point => (
+                            (
+                                point,
+                                index
+                            ) => (
                                 <Circle
                                     key={`${point.x}-${point.y}`}
                                     x={point.x}
                                     y={point.y}
-                                    radius={4 / viewportScale}
-                                    fill="#ffffff"
-                                    stroke="#101611"
+                                    radius={
+                                        index === 0 &&
+                                        draft.type === "polygon" ?
+                                            5 / viewportScale :
+                                            4 / viewportScale
+                                    }
+                                    fill={
+                                        index === 0 &&
+                                        draft.type === "polygon" ?
+                                            "#7cff44" :
+                                            "#ffffff"
+                                    }
+                                    stroke={
+                                        index === 0 &&
+                                        draft.type === "polygon" ?
+                                            "#1f6f18" :
+                                            "#101611"
+                                    }
                                     strokeWidth={1}
                                     strokeScaleEnabled={false}
                                 />
