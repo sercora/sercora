@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
 
 from app.database.database import SessionLocal
-from app.schemas.contact import ContactSave
+from app.schemas.contact import ContactSave, SupplierSave
 
 
 router = APIRouter()
@@ -156,6 +156,40 @@ def ensure_contact_schema(
             }
         )
     db.commit()
+
+
+def ensure_supplier_tax_schema(
+    db
+):
+
+    db.execute(
+        text(
+            """
+            ALTER TABLE supplier
+            ADD COLUMN IF NOT EXISTS federal_tax_number VARCHAR(80)
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE supplier
+            ADD COLUMN IF NOT EXISTS provincial_tax_number VARCHAR(80)
+            """
+        )
+    )
+    db.commit()
+
+
+def supplier_payload(row):
+
+    return {
+        "id": row.id,
+        "name": row.name or "",
+        "federal_tax_number": row.federal_tax_number or "",
+        "provincial_tax_number": row.provincial_tax_number or "",
+        "active": row.active
+    }
 
 
 def contact_task_rows_by_contact(
@@ -464,11 +498,100 @@ def get_contact_tasks():
     ]
 
 
+@router.get("/suppliers")
+def get_suppliers():
+
+    db = SessionLocal()
+    ensure_supplier_tax_schema(db)
+
+    rows = db.execute(
+        text(
+            """
+            SELECT
+                id,
+                name,
+                federal_tax_number,
+                provincial_tax_number,
+                COALESCE(active, TRUE) AS active
+            FROM supplier
+            ORDER BY
+                COALESCE(active, TRUE) DESC,
+                name
+            """
+        )
+    ).fetchall()
+
+    db.close()
+
+    return [
+        supplier_payload(row)
+        for row in rows
+    ]
+
+
+@router.put("/suppliers/{supplier_id}")
+def update_supplier(
+    supplier_id: int,
+    supplier: SupplierSave
+):
+
+    supplier_name = clean_text(supplier.name)
+
+    if not supplier_name:
+        raise HTTPException(
+            status_code=422,
+            detail="Le nom du fournisseur est requis."
+        )
+
+    db = SessionLocal()
+    ensure_supplier_tax_schema(db)
+
+    row = db.execute(
+        text(
+            """
+            UPDATE supplier
+            SET
+                name = :name,
+                federal_tax_number = :federal_tax_number,
+                provincial_tax_number = :provincial_tax_number,
+                active = :active
+            WHERE id = :id
+            RETURNING
+                id,
+                name,
+                federal_tax_number,
+                provincial_tax_number,
+                COALESCE(active, TRUE) AS active
+            """
+        ),
+        {
+            "id": supplier_id,
+            "name": supplier_name,
+            "federal_tax_number": none_if_blank(supplier.federal_tax_number),
+            "provincial_tax_number": none_if_blank(supplier.provincial_tax_number),
+            "active": supplier.active
+        }
+    ).fetchone()
+
+    if row is None:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Fournisseur introuvable."
+        )
+
+    db.commit()
+    db.close()
+
+    return supplier_payload(row)
+
+
 @router.get("/contacts/options")
 def get_contact_options():
 
     db = SessionLocal()
     ensure_contact_schema(db)
+    ensure_supplier_tax_schema(db)
 
     client_rows = db.execute(
         text(

@@ -9,8 +9,13 @@ from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import Response
+from pydantic import BaseModel
+from sqlalchemy import text
+
+from app.api.auth import require_admin
+from app.database.database import SessionLocal
 
 
 load_dotenv()
@@ -62,6 +67,13 @@ TOOL_PAYLOAD_FIELDS = {
 }
 
 
+class SnipeItSettingsInput(BaseModel):
+    base_url: str
+    username: str | None = None
+    api_token: str | None = None
+    active: bool = True
+
+
 class NotesTextParser(HTMLParser):
 
     def __init__(self):
@@ -93,11 +105,28 @@ class NotesTextParser(HTMLParser):
 
 def snipeit_config():
 
-    base_url = os.getenv(
-        "SNIPEIT_URL",
-        "https://snipe.serco.pro"
+    db = SessionLocal()
+
+    try:
+        ensure_snipeit_settings_table(db)
+        row = get_snipeit_settings_row(db)
+
+    finally:
+        db.close()
+
+    base_url = (
+        row.base_url
+        if row is not None and row.active and row.base_url
+        else os.getenv(
+            "SNIPEIT_URL",
+            "https://snipe.serco.pro"
+        )
     ).rstrip("/")
-    api_token = os.getenv("SNIPEIT_API_TOKEN")
+    api_token = (
+        row.api_token
+        if row is not None and row.active and row.api_token
+        else os.getenv("SNIPEIT_API_TOKEN")
+    )
 
     if not api_token:
         raise HTTPException(
@@ -106,6 +135,76 @@ def snipeit_config():
         )
 
     return base_url, api_token
+
+
+def ensure_snipeit_settings_table(
+    db
+):
+
+    db.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS app_snipeit_settings (
+                id SMALLINT PRIMARY KEY DEFAULT 1,
+                base_url TEXT NOT NULL,
+                username VARCHAR(255),
+                api_token TEXT,
+                active BOOLEAN DEFAULT TRUE,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT single_snipeit_settings CHECK (id = 1)
+            )
+            """
+        )
+    )
+    db.commit()
+
+
+def get_snipeit_settings_row(
+    db
+):
+
+    ensure_snipeit_settings_table(db)
+
+    return db.execute(
+        text(
+            """
+            SELECT
+                base_url,
+                username,
+                api_token,
+                active
+            FROM app_snipeit_settings
+            WHERE id = 1
+            """
+        )
+    ).fetchone()
+
+
+def snipeit_settings_payload(
+    row
+):
+
+    fallback_url = os.getenv(
+        "SNIPEIT_URL",
+        "https://snipe.serco.pro"
+    ).rstrip("/")
+
+    if row is None:
+        return {
+            "base_url": fallback_url,
+            "username": "",
+            "active": bool(os.getenv("SNIPEIT_API_TOKEN")),
+            "token_configured": bool(os.getenv("SNIPEIT_API_TOKEN")),
+            "using_env_fallback": True
+        }
+
+    return {
+        "base_url": row.base_url or fallback_url,
+        "username": row.username or "",
+        "active": row.active,
+        "token_configured": bool(row.api_token or os.getenv("SNIPEIT_API_TOKEN")),
+        "using_env_fallback": not bool(row.api_token)
+    }
 
 
 def nested_name(
@@ -403,6 +502,26 @@ def snipeit_request(
 ):
 
     base_url, api_token = snipeit_config()
+
+    return snipeit_request_with_config(
+        base_url,
+        api_token,
+        method,
+        path,
+        params,
+        payload
+    )
+
+
+def snipeit_request_with_config(
+    base_url: str,
+    api_token: str,
+    method: str,
+    path: str,
+    params: dict[str, Any] | None = None,
+    payload: dict[str, Any] | None = None
+):
+
     query = urlencode(
         {
             key: value
@@ -528,6 +647,138 @@ def has_assignment(
         )
 
     return bool(assigned_to)
+
+
+@router.get("/admin/snipeit-settings")
+def get_snipeit_settings(
+    _admin=Depends(require_admin)
+):
+
+    db = SessionLocal()
+
+    try:
+        return snipeit_settings_payload(
+            get_snipeit_settings_row(db)
+        )
+
+    finally:
+        db.close()
+
+
+@router.put("/admin/snipeit-settings")
+def save_snipeit_settings(
+    settings: SnipeItSettingsInput,
+    _admin=Depends(require_admin)
+):
+
+    db = SessionLocal()
+
+    try:
+        current = get_snipeit_settings_row(db)
+        api_token = (
+            settings.api_token
+            if settings.api_token
+            else (current.api_token if current is not None else None)
+        )
+
+        db.execute(
+            text(
+                """
+                INSERT INTO app_snipeit_settings (
+                    id,
+                    base_url,
+                    username,
+                    api_token,
+                    active,
+                    updated_at
+                )
+                VALUES (
+                    1,
+                    :base_url,
+                    :username,
+                    :api_token,
+                    :active,
+                    CURRENT_TIMESTAMP
+                )
+                ON CONFLICT (id)
+                DO UPDATE SET
+                    base_url = EXCLUDED.base_url,
+                    username = EXCLUDED.username,
+                    api_token = EXCLUDED.api_token,
+                    active = EXCLUDED.active,
+                    updated_at = CURRENT_TIMESTAMP
+                """
+            ),
+            {
+                "base_url": settings.base_url.strip().rstrip("/"),
+                "username": (settings.username or "").strip() or None,
+                "api_token": api_token,
+                "active": settings.active
+            }
+        )
+        db.commit()
+
+        return snipeit_settings_payload(
+            get_snipeit_settings_row(db)
+        )
+
+    finally:
+        db.close()
+
+
+@router.post("/admin/snipeit-settings/test")
+def test_snipeit_settings(
+    settings: SnipeItSettingsInput,
+    _admin=Depends(require_admin)
+):
+
+    db = SessionLocal()
+
+    try:
+        current = get_snipeit_settings_row(db)
+
+    finally:
+        db.close()
+
+    base_url = settings.base_url.strip().rstrip("/")
+    api_token = (
+        settings.api_token
+        if settings.api_token
+        else (
+            current.api_token
+            if current is not None and current.api_token
+            else os.getenv("SNIPEIT_API_TOKEN")
+        )
+    )
+
+    if not base_url:
+        raise HTTPException(
+            status_code=422,
+            detail="URL Snipe-IT requise."
+        )
+
+    if not api_token:
+        raise HTTPException(
+            status_code=422,
+            detail="Token API Snipe-IT requis."
+        )
+
+    payload = snipeit_request_with_config(
+        base_url,
+        api_token,
+        "GET",
+        "/hardware",
+        {
+            "limit": 1,
+            "offset": 0
+        }
+    )
+
+    return {
+        "message": "Connexion Snipe-IT valide.",
+        "base_url": base_url,
+        "total_assets": payload.get("total")
+    }
 
 
 @router.get("/tools")

@@ -31,7 +31,7 @@ type ProjectMenuKey = "En cours" | "En Soumission" | "Création";
 type ProjectSubmissionMenuKey = "Nouveaux" | "Approuvés" | "Indécis" | "Refusés" | "Envoyés";
 type EstimateMenuKey = "En cours" | "Envoyées" | "Refusé" | "Template";
 type ToolsMenuKey = "Tous les outils" | "Disponible" | "Déployé";
-type ConfigurationMenuKey = "Courriel" | "VoIP/SMS" | "Mobile-Punch" | "Importation" | "Statut";
+type ConfigurationMenuKey = "Courriel" | "VoIP/SMS" | "Snipe-IT" | "Quick-book" | "Mobile-Punch" | "Importation" | "Statut";
 
 
 const PRODUCT_MENU_ITEMS: ProductMenuKey[] = [
@@ -87,6 +87,8 @@ const TOOLS_MENU_ITEMS: ToolsMenuKey[] = [
 const CONFIGURATION_MENU_ITEMS: ConfigurationMenuKey[] = [
     "Courriel",
     "VoIP/SMS",
+    "Snipe-IT",
+    "Quick-book",
     "Mobile-Punch",
     "Importation",
     "Statut"
@@ -94,6 +96,7 @@ const CONFIGURATION_MENU_ITEMS: ConfigurationMenuKey[] = [
 
 
 const DISABLED_CONFIGURATION_MENU_ITEMS: ConfigurationMenuKey[] = [
+    "Quick-book",
     "Mobile-Punch"
 ];
 

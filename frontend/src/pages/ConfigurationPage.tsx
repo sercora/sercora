@@ -6,15 +6,19 @@ import type { FormEvent } from "react";
 
 import type {
     EmailSettings,
+    SnipeItSettings,
     SmsSettings,
     SercoraUser
 } from "../utils/authApi";
 import {
     fetchEmailSettings,
+    fetchSnipeItSettings,
     fetchSmsSettings,
     saveEmailSettings,
+    saveSnipeItSettings,
     saveSmsSettings,
     testEmailSettings,
+    testSnipeItSettings,
     testSmsSettings
 } from "../utils/authApi";
 import ImportationPage from "./ImportationPage";
@@ -48,10 +52,18 @@ const EMPTY_SMS_SETTINGS: SmsSettings = {
 };
 
 
+const EMPTY_SNIPEIT_SETTINGS: SnipeItSettings = {
+    base_url: "",
+    username: "",
+    api_token: "",
+    active: true
+};
+
+
 type ConfigurationPageProps = {
     token: string;
     currentUser: SercoraUser;
-    configurationMenu: "Courriel" | "VoIP/SMS" | "Mobile-Punch" | "Importation" | "Statut";
+    configurationMenu: "Courriel" | "VoIP/SMS" | "Snipe-IT" | "Quick-book" | "Mobile-Punch" | "Importation" | "Statut";
 };
 
 
@@ -63,6 +75,7 @@ function ConfigurationPage({
 
     const [settings, setSettings] = useState<EmailSettings>(EMPTY_SETTINGS);
     const [smsSettings, setSmsSettings] = useState<SmsSettings>(EMPTY_SMS_SETTINGS);
+    const [snipeItSettings, setSnipeItSettings] = useState<SnipeItSettings>(EMPTY_SNIPEIT_SETTINGS);
     const [testRecipient, setTestRecipient] = useState("");
     const [smsTestDestination, setSmsTestDestination] = useState("");
     const [smsTestMessage, setSmsTestMessage] = useState("Test SMS Sercora");
@@ -70,6 +83,7 @@ function ConfigurationPage({
     const [isSaving, setIsSaving] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
     const [isSmsTesting, setIsSmsTesting] = useState(false);
+    const [isSnipeItTesting, setIsSnipeItTesting] = useState(false);
     const [status, setStatus] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -183,6 +197,60 @@ function ConfigurationPage({
     );
 
 
+    useEffect(
+        () => {
+            if (configurationMenu !== "Snipe-IT")
+                return;
+
+            let isMounted = true;
+            setIsLoading(true);
+            setError(null);
+            setStatus(null);
+
+            fetchSnipeItSettings(token)
+                .then(
+                    fetchedSettings => {
+                        if (!isMounted)
+                            return;
+
+                        setSnipeItSettings(
+                            {
+                                ...fetchedSettings,
+                                api_token: ""
+                            }
+                        );
+                    }
+                )
+                .catch(
+                    loadError => {
+                        if (!isMounted)
+                            return;
+
+                        setError(
+                            loadError instanceof Error ?
+                                loadError.message :
+                                "Impossible de charger la configuration Snipe-IT"
+                        );
+                    }
+                )
+                .finally(
+                    () => {
+                        if (isMounted)
+                            setIsLoading(false);
+                    }
+                );
+
+            return () => {
+                isMounted = false;
+            };
+        },
+        [
+            configurationMenu,
+            token
+        ]
+    );
+
+
     async function save(
         event: FormEvent<HTMLFormElement>
     ) {
@@ -248,6 +316,43 @@ function ConfigurationPage({
                 saveError instanceof Error ?
                     saveError.message :
                     "Impossible de sauvegarder la configuration SMS"
+            );
+
+        } finally {
+            setIsSaving(false);
+        }
+
+    }
+
+
+    async function saveSnipeIt(
+        event: FormEvent<HTMLFormElement>
+    ) {
+
+        event.preventDefault();
+        setStatus(null);
+        setError(null);
+        setIsSaving(true);
+
+        try {
+            const savedSettings = await saveSnipeItSettings(
+                token,
+                snipeItSettings
+            );
+
+            setSnipeItSettings(
+                {
+                    ...savedSettings,
+                    api_token: ""
+                }
+            );
+            setStatus("Configuration Snipe-IT sauvegardee");
+
+        } catch (saveError) {
+            setError(
+                saveError instanceof Error ?
+                    saveError.message :
+                    "Impossible de sauvegarder la configuration Snipe-IT"
             );
 
         } finally {
@@ -323,6 +428,40 @@ function ConfigurationPage({
     }
 
 
+    async function testSnipeIt() {
+
+        setStatus(null);
+        setError(null);
+        setIsSnipeItTesting(true);
+
+        try {
+            const response = await testSnipeItSettings(
+                token,
+                snipeItSettings
+            );
+            setStatus(
+                response.message +
+                (
+                    response.total_assets !== null ?
+                        " Actifs Snipe-IT: " + response.total_assets :
+                        ""
+                )
+            );
+
+        } catch (testError) {
+            setError(
+                testError instanceof Error ?
+                    testError.message :
+                    "Impossible de joindre Snipe-IT"
+            );
+
+        } finally {
+            setIsSnipeItTesting(false);
+        }
+
+    }
+
+
     if (currentUser.role !== "admin") {
         return (
             <section className="auth-page">
@@ -354,6 +493,149 @@ function ConfigurationPage({
                 <div className="profile-editor">
                     Chargement...
                 </div>
+            </section>
+        );
+    }
+
+
+    if (configurationMenu === "Snipe-IT") {
+        return (
+            <section className="auth-page configuration-page">
+                <form
+                    className="profile-editor"
+                    onSubmit={saveSnipeIt}
+                >
+                    <div className="auth-section-heading">
+                        <div>
+                            <span className="eyebrow">Configuration</span>
+                            <h2>Snipe-IT</h2>
+                        </div>
+                        <span className="role-badge">
+                            {snipeItSettings.active ? "Actif" : "Inactif"}
+                        </span>
+                    </div>
+
+                    <div className="auth-muted">
+                        Ces paramètres contrôlent l'instance Snipe-IT utilisée par les menus Outils et Chantiers.
+                    </div>
+
+                    {snipeItSettings.using_env_fallback && (
+                        <div className="auth-muted">
+                            Token actuel lu depuis l'environnement. Inscrire un token ici pour remplacer l'instance sans modifier le serveur.
+                        </div>
+                    )}
+
+                    <label className="field-stack">
+                        <span>URL Snipe-IT</span>
+                        <input
+                            value={snipeItSettings.base_url}
+                            placeholder="https://snipe.serco.pro"
+                            onChange={
+                                event => setSnipeItSettings(
+                                    {
+                                        ...snipeItSettings,
+                                        base_url: event.target.value
+                                    }
+                                )
+                            }
+                        />
+                    </label>
+
+                    <div className="auth-form-grid">
+                        <label className="field-stack">
+                            <span>Usager / libelle</span>
+                            <input
+                                value={snipeItSettings.username}
+                                autoComplete="username"
+                                placeholder="sercora, admin, integration..."
+                                onChange={
+                                    event => setSnipeItSettings(
+                                        {
+                                            ...snipeItSettings,
+                                            username: event.target.value
+                                        }
+                                    )
+                                }
+                            />
+                        </label>
+
+                        <label className="field-stack">
+                            <span>Token API</span>
+                            <input
+                                value={snipeItSettings.api_token || ""}
+                                type="password"
+                                autoComplete="new-password"
+                                placeholder={
+                                    snipeItSettings.token_configured ?
+                                        "Laisser vide pour conserver" :
+                                        ""
+                                }
+                                onChange={
+                                    event => setSnipeItSettings(
+                                        {
+                                            ...snipeItSettings,
+                                            api_token: event.target.value
+                                        }
+                                    )
+                                }
+                            />
+                        </label>
+                    </div>
+
+                    <div className="checkbox-grid">
+                        <label className="checkbox-line">
+                            <input
+                                type="checkbox"
+                                checked={snipeItSettings.active}
+                                onChange={
+                                    event => setSnipeItSettings(
+                                        {
+                                            ...snipeItSettings,
+                                            active: event.target.checked
+                                        }
+                                    )
+                                }
+                            />
+                            <span>Utiliser cette configuration Snipe-IT</span>
+                        </label>
+                    </div>
+
+                    {error && (
+                        <div className="auth-error">
+                            {error}
+                        </div>
+                    )}
+
+                    {status && (
+                        <div className="auth-success">
+                            {status}
+                        </div>
+                    )}
+
+                    <div className="auth-actions">
+                        <button
+                            type="button"
+                            className="secondary-auth-button"
+                            disabled={
+                                isSnipeItTesting ||
+                                !snipeItSettings.base_url.trim()
+                            }
+                            onClick={testSnipeIt}
+                        >
+                            {isSnipeItTesting ? "Test..." : "Tester connexion"}
+                        </button>
+                        <button
+                            type="submit"
+                            className="primary-auth-button"
+                            disabled={
+                                isSaving ||
+                                !snipeItSettings.base_url.trim()
+                            }
+                        >
+                            {isSaving ? "Sauvegarde..." : "Sauvegarder"}
+                        </button>
+                    </div>
+                </form>
             </section>
         );
     }

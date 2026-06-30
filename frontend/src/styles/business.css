@@ -108,6 +108,100 @@
 }
 
 
+.business-supplier-panel {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+
+    flex: 0 0 auto;
+
+    margin: 10px;
+
+    padding: 10px;
+
+    border: 1px solid #cdd3d8;
+
+    border-radius: 8px;
+
+    background-color: #ffffff;
+
+    box-shadow: 0 8px 20px rgba(31, 37, 45, 0.06);
+
+}
+
+
+.business-panel-heading {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 12px;
+
+}
+
+
+.business-panel-heading h2 {
+
+    margin: 0;
+
+    color: #1f252d;
+
+    font-size: 18px;
+
+}
+
+
+.business-panel-heading span {
+
+    display: block;
+
+    margin-top: 2px;
+
+    color: #6b7480;
+
+    font-size: 12px;
+
+}
+
+
+.business-panel-heading strong {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    min-width: 34px;
+
+    height: 28px;
+
+    border-radius: 999px;
+
+    background-color: #eef3f8;
+
+    color: #2e4156;
+
+}
+
+
+.business-table-wrap.compact {
+
+    flex: 0 0 auto;
+
+    min-height: 0;
+
+    max-height: 260px;
+
+}
+
+
 .business-summary {
 
     display: flex;

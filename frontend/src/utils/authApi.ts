@@ -79,6 +79,23 @@ export type SmsTestResponse = {
 };
 
 
+export type SnipeItSettings = {
+    base_url: string;
+    username: string;
+    api_token?: string;
+    active: boolean;
+    token_configured?: boolean;
+    using_env_fallback?: boolean;
+};
+
+
+export type SnipeItTestResponse = {
+    message: string;
+    base_url: string;
+    total_assets: number | null;
+};
+
+
 async function parseResponse(
     response: Response
 ) {
@@ -410,6 +427,54 @@ export function testSmsSettings(
                     message
                 }
             )
+        }
+    ).then(parseResponse);
+
+}
+
+
+export function fetchSnipeItSettings(
+    token: string
+): Promise<SnipeItSettings> {
+
+    return fetch(
+        API_URL + "/admin/snipeit-settings",
+        {
+            headers: authHeaders(token)
+        }
+    ).then(parseResponse);
+
+}
+
+
+export function saveSnipeItSettings(
+    token: string,
+    settings: SnipeItSettings
+): Promise<SnipeItSettings> {
+
+    return fetch(
+        API_URL + "/admin/snipeit-settings",
+        {
+            method: "PUT",
+            headers: authHeaders(token),
+            body: JSON.stringify(settings)
+        }
+    ).then(parseResponse);
+
+}
+
+
+export function testSnipeItSettings(
+    token: string,
+    settings: SnipeItSettings
+): Promise<SnipeItTestResponse> {
+
+    return fetch(
+        API_URL + "/admin/snipeit-settings/test",
+        {
+            method: "POST",
+            headers: authHeaders(token),
+            body: JSON.stringify(settings)
         }
     ).then(parseResponse);
 

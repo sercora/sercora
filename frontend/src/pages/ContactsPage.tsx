@@ -11,6 +11,8 @@ import {
     fetchContactTasks,
     fetchContactTypes,
     fetchContacts,
+    fetchSuppliers,
+    updateSupplier,
     updateContact
 } from "../utils/contactsApi";
 import type {
@@ -19,7 +21,9 @@ import type {
     ContactOption,
     ContactOptions,
     ContactTask,
-    ContactType
+    ContactType,
+    Supplier,
+    SupplierInput
 } from "../utils/contactsApi";
 
 import "../styles/business.css";
@@ -39,6 +43,14 @@ const EMPTY_CONTACT: ContactInput = {
 };
 
 
+const EMPTY_SUPPLIER: SupplierInput = {
+    name: "",
+    federal_tax_number: "",
+    provincial_tax_number: "",
+    active: true
+};
+
+
 type ContactsPageProps = {
     defaultContactTypeCode?: "client" | "supplier" | null;
 };
@@ -55,12 +67,17 @@ function ContactsPage({
         clients: [],
         suppliers: []
     });
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [search, setSearch] = useState("");
     const [editingContact, setEditingContact] = useState<Contact | null>(null);
+    const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
     const [form, setForm] = useState<ContactInput>(EMPTY_CONTACT);
+    const [supplierForm, setSupplierForm] = useState<SupplierInput>(EMPTY_SUPPLIER);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isSupplierSaving, setIsSupplierSaving] = useState(false);
     const [status, setStatus] = useState("");
     const [error, setError] = useState("");
 
@@ -138,6 +155,32 @@ function ContactsPage({
     );
 
     const summaryLabel = defaultContactTypeCode === "supplier" ? "fournisseurs" : "contacts";
+    const filteredSuppliers = useMemo(
+        () => {
+            const normalizedSearch = search.trim().toLowerCase();
+
+            if (defaultContactTypeCode !== "supplier")
+                return [];
+
+            return suppliers.filter(
+                supplier =>
+                    !normalizedSearch ||
+                    [
+                        supplier.name,
+                        supplier.federal_tax_number,
+                        supplier.provincial_tax_number
+                    ].some(
+                        value =>
+                            value.toLowerCase().includes(normalizedSearch)
+                    )
+            );
+        },
+        [
+            defaultContactTypeCode,
+            search,
+            suppliers
+        ]
+    );
 
 
     function loadContacts() {
@@ -150,7 +193,8 @@ function ContactsPage({
                 fetchContacts(),
                 fetchContactTypes(),
                 fetchContactTasks(),
-                fetchContactOptions()
+                fetchContactOptions(),
+                fetchSuppliers()
             ]
         )
 
@@ -159,12 +203,14 @@ function ContactsPage({
                 nextContacts,
                 nextTypes,
                 nextTasks,
-                nextOptions
+                nextOptions,
+                nextSuppliers
             ]) => {
                 setContacts(nextContacts);
                 setContactTypes(nextTypes);
                 setContactTasks(nextTasks);
                 setContactOptions(nextOptions);
+                setSuppliers(nextSuppliers);
             }
         )
 
@@ -226,6 +272,81 @@ function ContactsPage({
         setIsModalOpen(false);
         setEditingContact(null);
         setForm(EMPTY_CONTACT);
+
+    }
+
+
+    function openSupplierEditor(
+        supplier: Supplier
+    ) {
+
+        setEditingSupplier(supplier);
+        setSupplierForm(
+            {
+                name: supplier.name || "",
+                federal_tax_number: supplier.federal_tax_number || "",
+                provincial_tax_number: supplier.provincial_tax_number || "",
+                active: supplier.active
+            }
+        );
+        setStatus("");
+        setError("");
+        setIsSupplierModalOpen(true);
+
+    }
+
+
+    function closeSupplierModal() {
+
+        setIsSupplierModalOpen(false);
+        setEditingSupplier(null);
+        setSupplierForm(EMPTY_SUPPLIER);
+
+    }
+
+
+    function saveSupplier(
+        event: FormEvent<HTMLFormElement>
+    ) {
+
+        event.preventDefault();
+
+        if (!editingSupplier)
+            return;
+
+        setIsSupplierSaving(true);
+        setStatus("");
+        setError("");
+
+        updateSupplier(
+            editingSupplier.id,
+            {
+                name: supplierForm.name.trim(),
+                federal_tax_number: supplierForm.federal_tax_number.trim(),
+                provincial_tax_number: supplierForm.provincial_tax_number.trim(),
+                active: supplierForm.active
+            }
+        )
+        .then(
+            () => {
+                setStatus("Fournisseur sauvegardé.");
+                closeSupplierModal();
+                loadContacts();
+            }
+        )
+        .catch(
+            error => {
+                setError(
+                    error instanceof Error ?
+                        error.message :
+                        "Impossible de sauvegarder le fournisseur."
+                );
+            }
+        )
+        .finally(
+            () =>
+                setIsSupplierSaving(false)
+        );
 
     }
 
@@ -398,6 +519,69 @@ function ContactsPage({
 
             {error && (
                 <div className="business-error">{error}</div>
+            )}
+
+            {defaultContactTypeCode === "supplier" && (
+                <section className="business-supplier-panel">
+                    <div className="business-panel-heading">
+                        <div>
+                            <h2>Fournisseurs</h2>
+                            <span>Informations fiscales pour la facturation future</span>
+                        </div>
+                        <strong>{filteredSuppliers.length}</strong>
+                    </div>
+                    <div className="business-table-wrap compact">
+                        <table className="business-table">
+                            <thead>
+                                <tr>
+                                    <th>Fournisseur</th>
+                                    <th>No taxes fédérales</th>
+                                    <th>No taxes provinciales</th>
+                                    <th>État</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredSuppliers.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5}>Aucun fournisseur.</td>
+                                    </tr>
+                                ) : (
+                                    filteredSuppliers.map(
+                                        supplier => (
+                                            <tr key={supplier.id}>
+                                                <td>{supplier.name}</td>
+                                                <td>{supplier.federal_tax_number || "-"}</td>
+                                                <td>{supplier.provincial_tax_number || "-"}</td>
+                                                <td>
+                                                    <span className={
+                                                        supplier.active ?
+                                                            "business-pill active" :
+                                                            "business-pill inactive"
+                                                    }>
+                                                        {supplier.active ? "Actif" : "Inactif"}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <button
+                                                        type="button"
+                                                        className="business-table-action"
+                                                        onClick={
+                                                            () =>
+                                                                openSupplierEditor(supplier)
+                                                        }
+                                                    >
+                                                        Taxes
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        )
+                                    )
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             )}
 
             <div className="business-table-wrap">
@@ -744,6 +928,110 @@ function ContactsPage({
                             <button
                                 type="submit"
                                 disabled={isSaving}
+                            >
+                                Sauvegarder
+                            </button>
+                        </footer>
+                    </form>
+                </div>
+            )}
+
+            {isSupplierModalOpen && editingSupplier && (
+                <div className="business-modal-backdrop">
+                    <form
+                        className="business-modal contact-modal"
+                        onSubmit={saveSupplier}
+                    >
+                        <header>
+                            <h2>Modifier fournisseur</h2>
+                            <button
+                                type="button"
+                                onClick={closeSupplierModal}
+                            >
+                                Fermer
+                            </button>
+                        </header>
+
+                        <div className="business-form-grid compact">
+                            <label className="business-field wide">
+                                <span>Fournisseur</span>
+                                <input
+                                    value={supplierForm.name}
+                                    required
+                                    onChange={
+                                        event =>
+                                            setSupplierForm(
+                                                {
+                                                    ...supplierForm,
+                                                    name: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>No taxes fédérales</span>
+                                <input
+                                    value={supplierForm.federal_tax_number}
+                                    placeholder="TPS / GST"
+                                    onChange={
+                                        event =>
+                                            setSupplierForm(
+                                                {
+                                                    ...supplierForm,
+                                                    federal_tax_number: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>No taxes provinciales</span>
+                                <input
+                                    value={supplierForm.provincial_tax_number}
+                                    placeholder="TVQ / QST"
+                                    onChange={
+                                        event =>
+                                            setSupplierForm(
+                                                {
+                                                    ...supplierForm,
+                                                    provincial_tax_number: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+                        </div>
+
+                        <label className="business-checkbox">
+                            <input
+                                type="checkbox"
+                                checked={supplierForm.active}
+                                onChange={
+                                    event =>
+                                        setSupplierForm(
+                                            {
+                                                ...supplierForm,
+                                                active: event.target.checked
+                                            }
+                                        )
+                                }
+                            />
+                            <span>Fournisseur actif</span>
+                        </label>
+
+                        <footer>
+                            <button
+                                type="button"
+                                onClick={closeSupplierModal}
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isSupplierSaving}
                             >
                                 Sauvegarder
                             </button>
