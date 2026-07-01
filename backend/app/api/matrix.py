@@ -46,6 +46,19 @@ def ensure_project_summary_columns(db):
     db.commit()
 
 
+def ensure_estimate_line_price_snapshot_schema(db):
+
+    db.execute(
+        text(
+            """
+            ALTER TABLE estimate_line
+                ADD COLUMN IF NOT EXISTS quoted_purchase_price NUMERIC(12, 2),
+                ADD COLUMN IF NOT EXISTS quoted_price_date TIMESTAMP
+            """
+        )
+    )
+
+
 def normalize_line_order(
     db,
     estimate_id: int
@@ -355,6 +368,8 @@ def get_matrix(estimate_id: int):
 
     db = SessionLocal()
 
+    ensure_estimate_line_price_snapshot_schema(db)
+
     normalize_line_order(
         db,
         estimate_id
@@ -434,6 +449,34 @@ def get_matrix(estimate_id: int):
                 l.loss_percent,
 
                 l.purchase_price,
+
+                COALESCE(l.quoted_purchase_price, l.purchase_price)
+                    AS quoted_purchase_price,
+
+                l.quoted_price_date,
+
+                p.default_purchase_price AS current_purchase_price,
+
+                p.price_updated_at AS current_price_date,
+
+                (
+                    p.default_purchase_price -
+                    COALESCE(l.quoted_purchase_price, l.purchase_price)
+                ) AS current_quoted_price_delta,
+
+                CASE
+                    WHEN COALESCE(l.quoted_purchase_price, l.purchase_price) IS NULL
+                        OR COALESCE(l.quoted_purchase_price, l.purchase_price) = 0
+                        OR p.default_purchase_price IS NULL
+                    THEN NULL
+                    ELSE (
+                        (
+                            p.default_purchase_price -
+                            COALESCE(l.quoted_purchase_price, l.purchase_price)
+                        ) /
+                        COALESCE(l.quoted_purchase_price, l.purchase_price)
+                    ) * 100
+                END AS current_quoted_price_delta_percent,
 
                 l.profit_percent,
 
@@ -543,6 +586,34 @@ def get_matrix(estimate_id: int):
                 "loss_percent": float(row.loss_percent),
 
                 "purchase_price": float(row.purchase_price),
+
+                "quoted_purchase_price": (
+                    float(row.quoted_purchase_price)
+                    if row.quoted_purchase_price is not None
+                    else None
+                ),
+
+                "quoted_price_date": iso_date(row.quoted_price_date),
+
+                "current_purchase_price": (
+                    float(row.current_purchase_price)
+                    if row.current_purchase_price is not None
+                    else None
+                ),
+
+                "current_price_date": iso_date(row.current_price_date),
+
+                "current_quoted_price_delta": (
+                    float(row.current_quoted_price_delta)
+                    if row.current_quoted_price_delta is not None
+                    else None
+                ),
+
+                "current_quoted_price_delta_percent": (
+                    float(row.current_quoted_price_delta_percent)
+                    if row.current_quoted_price_delta_percent is not None
+                    else None
+                ),
 
                 "profit_percent": float(row.profit_percent),
 

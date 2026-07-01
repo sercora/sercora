@@ -121,8 +121,8 @@ const AUTH_TOKEN_KEY = "sercora_auth_token";
 
 const MAIN_NAV_ITEMS: NavGroupKey[] = [
     "Clients",
-    "Contacts",
     "Fournisseurs",
+    "Contacts",
     "Projets",
     "Produits",
     "Outils",

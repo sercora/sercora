@@ -116,7 +116,9 @@
 
     gap: 8px;
 
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+
+    min-height: 0;
 
     margin: 10px;
 
@@ -191,13 +193,163 @@
 }
 
 
+.column-menu {
+
+    position: relative;
+
+    z-index: 50;
+
+    align-self: flex-start;
+
+    color: #46515d;
+
+    font-size: 12px;
+
+}
+
+
+.column-menu summary {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    min-height: 28px;
+
+    padding: 0 10px;
+
+    border: 1px solid #c8d0d8;
+
+    border-radius: 4px;
+
+    background-color: #f8fafb;
+
+    color: #26313d;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+}
+
+
+.column-menu summary::marker {
+
+    color: #6f7a85;
+
+}
+
+
+.column-menu summary span {
+
+    color: #6f7a85;
+
+    font-weight: 400;
+
+}
+
+
+.column-menu[open] summary {
+
+    position: relative;
+
+    z-index: 61;
+
+    border-bottom-color: #ffffff;
+
+    border-radius: 4px 4px 0 0;
+
+    background-color: #ffffff;
+
+}
+
+
+.column-menu[open] {
+
+    z-index: 200;
+
+}
+
+
+.column-menu > div {
+
+    position: absolute;
+
+    z-index: 60;
+
+    top: calc(100% - 1px);
+
+    left: 0;
+
+    display: grid;
+
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
+
+    gap: 6px 10px;
+
+    min-width: 300px;
+
+    padding: 10px;
+
+    border: 1px solid #c8d0d8;
+
+    border-radius: 0 6px 6px 6px;
+
+    background-color: #ffffff;
+
+    box-shadow: 0 12px 28px rgba(31, 37, 45, 0.16);
+
+}
+
+
+.column-menu > div::before {
+
+    content: "";
+
+    position: absolute;
+
+    top: -2px;
+
+    left: -1px;
+
+    right: -1px;
+
+    height: 3px;
+
+    background-color: #ffffff;
+
+}
+
+
+.column-menu label {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 5px;
+
+    cursor: pointer;
+
+}
+
+
+.column-menu input {
+
+    margin: 0;
+
+}
+
+
 .business-table-wrap.compact {
 
-    flex: 0 0 auto;
+    flex: 1 1 auto;
 
     min-height: 0;
 
-    max-height: 260px;
+    max-height: none;
 
 }
 
@@ -386,6 +538,34 @@
     background-color: #fff0f0;
 
     color: #842626;
+
+}
+
+
+.business-column-toolbar {
+
+    display: flex;
+
+    flex: 0 0 auto;
+
+    align-items: center;
+
+    justify-content: flex-start;
+
+    padding: 8px 10px 0;
+
+    background-color: #ffffff;
+
+}
+
+
+.business-column-toolbar + .business-table-wrap {
+
+    margin-top: -8px;
+
+    padding: 0 10px 10px;
+
+    background-color: #ffffff;
 
 }
 

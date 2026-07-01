@@ -3,6 +3,10 @@ import {
     useState
 } from "react";
 
+import ColumnMenu from "../components/ColumnMenu";
+import {
+    useColumnPreferences
+} from "../hooks/useColumnPreferences";
 import {
     API_URL,
     checkoutTool,
@@ -29,6 +33,60 @@ type PageSize = 20 | 50 | 100 | "all";
 type ToolsPageProps = {
     toolScope: ToolScope;
 };
+
+type ToolDisplayField =
+    "image" |
+    "asset_tag" |
+    "name" |
+    "model" |
+    "serial" |
+    "category" |
+    "location" |
+    "status" |
+    "updated_at";
+
+
+const TOOL_DISPLAY_FIELDS: {
+    id: ToolDisplayField;
+    label: string;
+}[] = [
+    {
+        id: "image",
+        label: "Image"
+    },
+    {
+        id: "asset_tag",
+        label: "Tag"
+    },
+    {
+        id: "name",
+        label: "Outil"
+    },
+    {
+        id: "model",
+        label: "Modèle"
+    },
+    {
+        id: "serial",
+        label: "Série"
+    },
+    {
+        id: "category",
+        label: "Catégorie"
+    },
+    {
+        id: "location",
+        label: "Chantier"
+    },
+    {
+        id: "status",
+        label: "État"
+    },
+    {
+        id: "updated_at",
+        label: "Mis à jour"
+    }
+];
 
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -114,6 +172,10 @@ function ToolsPage({
     const [checkoutStatusId, setCheckoutStatusId] = useState("");
     const [checkoutNote, setCheckoutNote] = useState("");
     const [lastRefresh, setLastRefresh] = useState("");
+    const toolColumns = useColumnPreferences(
+        "columns.tools",
+        TOOL_DISPLAY_FIELDS
+    );
 
     const effectiveLimit =
         pageSize === "all" ?
@@ -651,6 +713,13 @@ function ToolsPage({
                     )}
                 </div>
 
+                <ColumnMenu
+                    columns={TOOL_DISPLAY_FIELDS}
+                    visibleColumns={toolColumns.visibleColumns}
+                    isColumnVisible={toolColumns.isColumnVisible}
+                    toggleColumn={toolColumns.toggleColumn}
+                />
+
             </div>
 
             <div className="tools-pagination">
@@ -741,15 +810,33 @@ function ToolsPage({
                 <table className="tools-table">
                     <thead>
                         <tr>
-                            <th>Image</th>
-                            <th>{sortLabel("asset_tag", "Tag")}</th>
-                            <th>{sortLabel("name", "Outil")}</th>
-                            <th>{sortLabel("model", "Modèle")}</th>
-                            <th>{sortLabel("serial", "Série")}</th>
-                            <th>{sortLabel("category", "Catégorie")}</th>
-                            <th>{sortLabel("location", "Chantier")}</th>
-                            <th>{sortLabel("status", "État")}</th>
-                            <th>{sortLabel("updated_at", "Mis à jour")}</th>
+                            {toolColumns.isColumnVisible("image") && (
+                                <th>Image</th>
+                            )}
+                            {toolColumns.isColumnVisible("asset_tag") && (
+                                <th>{sortLabel("asset_tag", "Tag")}</th>
+                            )}
+                            {toolColumns.isColumnVisible("name") && (
+                                <th>{sortLabel("name", "Outil")}</th>
+                            )}
+                            {toolColumns.isColumnVisible("model") && (
+                                <th>{sortLabel("model", "Modèle")}</th>
+                            )}
+                            {toolColumns.isColumnVisible("serial") && (
+                                <th>{sortLabel("serial", "Série")}</th>
+                            )}
+                            {toolColumns.isColumnVisible("category") && (
+                                <th>{sortLabel("category", "Catégorie")}</th>
+                            )}
+                            {toolColumns.isColumnVisible("location") && (
+                                <th>{sortLabel("location", "Chantier")}</th>
+                            )}
+                            {toolColumns.isColumnVisible("status") && (
+                                <th>{sortLabel("status", "État")}</th>
+                            )}
+                            {toolColumns.isColumnVisible("updated_at") && (
+                                <th>{sortLabel("updated_at", "Mis à jour")}</th>
+                            )}
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -758,41 +845,59 @@ function ToolsPage({
                         {tools.map(
                             tool => (
                                 <tr key={tool.id}>
-                                    <td>
-                                        <div className="tool-image-cell">
-                                            {tool.image_proxy_path ? (
-                                                <img
-                                                    src={API_URL + tool.image_proxy_path}
-                                                    alt={tool.name || tool.asset_tag}
-                                                    loading="lazy"
-                                                />
-                                            ) : (
-                                                <span>-</span>
+                                    {toolColumns.isColumnVisible("image") && (
+                                        <td>
+                                            <div className="tool-image-cell">
+                                                {tool.image_proxy_path ? (
+                                                    <img
+                                                        src={API_URL + tool.image_proxy_path}
+                                                        alt={tool.name || tool.asset_tag}
+                                                        loading="lazy"
+                                                    />
+                                                ) : (
+                                                    <span>-</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                    )}
+                                    {toolColumns.isColumnVisible("asset_tag") && (
+                                        <td>{tool.asset_tag}</td>
+                                    )}
+                                    {toolColumns.isColumnVisible("name") && (
+                                        <td>{tool.name}</td>
+                                    )}
+                                    {toolColumns.isColumnVisible("model") && (
+                                        <td>
+                                            {tool.manufacturer && (
+                                                <span>{tool.manufacturer} </span>
                                             )}
-                                        </div>
-                                    </td>
-                                    <td>{tool.asset_tag}</td>
-                                    <td>{tool.name}</td>
-                                    <td>
-                                        {tool.manufacturer && (
-                                            <span>{tool.manufacturer} </span>
-                                        )}
-                                        {tool.model}
-                                    </td>
-                                    <td>{tool.serial}</td>
-                                    <td>{tool.category}</td>
-                                    <td>{tool.location || "-"}</td>
-                                    <td>
-                                        <span
-                                            className={
-                                                "tool-status " +
-                                                statusClass(tool)
-                                            }
-                                        >
-                                            {tool.status || "-"}
-                                        </span>
-                                    </td>
-                                    <td>{tool.updated_at}</td>
+                                            {tool.model}
+                                        </td>
+                                    )}
+                                    {toolColumns.isColumnVisible("serial") && (
+                                        <td>{tool.serial}</td>
+                                    )}
+                                    {toolColumns.isColumnVisible("category") && (
+                                        <td>{tool.category}</td>
+                                    )}
+                                    {toolColumns.isColumnVisible("location") && (
+                                        <td>{tool.location || "-"}</td>
+                                    )}
+                                    {toolColumns.isColumnVisible("status") && (
+                                        <td>
+                                            <span
+                                                className={
+                                                    "tool-status " +
+                                                    statusClass(tool)
+                                                }
+                                            >
+                                                {tool.status || "-"}
+                                            </span>
+                                        </td>
+                                    )}
+                                    {toolColumns.isColumnVisible("updated_at") && (
+                                        <td>{tool.updated_at}</td>
+                                    )}
                                     <td>
                                         <button
                                             type="button"

@@ -91,6 +91,10 @@ const NUMERIC_MATRIX_FIELDS = new Set(
         "line_number",
         "loss_percent",
         "purchase_price",
+        "quoted_purchase_price",
+        "current_purchase_price",
+        "current_quoted_price_delta",
+        "current_quoted_price_delta_percent",
         "profit_percent",
         "installation_cost",
         "manpower_multiplier"
@@ -681,6 +685,16 @@ function MatrixView({
     }
 
 
+    function formatOptionalMoney(value: any) {
+
+        if (value === null || value === undefined || value === "")
+            return "";
+
+        return formatMoney(value);
+
+    }
+
+
     function parseNumber(value: any) {
 
         const parsedValue = Number(value);
@@ -1055,6 +1069,10 @@ function MatrixView({
             case "line_number":
             case "loss_percent":
             case "purchase_price":
+            case "quoted_purchase_price":
+            case "current_purchase_price":
+            case "current_quoted_price_delta":
+            case "current_quoted_price_delta_percent":
             case "profit_percent":
             case "installation_cost":
             case "manpower_multiplier":
@@ -2765,6 +2783,62 @@ function MatrixView({
                         valueFormatter: (params: any) =>
                             formatMoney(params.value),
                         cellClass: numericEditableClass
+                    },
+                    {
+                        field: "quoted_purchase_price",
+                        headerName: "QUOTED",
+                        width: 88,
+                        minWidth: 78,
+                        valueFormatter: (params: any) =>
+                            formatOptionalMoney(params.value),
+                        cellClass: calculatedClass
+                    },
+                    {
+                        field: "quoted_price_date",
+                        headerName: "DATE QUOTED",
+                        width: 104,
+                        minWidth: 92,
+                        valueFormatter: (params: any) =>
+                            formatDate(params.value),
+                        cellClass: calculatedClass
+                    },
+                    {
+                        field: "current_purchase_price",
+                        headerName: "CURRENT",
+                        width: 88,
+                        minWidth: 78,
+                        valueFormatter: (params: any) =>
+                            formatOptionalMoney(params.value),
+                        cellClass: calculatedClass
+                    },
+                    {
+                        field: "current_price_date",
+                        headerName: "DATE CURRENT",
+                        width: 108,
+                        minWidth: 96,
+                        valueFormatter: (params: any) =>
+                            formatDate(params.value),
+                        cellClass: calculatedClass
+                    },
+                    {
+                        field: "current_quoted_price_delta",
+                        headerName: "ÉCART",
+                        width: 82,
+                        minWidth: 72,
+                        valueFormatter: (params: any) =>
+                            formatOptionalMoney(params.value),
+                        cellClass: calculatedClass
+                    },
+                    {
+                        field: "current_quoted_price_delta_percent",
+                        headerName: "% ÉCART",
+                        width: 82,
+                        minWidth: 72,
+                        valueFormatter: (params: any) =>
+                            params.value === null || params.value === undefined
+                                ? ""
+                                : Number(params.value).toFixed(2) + " %",
+                        cellClass: calculatedClass
                     },
                     {
                         field: "profit_percent",

@@ -19,6 +19,8 @@ class ClientSave(BaseModel):
     billing_address: Optional[str] = None
     billing_postal_code: Optional[str] = None
     rbq: Optional[str] = None
+    federal_tax_number: Optional[str] = None
+    provincial_tax_number: Optional[str] = None
     active: bool = True
     estimators: list[ClientEstimatorSave] = Field(default_factory=list)
 
@@ -33,4 +35,6 @@ class ClientBulkUpdate(BaseModel):
     billing_address: Optional[str] = None
     billing_postal_code: Optional[str] = None
     rbq: Optional[str] = None
+    federal_tax_number: Optional[str] = None
+    provincial_tax_number: Optional[str] = None
     active: Optional[bool] = None

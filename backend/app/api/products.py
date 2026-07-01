@@ -1085,7 +1085,6 @@ def update_products_bulk(
 
     try:
         updated_count = 0
-
         if assignments:
             result = db.execute(
                 text(
@@ -1284,7 +1283,6 @@ def update_product(
     try:
         values = product_values(product)
         values["id"] = product_id
-
         result = db.execute(
             text(
                 """

@@ -2,6 +2,7 @@ import {
     useCallback,
     useEffect,
     useMemo,
+    useRef,
     useState
 } from "react";
 import type {
@@ -9,6 +10,10 @@ import type {
     MouseEvent
 } from "react";
 
+import ColumnMenu from "../components/ColumnMenu";
+import {
+    useColumnPreferences
+} from "../hooks/useColumnPreferences";
 import {
     createProduct,
     disableProduct,
@@ -19,6 +24,9 @@ import {
     updateProduct,
     updateProductsBulk
 } from "../utils/productsApi";
+import {
+    fetchSuppliers
+} from "../utils/contactsApi";
 import type {
     Product,
     ProductBulkUpdateInput,
@@ -27,18 +35,95 @@ import type {
     ProductType,
     Unit
 } from "../utils/productsApi";
+import type {
+    Supplier
+} from "../utils/contactsApi";
 
 import "../styles/products.css";
 
 
 type ProductMenuKey = "Tous" | "Mapei" | "Prosol" | "Schluter" | "Tuile" | "Centura" | "Olympia";
-type PageSize = 10 | 20 | 50 | "all";
+type PageSize = 10 | 20 | 50 | 100 | 250 | 500 | "all";
 type BulkFieldKey = keyof Omit<ProductBulkUpdateInput, "product_ids">;
 
 
 type ProductsPageProps = {
     productMenu: ProductMenuKey;
 };
+
+type ProductDisplayField =
+    "name" |
+    "type" |
+    "manufacturer" |
+    "supplier" |
+    "supplier_code" |
+    "manufacturer_code" |
+    "size" |
+    "purchase_price" |
+    "msrp_price" |
+    "price_updated_at" |
+    "technical_sheet" |
+    "unit" |
+    "active";
+
+
+const PRODUCT_DISPLAY_FIELDS: {
+    id: ProductDisplayField;
+    label: string;
+}[] = [
+    {
+        id: "name",
+        label: "Produit"
+    },
+    {
+        id: "type",
+        label: "Type"
+    },
+    {
+        id: "manufacturer",
+        label: "Manufacturier"
+    },
+    {
+        id: "supplier",
+        label: "Fournisseur"
+    },
+    {
+        id: "supplier_code",
+        label: "Code fournisseur"
+    },
+    {
+        id: "manufacturer_code",
+        label: "Code fabricant"
+    },
+    {
+        id: "size",
+        label: "Format"
+    },
+    {
+        id: "purchase_price",
+        label: "Prix"
+    },
+    {
+        id: "msrp_price",
+        label: "MSRP"
+    },
+    {
+        id: "price_updated_at",
+        label: "Maj prix"
+    },
+    {
+        id: "technical_sheet",
+        label: "Fiche"
+    },
+    {
+        id: "unit",
+        label: "Unité"
+    },
+    {
+        id: "active",
+        label: "État"
+    }
+];
 
 
 const EMPTY_FORM: ProductInput = {
@@ -367,10 +452,12 @@ function ProductsPage({
     productMenu
 }: ProductsPageProps) {
 
+    const selectAllProductsRef = useRef<HTMLInputElement | null>(null);
     const [products, setProducts] = useState<Product[]>([]);
     const [totalProductCount, setTotalProductCount] = useState(0);
     const [productTypes, setProductTypes] = useState<ProductType[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
     const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
     const [form, setForm] = useState<ProductInput>(EMPTY_FORM);
@@ -390,10 +477,14 @@ function ProductsPage({
     const [showInactiveProducts, setShowInactiveProducts] = useState(false);
     const [pageSize, setPageSize] = useState<PageSize>(20);
     const [currentPage, setCurrentPage] = useState(1);
-    const [isEditorVisible, setIsEditorVisible] = useState(true);
+    const [isEditorVisible, setIsEditorVisible] = useState(false);
     const [isCreatingProduct, setIsCreatingProduct] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [statusMessage, setStatusMessage] = useState("");
+    const productColumns = useColumnPreferences(
+        "columns.products",
+        PRODUCT_DISPLAY_FIELDS
+    );
 
 
     useEffect(
@@ -403,18 +494,21 @@ function ProductsPage({
             Promise.all(
                 [
                     fetchProductTypes(),
-                    fetchUnits()
+                    fetchUnits(),
+                    fetchSuppliers()
                 ]
             )
 
             .then(
                 ([
                     typeRows,
-                    unitRows
+                    unitRows,
+                    supplierRows
                 ]) => {
 
                     setProductTypes(typeRows);
                     setUnits(unitRows);
+                    setSuppliers(supplierRows);
 
                     if (typeRows.length > 0) {
                         setForm(
@@ -613,6 +707,85 @@ function ProductsPage({
     );
 
 
+    const visibleProductIds = useMemo(
+
+        () =>
+            paginatedProducts.map(
+                product =>
+                    product.id
+            ),
+
+        [
+            paginatedProducts
+        ]
+
+    );
+
+
+    const visibleProductIdSet = useMemo(
+
+        () =>
+            new Set(visibleProductIds),
+
+        [
+            visibleProductIds
+        ]
+
+    );
+
+
+    const selectedProductIdSet = useMemo(
+
+        () =>
+            new Set(selectedProductIds),
+
+        [
+            selectedProductIds
+        ]
+
+    );
+
+
+    const selectedVisibleProductCount = useMemo(
+
+        () =>
+            visibleProductIds.filter(
+                productId =>
+                    selectedProductIdSet.has(productId)
+            ).length,
+
+        [
+            selectedProductIdSet,
+            visibleProductIds
+        ]
+
+    );
+
+
+    const areAllVisibleProductsSelected =
+        visibleProductIds.length > 0 &&
+        selectedVisibleProductCount === visibleProductIds.length;
+
+
+    useEffect(
+
+        () => {
+            if (!selectAllProductsRef.current)
+                return;
+
+            selectAllProductsRef.current.indeterminate =
+                selectedVisibleProductCount > 0 &&
+                selectedVisibleProductCount < visibleProductIds.length;
+        },
+
+        [
+            selectedVisibleProductCount,
+            visibleProductIds.length
+        ]
+
+    );
+
+
     const selectedProduct = useMemo(
 
         () =>
@@ -657,6 +830,43 @@ function ProductsPage({
                 setStatusMessage(
                     "Impossible de charger les détails du produit."
                 );
+            }
+        );
+
+    }
+
+
+    function toggleVisibleProductSelection(
+        event: ChangeEvent<HTMLInputElement>
+    ) {
+
+        const checked = event.target.checked;
+
+        setIsCreatingProduct(false);
+        setIsEditorVisible(true);
+        setStatusMessage("");
+
+        setSelectedProductIds(
+            previousIds => {
+                const nextIds = checked ?
+                    Array.from(
+                        new Set([
+                            ...previousIds,
+                            ...visibleProductIds
+                        ])
+                    ) :
+                    previousIds.filter(
+                        productId =>
+                            !visibleProductIdSet.has(productId)
+                    );
+
+                setSelectedProductId(
+                    nextIds.length === 1 ?
+                        nextIds[0] :
+                        null
+                );
+
+                return nextIds;
             }
         );
 
@@ -1236,6 +1446,13 @@ function ProductsPage({
 
                 <div className="products-toolbar">
 
+                    <ColumnMenu
+                        columns={PRODUCT_DISPLAY_FIELDS}
+                        visibleColumns={productColumns.visibleColumns}
+                        isColumnVisible={productColumns.isColumnVisible}
+                        toggleColumn={productColumns.toggleColumn}
+                    />
+
                     <input
                         type="search"
                         value={query}
@@ -1270,20 +1487,6 @@ function ProductsPage({
                         Nouveau
                     </button>
 
-                    <button
-                        type="button"
-                        className="editor-toggle"
-                        onClick={
-                            () =>
-                                setIsEditorVisible(
-                                    previousValue =>
-                                        !previousValue
-                                )
-                        }
-                    >
-                        {isEditorVisible ? "Cacher" : "Afficher"}
-                    </button>
-
                 </div>
 
                 <div className="products-table-wrap">
@@ -1291,20 +1494,56 @@ function ProductsPage({
                     <table className="products-table">
                         <thead>
                             <tr>
-                                <th className="selection-column"></th>
-                                <th>Produit</th>
-                                <th>Type</th>
-                                <th>Manufacturier</th>
-                                <th>Fournisseur</th>
-                                <th>Code fournisseur</th>
-                                <th>Code fabricant</th>
-                                <th>Format</th>
-                                <th>Prix</th>
-                                <th>MSRP</th>
-                                <th>Maj prix</th>
-                                <th>Fiche</th>
-                                <th>Unité</th>
-                                <th>État</th>
+                                <th className="selection-column">
+                                    <input
+                                        ref={selectAllProductsRef}
+                                        type="checkbox"
+                                        checked={areAllVisibleProductsSelected}
+                                        disabled={visibleProductIds.length === 0}
+                                        title="Sélectionner tous les produits visibles"
+                                        aria-label="Sélectionner tous les produits visibles"
+                                        onChange={toggleVisibleProductSelection}
+                                    />
+                                </th>
+                                {productColumns.isColumnVisible("name") && (
+                                    <th>Produit</th>
+                                )}
+                                {productColumns.isColumnVisible("type") && (
+                                    <th>Type</th>
+                                )}
+                                {productColumns.isColumnVisible("manufacturer") && (
+                                    <th>Manufacturier</th>
+                                )}
+                                {productColumns.isColumnVisible("supplier") && (
+                                    <th>Fournisseur</th>
+                                )}
+                                {productColumns.isColumnVisible("supplier_code") && (
+                                    <th>Code fournisseur</th>
+                                )}
+                                {productColumns.isColumnVisible("manufacturer_code") && (
+                                    <th>Code fabricant</th>
+                                )}
+                                {productColumns.isColumnVisible("size") && (
+                                    <th>Format</th>
+                                )}
+                                {productColumns.isColumnVisible("purchase_price") && (
+                                    <th>Prix</th>
+                                )}
+                                {productColumns.isColumnVisible("msrp_price") && (
+                                    <th>MSRP</th>
+                                )}
+                                {productColumns.isColumnVisible("price_updated_at") && (
+                                    <th>Maj prix</th>
+                                )}
+                                {productColumns.isColumnVisible("technical_sheet") && (
+                                    <th>Fiche</th>
+                                )}
+                                {productColumns.isColumnVisible("unit") && (
+                                    <th>Unité</th>
+                                )}
+                                {productColumns.isColumnVisible("active") && (
+                                    <th>État</th>
+                                )}
                             </tr>
                         </thead>
 
@@ -1314,7 +1553,7 @@ function ProductsPage({
                                     <tr
                                         key={product.id}
                                         className={
-                                            selectedProductIds.includes(product.id) ?
+                                            selectedProductIdSet.has(product.id) ?
                                                 "selected" :
                                                 ""
                                         }
@@ -1327,7 +1566,7 @@ function ProductsPage({
                                             <input
                                                 type="checkbox"
                                                 checked={
-                                                    selectedProductIds.includes(product.id)
+                                                    selectedProductIdSet.has(product.id)
                                                 }
                                                 onChange={
                                                     event =>
@@ -1342,54 +1581,80 @@ function ProductsPage({
                                                 }
                                             />
                                         </td>
-                                        <td>{product.name}</td>
-                                        <td>{product.product_type_name || ""}</td>
-                                        <td>{product.manufacturer_name || ""}</td>
-                                        <td>{product.supplier_names || ""}</td>
-                                        <td>{product.supplier_product_code || ""}</td>
-                                        <td>{product.manufacturer_sku || product.prosol_sku || ""}</td>
-                                        <td>{product.size_name || ""}</td>
-                                        <td>{moneyValue(product.default_purchase_price)}</td>
-                                        <td>{moneyValue(product.msrp_price)}</td>
-                                        <td>{dateValue(product.price_updated_at)}</td>
-                                        <td>
-                                            {product.technical_document_count > 0 ? (
-                                                <button
-                                                    type="button"
-                                                    className="technical-sheet-button"
-                                                    title={
-                                                        product.first_technical_document_title ||
-                                                        "Fiche technique"
-                                                    }
-                                                    onClick={
-                                                        event =>
-                                                            openTechnicalSheet(
-                                                                product,
-                                                                event
-                                                            )
+                                        {productColumns.isColumnVisible("name") && (
+                                            <td>{product.name}</td>
+                                        )}
+                                        {productColumns.isColumnVisible("type") && (
+                                            <td>{product.product_type_name || ""}</td>
+                                        )}
+                                        {productColumns.isColumnVisible("manufacturer") && (
+                                            <td>{product.manufacturer_name || ""}</td>
+                                        )}
+                                        {productColumns.isColumnVisible("supplier") && (
+                                            <td>{product.supplier_names || ""}</td>
+                                        )}
+                                        {productColumns.isColumnVisible("supplier_code") && (
+                                            <td>{product.supplier_product_code || ""}</td>
+                                        )}
+                                        {productColumns.isColumnVisible("manufacturer_code") && (
+                                            <td>{product.manufacturer_sku || product.prosol_sku || ""}</td>
+                                        )}
+                                        {productColumns.isColumnVisible("size") && (
+                                            <td>{product.size_name || ""}</td>
+                                        )}
+                                        {productColumns.isColumnVisible("purchase_price") && (
+                                            <td>{moneyValue(product.default_purchase_price)}</td>
+                                        )}
+                                        {productColumns.isColumnVisible("msrp_price") && (
+                                            <td>{moneyValue(product.msrp_price)}</td>
+                                        )}
+                                        {productColumns.isColumnVisible("price_updated_at") && (
+                                            <td>{dateValue(product.price_updated_at)}</td>
+                                        )}
+                                        {productColumns.isColumnVisible("technical_sheet") && (
+                                            <td>
+                                                {product.technical_document_count > 0 ? (
+                                                    <button
+                                                        type="button"
+                                                        className="technical-sheet-button"
+                                                        title={
+                                                            product.first_technical_document_title ||
+                                                            "Fiche technique"
+                                                        }
+                                                        onClick={
+                                                            event =>
+                                                                openTechnicalSheet(
+                                                                    product,
+                                                                    event
+                                                                )
+                                                        }
+                                                    >
+                                                        Fiche
+                                                        {product.technical_document_count > 1 && (
+                                                            " (" + product.technical_document_count + ")"
+                                                        )}
+                                                    </button>
+                                                ) : (
+                                                    ""
+                                                )}
+                                            </td>
+                                        )}
+                                        {productColumns.isColumnVisible("unit") && (
+                                            <td>{product.default_unit_symbol || ""}</td>
+                                        )}
+                                        {productColumns.isColumnVisible("active") && (
+                                            <td>
+                                                <span
+                                                    className={
+                                                        product.active ?
+                                                            "status-pill active" :
+                                                            "status-pill inactive"
                                                     }
                                                 >
-                                                    Fiche
-                                                    {product.technical_document_count > 1 && (
-                                                        " (" + product.technical_document_count + ")"
-                                                    )}
-                                                </button>
-                                            ) : (
-                                                ""
-                                            )}
-                                        </td>
-                                        <td>{product.default_unit_symbol || ""}</td>
-                                        <td>
-                                            <span
-                                                className={
-                                                    product.active ?
-                                                        "status-pill active" :
-                                                        "status-pill inactive"
-                                                }
-                                            >
-                                                {product.active ? "Actif" : "Inactif"}
-                                            </span>
-                                        </td>
+                                                    {product.active ? "Actif" : "Inactif"}
+                                                </span>
+                                            </td>
+                                        )}
                                     </tr>
                                 )
                             )}
@@ -1438,6 +1703,9 @@ function ProductsPage({
                         <option value="10">10</option>
                         <option value="20">20</option>
                         <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="250">250</option>
+                        <option value="500">500</option>
                         <option value="all">Tous</option>
                     </select>
 
@@ -1654,6 +1922,47 @@ function ProductsPage({
                         <span>
                             <input
                                 type="checkbox"
+                                checked={bulkFields.supplier_name}
+                                onChange={
+                                    event =>
+                                        toggleBulkField(
+                                            "supplier_name",
+                                            event.target.checked
+                                        )
+                                }
+                            />
+                            Fournisseur
+                        </span>
+                        <select
+                            value={bulkForm.supplier_name}
+                            onChange={
+                                event =>
+                                    updateBulkField(
+                                        "supplier_name",
+                                        event.target.value
+                                    )
+                            }
+                            disabled={!bulkFields.supplier_name}
+                        >
+                            <option value="">Aucun fournisseur</option>
+                            {suppliers.map(
+                                supplier => (
+                                    <option
+                                        key={supplier.id}
+                                        value={supplier.name}
+                                    >
+                                        {supplier.name}
+                                        {!supplier.active ? " (inactif)" : ""}
+                                    </option>
+                                )
+                            )}
+                        </select>
+                    </label>
+
+                    <label>
+                        <span>
+                            <input
+                                type="checkbox"
                                 checked={bulkFields.default_purchase_price}
                                 onChange={
                                     event =>
@@ -1826,11 +2135,40 @@ function ProductsPage({
 
                     <label>
                         Fournisseur
-                        <input
-                            type="text"
+                        <select
                             value={form.supplier_name || ""}
-                            onChange={handleTextChange("supplier_name")}
-                        />
+                            onChange={
+                                event =>
+                                    setForm(
+                                        previousForm => ({
+                                            ...previousForm,
+                                            supplier_name: event.target.value
+                                        })
+                                    )
+                            }
+                        >
+                            <option value="">Aucun fournisseur</option>
+                            {form.supplier_name &&
+                                !suppliers.some(
+                                    supplier =>
+                                        supplier.name === form.supplier_name
+                                ) && (
+                                    <option value={form.supplier_name}>
+                                        {form.supplier_name}
+                                    </option>
+                                )}
+                            {suppliers.map(
+                                supplier => (
+                                    <option
+                                        key={supplier.id}
+                                        value={supplier.name}
+                                    >
+                                        {supplier.name}
+                                        {!supplier.active ? " (inactif)" : ""}
+                                    </option>
+                                )
+                            )}
+                        </select>
                     </label>
 
                     <label>

@@ -19,6 +19,8 @@ export type Client = {
     billing_address: string | null;
     billing_postal_code: string | null;
     rbq: string | null;
+    federal_tax_number: string | null;
+    provincial_tax_number: string | null;
     active: boolean;
     created_at: string | null;
     project_count: number;
@@ -34,6 +36,8 @@ export type ClientInput = {
     billing_address: string;
     billing_postal_code: string;
     rbq: string;
+    federal_tax_number: string;
+    provincial_tax_number: string;
     active: boolean;
 };
 
@@ -48,6 +52,8 @@ export type ClientBulkUpdateInput = {
     billing_address?: string;
     billing_postal_code?: string;
     rbq?: string;
+    federal_tax_number?: string;
+    provincial_tax_number?: string;
     active?: boolean;
 };
 
@@ -136,6 +142,12 @@ export type ProjectCreateResponse = {
 
 
 export type ProjectCurrentEditInput = {
+    project_name: string;
+    address_line1: string | null;
+    address_line2: string | null;
+    city: string | null;
+    province: string | null;
+    postal_code: string | null;
     bid_due_date: string | null;
     bsdq_project_number: string | null;
     bsdq_due_time: string | null;
@@ -172,6 +184,8 @@ export type BsdqProjectSearchResult = {
     due_date: string | null;
     due_time: string | null;
     city: string;
+    address_line1?: string | null;
+    address_line2?: string | null;
     is_open: boolean;
 };
 
@@ -492,6 +506,12 @@ export function updateProjectCurrent(
 
     const formData = new FormData();
 
+    appendProjectFormValue(formData, "project_name", input.project_name);
+    appendProjectFormValue(formData, "address_line1", input.address_line1);
+    appendProjectFormValue(formData, "address_line2", input.address_line2);
+    appendProjectFormValue(formData, "city", input.city);
+    appendProjectFormValue(formData, "province", input.province);
+    appendProjectFormValue(formData, "postal_code", input.postal_code);
     appendProjectFormValue(formData, "bid_due_date", input.bid_due_date);
     appendProjectFormValue(formData, "bsdq_project_number", input.bsdq_project_number);
     appendProjectFormValue(formData, "bsdq_due_time", input.bsdq_due_time);

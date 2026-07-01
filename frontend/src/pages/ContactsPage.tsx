@@ -5,6 +5,10 @@ import {
 } from "react";
 import type { FormEvent } from "react";
 
+import ColumnMenu from "../components/ColumnMenu";
+import {
+    useColumnPreferences
+} from "../hooks/useColumnPreferences";
 import {
     createContact,
     fetchContactOptions,
@@ -45,6 +49,17 @@ const EMPTY_CONTACT: ContactInput = {
 
 const EMPTY_SUPPLIER: SupplierInput = {
     name: "",
+    phone: "",
+    fax: "",
+    mobile: "",
+    billing_address: "",
+    billing_postal_code: "",
+    email: "",
+    contact_name: "",
+    account_number: "",
+    website: "",
+    company_name: "",
+    tax_identification_number: "",
     federal_tax_number: "",
     provincial_tax_number: "",
     active: true
@@ -54,6 +69,144 @@ const EMPTY_SUPPLIER: SupplierInput = {
 type ContactsPageProps = {
     defaultContactTypeCode?: "client" | "supplier" | null;
 };
+
+type SupplierDisplayField =
+    "name" |
+    "company_name" |
+    "contact_name" |
+    "phone" |
+    "fax" |
+    "mobile" |
+    "email" |
+    "billing_address" |
+    "billing_postal_code" |
+    "account_number" |
+    "website" |
+    "tax_identification_number" |
+    "federal_tax_number" |
+    "provincial_tax_number" |
+    "active";
+
+type ContactDisplayField =
+    "type" |
+    "company" |
+    "name" |
+    "title" |
+    "tasks" |
+    "email" |
+    "phone" |
+    "mobile" |
+    "active";
+
+
+const SUPPLIER_DISPLAY_FIELDS: {
+    id: SupplierDisplayField;
+    label: string;
+}[] = [
+    {
+        id: "name",
+        label: "Fournisseur"
+    },
+    {
+        id: "company_name",
+        label: "Entreprise"
+    },
+    {
+        id: "contact_name",
+        label: "Contact principal"
+    },
+    {
+        id: "phone",
+        label: "Téléphone"
+    },
+    {
+        id: "fax",
+        label: "Fax"
+    },
+    {
+        id: "mobile",
+        label: "Mobile"
+    },
+    {
+        id: "email",
+        label: "Courriel"
+    },
+    {
+        id: "billing_address",
+        label: "Adresse"
+    },
+    {
+        id: "billing_postal_code",
+        label: "Code postal"
+    },
+    {
+        id: "account_number",
+        label: "No de compte"
+    },
+    {
+        id: "website",
+        label: "Site Web"
+    },
+    {
+        id: "tax_identification_number",
+        label: "Identification taxe"
+    },
+    {
+        id: "federal_tax_number",
+        label: "Taxes fédérales"
+    },
+    {
+        id: "provincial_tax_number",
+        label: "Taxes provinciales"
+    },
+    {
+        id: "active",
+        label: "État"
+    }
+];
+
+
+const CONTACT_DISPLAY_FIELDS: {
+    id: ContactDisplayField;
+    label: string;
+}[] = [
+    {
+        id: "type",
+        label: "Type"
+    },
+    {
+        id: "company",
+        label: "Entreprise"
+    },
+    {
+        id: "name",
+        label: "Contact"
+    },
+    {
+        id: "title",
+        label: "Poste"
+    },
+    {
+        id: "tasks",
+        label: "Tâches"
+    },
+    {
+        id: "email",
+        label: "Courriel"
+    },
+    {
+        id: "phone",
+        label: "Téléphone"
+    },
+    {
+        id: "mobile",
+        label: "Mobile"
+    },
+    {
+        id: "active",
+        label: "État"
+    }
+];
 
 
 function ContactsPage({
@@ -71,6 +224,8 @@ function ContactsPage({
     const [search, setSearch] = useState("");
     const [editingContact, setEditingContact] = useState<Contact | null>(null);
     const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+    const [selectedContactIds, setSelectedContactIds] = useState<number[]>([]);
+    const [selectedSupplierIds, setSelectedSupplierIds] = useState<number[]>([]);
     const [form, setForm] = useState<ContactInput>(EMPTY_CONTACT);
     const [supplierForm, setSupplierForm] = useState<SupplierInput>(EMPTY_SUPPLIER);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -80,6 +235,89 @@ function ContactsPage({
     const [isSupplierSaving, setIsSupplierSaving] = useState(false);
     const [status, setStatus] = useState("");
     const [error, setError] = useState("");
+    const supplierColumns = useColumnPreferences(
+        "columns.suppliers",
+        SUPPLIER_DISPLAY_FIELDS
+    );
+    const contactColumns = useColumnPreferences(
+        "columns.contacts",
+        CONTACT_DISPLAY_FIELDS
+    );
+
+    const visibleSupplierFieldCount = supplierColumns.visibleColumns.length + 1;
+    const visibleContactFieldCount = contactColumns.visibleColumns.length + 1;
+    const selectedContacts = useMemo(
+        () =>
+            contacts.filter(
+                contact =>
+                    selectedContactIds.includes(contact.id)
+            ),
+        [
+            contacts,
+            selectedContactIds
+        ]
+    );
+    const selectedSuppliers = useMemo(
+        () =>
+            suppliers.filter(
+                supplier =>
+                    selectedSupplierIds.includes(supplier.id)
+            ),
+        [
+            suppliers,
+            selectedSupplierIds
+        ]
+    );
+    const selectedEditableCount =
+        defaultContactTypeCode === "supplier" ?
+            selectedSuppliers.length :
+            selectedContacts.length;
+
+    function toggleContactSelection(
+        contactId: number
+    ) {
+
+        setSelectedSupplierIds([]);
+        setSelectedContactIds(
+            currentIds =>
+                currentIds.includes(contactId) ?
+                    [] :
+                    [
+                        contactId
+                    ]
+        );
+
+    }
+
+
+    function toggleSupplierSelection(
+        supplierId: number
+    ) {
+
+        setSelectedContactIds([]);
+        setSelectedSupplierIds(
+            currentIds =>
+                currentIds.includes(supplierId) ?
+                    [] :
+                    [
+                        supplierId
+                    ]
+        );
+
+    }
+
+
+    function openSelectedEditable() {
+
+        if (defaultContactTypeCode === "supplier" && selectedSuppliers.length === 1) {
+            openSupplierEditor(selectedSuppliers[0]);
+            return;
+        }
+
+        if (defaultContactTypeCode !== "supplier" && selectedContacts.length === 1)
+            openEditContact(selectedContacts[0]);
+
+    }
 
     const selectedType = useMemo(
         () =>
@@ -167,6 +405,17 @@ function ContactsPage({
                     !normalizedSearch ||
                     [
                         supplier.name,
+                        supplier.phone,
+                        supplier.fax,
+                        supplier.mobile,
+                        supplier.billing_address,
+                        supplier.billing_postal_code,
+                        supplier.email,
+                        supplier.contact_name,
+                        supplier.account_number,
+                        supplier.website,
+                        supplier.company_name,
+                        supplier.tax_identification_number,
                         supplier.federal_tax_number,
                         supplier.provincial_tax_number
                     ].some(
@@ -230,6 +479,8 @@ function ContactsPage({
     function openNewContact() {
 
         setEditingContact(null);
+        setSelectedContactIds([]);
+        setSelectedSupplierIds([]);
         setForm(EMPTY_CONTACT);
         setStatus("");
         setError("");
@@ -243,6 +494,12 @@ function ContactsPage({
     ) {
 
         setEditingContact(contact);
+        setSelectedContactIds(
+            [
+                contact.id
+            ]
+        );
+        setSelectedSupplierIds([]);
         setForm(
             {
                 contact_type_id: contact.contact_type_id,
@@ -281,9 +538,26 @@ function ContactsPage({
     ) {
 
         setEditingSupplier(supplier);
+        setSelectedSupplierIds(
+            [
+                supplier.id
+            ]
+        );
+        setSelectedContactIds([]);
         setSupplierForm(
             {
                 name: supplier.name || "",
+                phone: supplier.phone || "",
+                fax: supplier.fax || "",
+                mobile: supplier.mobile || "",
+                billing_address: supplier.billing_address || "",
+                billing_postal_code: supplier.billing_postal_code || "",
+                email: supplier.email || "",
+                contact_name: supplier.contact_name || "",
+                account_number: supplier.account_number || "",
+                website: supplier.website || "",
+                company_name: supplier.company_name || "",
+                tax_identification_number: supplier.tax_identification_number || "",
                 federal_tax_number: supplier.federal_tax_number || "",
                 provincial_tax_number: supplier.provincial_tax_number || "",
                 active: supplier.active
@@ -322,6 +596,17 @@ function ContactsPage({
             editingSupplier.id,
             {
                 name: supplierForm.name.trim(),
+                phone: supplierForm.phone.trim(),
+                fax: supplierForm.fax.trim(),
+                mobile: supplierForm.mobile.trim(),
+                billing_address: supplierForm.billing_address.trim(),
+                billing_postal_code: supplierForm.billing_postal_code.trim(),
+                email: supplierForm.email.trim(),
+                contact_name: supplierForm.contact_name.trim(),
+                account_number: supplierForm.account_number.trim(),
+                website: supplierForm.website.trim(),
+                company_name: supplierForm.company_name.trim(),
+                tax_identification_number: supplierForm.tax_identification_number.trim(),
                 federal_tax_number: supplierForm.federal_tax_number.trim(),
                 provincial_tax_number: supplierForm.provincial_tax_number.trim(),
                 active: supplierForm.active
@@ -331,6 +616,7 @@ function ContactsPage({
             () => {
                 setStatus("Fournisseur sauvegardé.");
                 closeSupplierModal();
+                setSelectedSupplierIds([]);
                 loadContacts();
             }
         )
@@ -452,6 +738,7 @@ function ContactsPage({
                             "Contact créé."
                     );
                     closeModal();
+                    setSelectedContactIds([]);
                     loadContacts();
                 }
             )
@@ -481,6 +768,13 @@ function ContactsPage({
     return (
         <section className="business-page">
             <div className="business-toolbar">
+                <button
+                    type="button"
+                    onClick={openSelectedEditable}
+                    disabled={selectedEditableCount !== 1}
+                >
+                    Modifier
+                </button>
                 <input
                     type="search"
                     value={search}
@@ -490,16 +784,18 @@ function ContactsPage({
                     }
                     placeholder={
                         defaultContactTypeCode === "supplier" ?
-                            "Rechercher un fournisseur, une société, un courriel ou une tâche" :
+                            "Rechercher un fournisseur, une société, un courriel ou un compte" :
                             "Rechercher un contact, une société, un courriel ou une tâche"
                     }
                 />
-                <button
-                    type="button"
-                    onClick={openNewContact}
-                >
-                    {defaultContactTypeCode === "supplier" ? "Ajouter contact" : "Ajouter"}
-                </button>
+                {defaultContactTypeCode !== "supplier" && (
+                    <button
+                        type="button"
+                        onClick={openNewContact}
+                    >
+                        Ajouter
+                    </button>
+                )}
                 <button
                     type="button"
                     onClick={loadContacts}
@@ -515,6 +811,12 @@ function ContactsPage({
                         {defaultContactTypeCode === "supplier" ? "fiches fournisseurs" : summaryLabel}
                     </span>
                 </div>
+                {selectedEditableCount > 0 && (
+                    <div className="business-summary selection">
+                        <strong>{selectedEditableCount}</strong>
+                        <span>sélectionné</span>
+                    </div>
+                )}
             </div>
 
             {status && (
@@ -530,54 +832,141 @@ function ContactsPage({
                     <div className="business-panel-heading">
                         <div>
                             <h2>Fiches fournisseurs</h2>
-                            <span>No taxes fédérales et provinciales requis pour la facturation future</span>
+                            <span>Coordonnées, adresse et numéros de taxes pour la facturation future</span>
                         </div>
                         <strong>{filteredSuppliers.length}</strong>
                     </div>
+                    <ColumnMenu
+                        columns={SUPPLIER_DISPLAY_FIELDS}
+                        visibleColumns={supplierColumns.visibleColumns}
+                        isColumnVisible={supplierColumns.isColumnVisible}
+                        toggleColumn={supplierColumns.toggleColumn}
+                    />
                     <div className="business-table-wrap compact">
                         <table className="business-table">
                             <thead>
                                 <tr>
-                                    <th>Fournisseur</th>
-                                    <th>No taxes fédérales</th>
-                                    <th>No taxes provinciales</th>
-                                    <th>État</th>
-                                    <th>Action</th>
+                                    <th className="clients-select-cell"></th>
+                                    {supplierColumns.isColumnVisible("name") && (
+                                        <th>Fournisseur</th>
+                                    )}
+                                    {supplierColumns.isColumnVisible("company_name") && (
+                                        <th>Entreprise</th>
+                                    )}
+                                    {supplierColumns.isColumnVisible("contact_name") && (
+                                        <th>Contact principal</th>
+                                    )}
+                                    {supplierColumns.isColumnVisible("phone") && (
+                                        <th>Téléphone</th>
+                                    )}
+                                    {supplierColumns.isColumnVisible("fax") && (
+                                        <th>Fax</th>
+                                    )}
+                                    {supplierColumns.isColumnVisible("mobile") && (
+                                        <th>Mobile</th>
+                                    )}
+                                    {supplierColumns.isColumnVisible("email") && (
+                                        <th>Courriel</th>
+                                    )}
+                                    {supplierColumns.isColumnVisible("billing_address") && (
+                                        <th>Adresse</th>
+                                    )}
+                                    {supplierColumns.isColumnVisible("billing_postal_code") && (
+                                        <th>Code postal</th>
+                                    )}
+                                    {supplierColumns.isColumnVisible("account_number") && (
+                                        <th>No de compte</th>
+                                    )}
+                                    {supplierColumns.isColumnVisible("website") && (
+                                        <th>Site Web</th>
+                                    )}
+                                    {supplierColumns.isColumnVisible("tax_identification_number") && (
+                                        <th>Identification taxe</th>
+                                    )}
+                                    {supplierColumns.isColumnVisible("federal_tax_number") && (
+                                        <th>Taxes fédérales</th>
+                                    )}
+                                    {supplierColumns.isColumnVisible("provincial_tax_number") && (
+                                        <th>Taxes provinciales</th>
+                                    )}
+                                    {supplierColumns.isColumnVisible("active") && (
+                                        <th>État</th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredSuppliers.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5}>Aucun fournisseur.</td>
+                                        <td colSpan={visibleSupplierFieldCount}>Aucun fournisseur.</td>
                                     </tr>
                                 ) : (
                                     filteredSuppliers.map(
                                         supplier => (
                                             <tr key={supplier.id}>
-                                                <td>{supplier.name}</td>
-                                                <td>{supplier.federal_tax_number || "-"}</td>
-                                                <td>{supplier.provincial_tax_number || "-"}</td>
-                                                <td>
-                                                    <span className={
-                                                        supplier.active ?
-                                                            "business-pill active" :
-                                                            "business-pill inactive"
-                                                    }>
-                                                        {supplier.active ? "Actif" : "Inactif"}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <button
-                                                        type="button"
-                                                        className="business-table-action"
-                                                        onClick={
+                                                <td className="clients-select-cell">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedSupplierIds.includes(supplier.id)}
+                                                        onChange={
                                                             () =>
-                                                                openSupplierEditor(supplier)
+                                                                toggleSupplierSelection(supplier.id)
                                                         }
-                                                    >
-                                                        Modifier fiche
-                                                    </button>
+                                                        aria-label={`Sélectionner ${supplier.name}`}
+                                                    />
                                                 </td>
+                                                {supplierColumns.isColumnVisible("name") && (
+                                                    <td>{supplier.name}</td>
+                                                )}
+                                                {supplierColumns.isColumnVisible("company_name") && (
+                                                    <td>{supplier.company_name || "-"}</td>
+                                                )}
+                                                {supplierColumns.isColumnVisible("contact_name") && (
+                                                    <td>{supplier.contact_name || "-"}</td>
+                                                )}
+                                                {supplierColumns.isColumnVisible("phone") && (
+                                                    <td>{supplier.phone || "-"}</td>
+                                                )}
+                                                {supplierColumns.isColumnVisible("fax") && (
+                                                    <td>{supplier.fax || "-"}</td>
+                                                )}
+                                                {supplierColumns.isColumnVisible("mobile") && (
+                                                    <td>{supplier.mobile || "-"}</td>
+                                                )}
+                                                {supplierColumns.isColumnVisible("email") && (
+                                                    <td>{supplier.email || "-"}</td>
+                                                )}
+                                                {supplierColumns.isColumnVisible("billing_address") && (
+                                                    <td>{supplier.billing_address || "-"}</td>
+                                                )}
+                                                {supplierColumns.isColumnVisible("billing_postal_code") && (
+                                                    <td>{supplier.billing_postal_code || "-"}</td>
+                                                )}
+                                                {supplierColumns.isColumnVisible("account_number") && (
+                                                    <td>{supplier.account_number || "-"}</td>
+                                                )}
+                                                {supplierColumns.isColumnVisible("website") && (
+                                                    <td>{supplier.website || "-"}</td>
+                                                )}
+                                                {supplierColumns.isColumnVisible("tax_identification_number") && (
+                                                    <td>{supplier.tax_identification_number || "-"}</td>
+                                                )}
+                                                {supplierColumns.isColumnVisible("federal_tax_number") && (
+                                                    <td>{supplier.federal_tax_number || "-"}</td>
+                                                )}
+                                                {supplierColumns.isColumnVisible("provincial_tax_number") && (
+                                                    <td>{supplier.provincial_tax_number || "-"}</td>
+                                                )}
+                                                {supplierColumns.isColumnVisible("active") && (
+                                                    <td>
+                                                        <span className={
+                                                            supplier.active ?
+                                                                "business-pill active" :
+                                                                "business-pill inactive"
+                                                        }>
+                                                            {supplier.active ? "Actif" : "Inactif"}
+                                                        </span>
+                                                    </td>
+                                                )}
                                             </tr>
                                         )
                                     )
@@ -588,101 +977,124 @@ function ContactsPage({
                 </section>
             )}
 
-            {defaultContactTypeCode === "supplier" && (
-                <div className="business-subsection-heading">
-                    <h2>Contacts fournisseurs</h2>
-                    <span>Personnes et tâches de transmission</span>
-                </div>
-            )}
-
+            {defaultContactTypeCode !== "supplier" && (
+            <>
+            <div className="business-column-toolbar">
+                <ColumnMenu
+                    columns={CONTACT_DISPLAY_FIELDS}
+                    visibleColumns={contactColumns.visibleColumns}
+                    isColumnVisible={contactColumns.isColumnVisible}
+                    toggleColumn={contactColumns.toggleColumn}
+                />
+            </div>
             <div className="business-table-wrap">
                 <table className="business-table contacts-table">
                     <thead>
                         <tr>
-                            <th>Type</th>
-                            <th>Entreprise</th>
-                            <th>Contact</th>
-                            <th>Tâches</th>
-                            <th>Coordonnées</th>
-                            <th>État</th>
-                            <th>Action</th>
+                            <th className="clients-select-cell"></th>
+                            {contactColumns.isColumnVisible("type") && (
+                                <th>Type</th>
+                            )}
+                            {contactColumns.isColumnVisible("company") && (
+                                <th>Entreprise</th>
+                            )}
+                            {contactColumns.isColumnVisible("name") && (
+                                <th>Contact</th>
+                            )}
+                            {contactColumns.isColumnVisible("title") && (
+                                <th>Poste</th>
+                            )}
+                            {contactColumns.isColumnVisible("tasks") && (
+                                <th>Tâches</th>
+                            )}
+                            {contactColumns.isColumnVisible("email") && (
+                                <th>Courriel</th>
+                            )}
+                            {contactColumns.isColumnVisible("phone") && (
+                                <th>Téléphone</th>
+                            )}
+                            {contactColumns.isColumnVisible("mobile") && (
+                                <th>Mobile</th>
+                            )}
+                            {contactColumns.isColumnVisible("active") && (
+                                <th>État</th>
+                            )}
                         </tr>
                     </thead>
                     <tbody>
                         {isLoading ? (
                             <tr>
-                                <td colSpan={7}>Chargement...</td>
+                                <td colSpan={visibleContactFieldCount}>Chargement...</td>
                             </tr>
                         ) : filteredContacts.length === 0 ? (
                             <tr>
-                                <td colSpan={7}>Aucun contact.</td>
+                                <td colSpan={visibleContactFieldCount}>Aucun contact.</td>
                             </tr>
                         ) : (
                             filteredContacts.map(
                                 contact => (
                                     <tr key={contact.id}>
-                                        <td>{contact.contact_type_name}</td>
-                                        <td>
-                                            {contact.client_name || contact.supplier_name || "-"}
-                                        </td>
-                                        <td>
-                                            <div>{contact.name}</div>
-                                            {contact.title && (
-                                                <span className="business-muted-line">
-                                                    {contact.title}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td>
-                                            {contact.tasks.length > 0 ? (
-                                                contact.tasks.map(
-                                                    task => (
-                                                        <span
-                                                            key={task.id}
-                                                            className="business-tag"
-                                                        >
-                                                            {task.name}
-                                                        </span>
-                                                    )
-                                                )
-                                            ) : (
-                                                "-"
-                                            )}
-                                        </td>
-                                        <td>
-                                            {contact.email || "-"}
-                                            {contact.phone && (
-                                                <span className="business-muted-line">
-                                                    Tél: {contact.phone}
-                                                </span>
-                                            )}
-                                            {contact.mobile && (
-                                                <span className="business-muted-line">
-                                                    Mobile: {contact.mobile}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td>
-                                            <span className={
-                                                contact.active ?
-                                                    "business-pill active" :
-                                                    "business-pill inactive"
-                                            }>
-                                                {contact.active ? "Actif" : "Inactif"}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <button
-                                                type="button"
-                                                className="business-table-action"
-                                                onClick={
+                                        <td className="clients-select-cell">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedContactIds.includes(contact.id)}
+                                                onChange={
                                                     () =>
-                                                        openEditContact(contact)
+                                                        toggleContactSelection(contact.id)
                                                 }
-                                            >
-                                                Modifier
-                                            </button>
+                                                aria-label={`Sélectionner ${contact.name}`}
+                                            />
                                         </td>
+                                        {contactColumns.isColumnVisible("type") && (
+                                            <td>{contact.contact_type_name}</td>
+                                        )}
+                                        {contactColumns.isColumnVisible("company") && (
+                                            <td>{contact.client_name || contact.supplier_name || "-"}</td>
+                                        )}
+                                        {contactColumns.isColumnVisible("name") && (
+                                            <td>{contact.name}</td>
+                                        )}
+                                        {contactColumns.isColumnVisible("title") && (
+                                            <td>{contact.title || "-"}</td>
+                                        )}
+                                        {contactColumns.isColumnVisible("tasks") && (
+                                            <td>
+                                                {contact.tasks.length > 0 ? (
+                                                    contact.tasks.map(
+                                                        task => (
+                                                            <span
+                                                                key={task.id}
+                                                                className="business-tag"
+                                                            >
+                                                                {task.name}
+                                                            </span>
+                                                        )
+                                                    )
+                                                ) : (
+                                                    "-"
+                                                )}
+                                            </td>
+                                        )}
+                                        {contactColumns.isColumnVisible("email") && (
+                                            <td>{contact.email || "-"}</td>
+                                        )}
+                                        {contactColumns.isColumnVisible("phone") && (
+                                            <td>{contact.phone || "-"}</td>
+                                        )}
+                                        {contactColumns.isColumnVisible("mobile") && (
+                                            <td>{contact.mobile || "-"}</td>
+                                        )}
+                                        {contactColumns.isColumnVisible("active") && (
+                                            <td>
+                                                <span className={
+                                                    contact.active ?
+                                                        "business-pill active" :
+                                                        "business-pill inactive"
+                                                }>
+                                                    {contact.active ? "Actif" : "Inactif"}
+                                                </span>
+                                            </td>
+                                        )}
                                     </tr>
                                 )
                             )
@@ -690,6 +1102,8 @@ function ContactsPage({
                     </tbody>
                 </table>
             </div>
+            </>
+            )}
 
             {isModalOpen && (
                 <div className="business-modal-backdrop">
@@ -975,6 +1389,182 @@ function ContactsPage({
                                                 {
                                                     ...supplierForm,
                                                     name: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Entreprise</span>
+                                <input
+                                    value={supplierForm.company_name}
+                                    onChange={
+                                        event =>
+                                            setSupplierForm(
+                                                {
+                                                    ...supplierForm,
+                                                    company_name: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Contact principal</span>
+                                <input
+                                    value={supplierForm.contact_name}
+                                    onChange={
+                                        event =>
+                                            setSupplierForm(
+                                                {
+                                                    ...supplierForm,
+                                                    contact_name: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Courriel</span>
+                                <input
+                                    value={supplierForm.email}
+                                    onChange={
+                                        event =>
+                                            setSupplierForm(
+                                                {
+                                                    ...supplierForm,
+                                                    email: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Téléphone</span>
+                                <input
+                                    value={supplierForm.phone}
+                                    onChange={
+                                        event =>
+                                            setSupplierForm(
+                                                {
+                                                    ...supplierForm,
+                                                    phone: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Fax</span>
+                                <input
+                                    value={supplierForm.fax}
+                                    onChange={
+                                        event =>
+                                            setSupplierForm(
+                                                {
+                                                    ...supplierForm,
+                                                    fax: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Mobile</span>
+                                <input
+                                    value={supplierForm.mobile}
+                                    onChange={
+                                        event =>
+                                            setSupplierForm(
+                                                {
+                                                    ...supplierForm,
+                                                    mobile: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Code postal de facturation</span>
+                                <input
+                                    value={supplierForm.billing_postal_code}
+                                    onChange={
+                                        event =>
+                                            setSupplierForm(
+                                                {
+                                                    ...supplierForm,
+                                                    billing_postal_code: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field wide">
+                                <span>Adresse de facturation</span>
+                                <input
+                                    value={supplierForm.billing_address}
+                                    onChange={
+                                        event =>
+                                            setSupplierForm(
+                                                {
+                                                    ...supplierForm,
+                                                    billing_address: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>No de compte</span>
+                                <input
+                                    value={supplierForm.account_number}
+                                    onChange={
+                                        event =>
+                                            setSupplierForm(
+                                                {
+                                                    ...supplierForm,
+                                                    account_number: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Site Web</span>
+                                <input
+                                    value={supplierForm.website}
+                                    onChange={
+                                        event =>
+                                            setSupplierForm(
+                                                {
+                                                    ...supplierForm,
+                                                    website: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Identification taxe</span>
+                                <input
+                                    value={supplierForm.tax_identification_number}
+                                    onChange={
+                                        event =>
+                                            setSupplierForm(
+                                                {
+                                                    ...supplierForm,
+                                                    tax_identification_number: event.target.value
                                                 }
                                             )
                                     }

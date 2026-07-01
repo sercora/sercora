@@ -82,6 +82,78 @@ const EMPTY_ADDENDA = {
 };
 
 
+function cleanBsdqText(
+    value: string | null | undefined
+) {
+
+    return (value || "").replace(
+        /\s+/g,
+        " "
+    ).trim();
+
+}
+
+
+function stripTrailingCity(
+    value: string,
+    city: string
+) {
+
+    const cleanCity = cleanBsdqText(city);
+
+    if (!cleanCity)
+        return value;
+
+    return value.replace(
+        new RegExp(
+            "[,\\s-]*" +
+                cleanCity.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+                "\\s*$",
+            "i"
+        ),
+        ""
+    ).trim();
+
+}
+
+
+function parseBsdqProjectDescription(
+    result: BsdqProjectSearchResult
+) {
+
+    const description = cleanBsdqText(result.description);
+    const explicitAddress = cleanBsdqText(result.address_line1);
+    const addressMatch = description.match(
+        /\b\d{1,6}\s*,?\s+(?:rue|avenue|av\.?|boulevard|boul\.?|chemin|ch\.?|route|rang|place|pl\.?|promenade|croissant|côte|montee|montée|autoroute|aut\.?|impasse|terrasse|allee|allée|voie|quai)\b.*$/i
+    );
+    const addressLine1 = explicitAddress || (
+        addressMatch ?
+            stripTrailingCity(
+                addressMatch[0].replace(/^[,\s-]+/, ""),
+                result.city
+            ) :
+            ""
+    );
+    const projectName = addressMatch ?
+        description.slice(
+            0,
+            addressMatch.index
+        ).replace(
+            /[,;\s-]+$/,
+            ""
+        ).trim() :
+        description;
+
+    return {
+        projectName: projectName || description,
+        addressLine1,
+        addressLine2: cleanBsdqText(result.address_line2),
+        city: cleanBsdqText(result.city)
+    };
+
+}
+
+
 const WEEKDAY_LABELS = [
     "Dim",
     "Lun",
@@ -387,6 +459,12 @@ function ProjectsPage({
     const [projectPdfPreviewUrl, setProjectPdfPreviewUrl] = useState("");
     const [projectPreviewError, setProjectPreviewError] = useState("");
     const [isProjectPreviewLoading, setIsProjectPreviewLoading] = useState(false);
+    const [editProjectName, setEditProjectName] = useState("");
+    const [editAddressLine1, setEditAddressLine1] = useState("");
+    const [editAddressLine2, setEditAddressLine2] = useState("");
+    const [editCity, setEditCity] = useState("");
+    const [editProvince, setEditProvince] = useState("");
+    const [editPostalCode, setEditPostalCode] = useState("");
     const [editBidDueDate, setEditBidDueDate] = useState("");
     const [editBsdqProjectNumber, setEditBsdqProjectNumber] = useState("");
     const [editBsdqDueTime, setEditBsdqDueTime] = useState("");
@@ -700,6 +778,12 @@ function ProjectsPage({
     ) {
 
         setEditingProject(project);
+        setEditProjectName(project.project_name);
+        setEditAddressLine1(project.address_line1 || "");
+        setEditAddressLine2(project.address_line2 || "");
+        setEditCity(project.city || "");
+        setEditProvince(project.province || "QC");
+        setEditPostalCode(project.postal_code || "");
         setEditBidDueDate(project.bid_due_date || "");
         setEditBsdqProjectNumber(project.bsdq_project_number || "");
         setEditBsdqDueTime(project.bsdq_due_time || "");
@@ -830,10 +914,18 @@ function ProjectsPage({
         result: BsdqProjectSearchResult
     ) {
 
+        const parsedProject = parseBsdqProjectDescription(result);
+
         setForm(
             currentForm => ({
                 ...currentForm,
                 bsdq_project_number: result.bsdq_project_number,
+                project_name: parsedProject.projectName || currentForm.project_name,
+                address_line1:
+                    parsedProject.addressLine1 || currentForm.address_line1,
+                address_line2:
+                    parsedProject.addressLine2 || currentForm.address_line2,
+                city: parsedProject.city || currentForm.city,
                 bid_due_date: result.due_date || currentForm.bid_due_date,
                 bsdq_due_time: result.due_time || currentForm.bsdq_due_time
             })
@@ -846,7 +938,21 @@ function ProjectsPage({
         result: BsdqProjectSearchResult
     ) {
 
+        const parsedProject = parseBsdqProjectDescription(result);
+
         setEditBsdqProjectNumber(result.bsdq_project_number);
+        setEditProjectName(
+            parsedProject.projectName || editProjectName
+        );
+
+        if (parsedProject.addressLine1)
+            setEditAddressLine1(parsedProject.addressLine1);
+
+        if (parsedProject.addressLine2)
+            setEditAddressLine2(parsedProject.addressLine2);
+
+        if (parsedProject.city)
+            setEditCity(parsedProject.city);
 
         if (result.due_date)
             setEditBidDueDate(result.due_date);
@@ -1376,6 +1482,12 @@ function ProjectsPage({
         updateProjectCurrent(
             editingProject.id,
             {
+                project_name: editProjectName.trim(),
+                address_line1: nullableValue(editAddressLine1),
+                address_line2: nullableValue(editAddressLine2),
+                city: nullableValue(editCity),
+                province: nullableValue(editProvince),
+                postal_code: nullableValue(editPostalCode),
                 bid_due_date: editBidDueDate || null,
                 bsdq_project_number: nullableValue(editBsdqProjectNumber),
                 bsdq_due_time: nullableValue(editBsdqDueTime),
@@ -2369,8 +2481,12 @@ function ProjectsPage({
                             <label className="business-field wide">
                                 <span>Projet</span>
                                 <input
-                                    value={editingProject.project_name}
-                                    disabled
+                                    value={editProjectName}
+                                    required
+                                    onChange={
+                                        event =>
+                                            setEditProjectName(event.target.value)
+                                    }
                                 />
                             </label>
 
@@ -2382,6 +2498,61 @@ function ProjectsPage({
                                     onChange={
                                         event =>
                                             setEditBidDueDate(event.target.value)
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field wide">
+                                <span>Adresse</span>
+                                <input
+                                    value={editAddressLine1}
+                                    onChange={
+                                        event =>
+                                            setEditAddressLine1(event.target.value)
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field wide">
+                                <span>Adresse 2</span>
+                                <input
+                                    value={editAddressLine2}
+                                    onChange={
+                                        event =>
+                                            setEditAddressLine2(event.target.value)
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Ville</span>
+                                <input
+                                    value={editCity}
+                                    onChange={
+                                        event =>
+                                            setEditCity(event.target.value)
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Province</span>
+                                <input
+                                    value={editProvince}
+                                    onChange={
+                                        event =>
+                                            setEditProvince(event.target.value)
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>Code postal</span>
+                                <input
+                                    value={editPostalCode}
+                                    onChange={
+                                        event =>
+                                            setEditPostalCode(event.target.value)
                                     }
                                 />
                             </label>

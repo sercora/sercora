@@ -98,7 +98,7 @@ class BsdqResultParser(HTMLParser):
 
         if tag == "tr" and self._in_row:
             if len(self._current_row) >= 4:
-                self.rows.append(self._current_row[:4])
+                self.rows.append(self._current_row)
 
             self._current_row = []
             self._in_row = False
@@ -412,6 +412,8 @@ def parse_bsdq_results(
                 "due_date": due_parts["due_date"],
                 "due_time": due_parts["due_time"],
                 "city": row[3],
+                "address_line1": row[4] if len(row) > 4 else None,
+                "address_line2": row[5] if len(row) > 5 else None,
                 "is_open": True
             }
         )
@@ -852,15 +854,17 @@ def create_project_folder(
 
 def ensure_project_folder_for_update(
     project_row,
-    bid_due_date: date | None
+    bid_due_date: date | None,
+    project_name: str | None = None
 ):
 
+    next_project_name = project_name or project_row.project_name
     old_name = project_folder_name_from_values(
         project_row.project_name,
         project_row.bid_due_date
     )
     new_name = project_folder_name_from_values(
-        project_row.project_name,
+        next_project_name,
         bid_due_date
     )
     old_path = PROJECT_RW_ROOT / old_name
@@ -899,6 +903,7 @@ def ensure_project_folder_for_update(
         project_row,
         bid_due_date
     )
+    project.project_name = next_project_name
 
     return create_project_folder(project)
 
@@ -1813,6 +1818,12 @@ async def create_project_with_files(
 @router.put("/projects/{project_id}/current-edit")
 async def update_current_project(
     project_id: int,
+    project_name: str | None = Form(None),
+    address_line1: str | None = Form(None),
+    address_line2: str | None = Form(None),
+    city: str | None = Form(None),
+    province: str | None = Form(None),
+    postal_code: str | None = Form(None),
     bid_due_date: str | None = Form(None),
     bsdq_project_number: str | None = Form(None),
     bsdq_due_time: str | None = Form(None),
@@ -1871,6 +1882,14 @@ async def update_current_project(
                 detail="Projet introuvable"
             )
 
+        next_project_name = clean_html_text(project_name) or project_row.project_name
+
+        if not next_project_name:
+            raise HTTPException(
+                status_code=400,
+                detail="Le nom du projet est requis."
+            )
+
         next_client_ids = list(
             dict.fromkeys(client_ids or [])
         )
@@ -1880,7 +1899,8 @@ async def update_current_project(
 
         folder_result = ensure_project_folder_for_update(
             project_row,
-            next_bid_due_date
+            next_bid_due_date,
+            next_project_name
         )
         db.execute(
             text(
@@ -1939,6 +1959,12 @@ async def update_current_project(
                 """
                 UPDATE project
                 SET
+                    project_name = :project_name,
+                    address_line1 = :address_line1,
+                    address_line2 = :address_line2,
+                    city = :city,
+                    province = :province,
+                    postal_code = :postal_code,
                     bid_due_date = :bid_due_date,
                     bsdq_project_number = :bsdq_project_number,
                     bsdq_due_time = :bsdq_due_time,
@@ -1948,6 +1974,12 @@ async def update_current_project(
             ),
             {
                 "project_id": project_id,
+                "project_name": next_project_name,
+                "address_line1": clean_optional_text(address_line1),
+                "address_line2": clean_optional_text(address_line2),
+                "city": clean_optional_text(city),
+                "province": clean_optional_text(province),
+                "postal_code": clean_optional_text(postal_code),
                 "bid_due_date": next_bid_due_date,
                 "bsdq_project_number": clean_optional_text(bsdq_project_number),
                 "bsdq_due_time": clean_optional_text(bsdq_due_time),

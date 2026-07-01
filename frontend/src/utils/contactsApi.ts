@@ -33,6 +33,17 @@ export type ContactOptions = {
 export type Supplier = {
     id: number;
     name: string;
+    phone: string;
+    fax: string;
+    mobile: string;
+    billing_address: string;
+    billing_postal_code: string;
+    email: string;
+    contact_name: string;
+    account_number: string;
+    website: string;
+    company_name: string;
+    tax_identification_number: string;
     federal_tax_number: string;
     provincial_tax_number: string;
     active: boolean;
@@ -41,6 +52,17 @@ export type Supplier = {
 
 export type SupplierInput = {
     name: string;
+    phone: string;
+    fax: string;
+    mobile: string;
+    billing_address: string;
+    billing_postal_code: string;
+    email: string;
+    contact_name: string;
+    account_number: string;
+    website: string;
+    company_name: string;
+    tax_identification_number: string;
     federal_tax_number: string;
     provincial_tax_number: string;
     active: boolean;

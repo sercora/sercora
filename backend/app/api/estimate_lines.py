@@ -12,6 +12,19 @@ from app.schemas.estimate_line import EstimateLineUpdate
 router = APIRouter()
 
 
+def ensure_estimate_line_price_snapshot_schema(db):
+
+    db.execute(
+        text(
+            """
+            ALTER TABLE estimate_line
+                ADD COLUMN IF NOT EXISTS quoted_purchase_price NUMERIC(12, 2),
+                ADD COLUMN IF NOT EXISTS quoted_price_date TIMESTAMP
+            """
+        )
+    )
+
+
 def normalize_line_order(
     db,
     estimate_id: int
@@ -150,6 +163,8 @@ def create_estimate_line(line: EstimateLineCreate):
 
     db = SessionLocal()
 
+    ensure_estimate_line_price_snapshot_schema(db)
+
     normalize_line_order(
         db,
         line.estimate_id
@@ -207,6 +222,8 @@ def create_estimate_line(line: EstimateLineCreate):
                 grout_color,
                 loss_percent,
                 purchase_price,
+                quoted_purchase_price,
+                quoted_price_date,
                 profit_percent,
                 installation_cost,
                 sort_order
@@ -221,6 +238,8 @@ def create_estimate_line(line: EstimateLineCreate):
                 :grout_color,
                 :loss_percent,
                 :purchase_price,
+                :purchase_price,
+                CURRENT_TIMESTAMP,
                 :profit_percent,
                 :installation_cost,
                 :sort_order
@@ -423,6 +442,8 @@ def update_estimate_line_product(
 
     db = SessionLocal()
 
+    ensure_estimate_line_price_snapshot_schema(db)
+
     line_row = db.execute(
         text(
             """
@@ -458,7 +479,9 @@ def update_estimate_line_product(
                     product_id = :product_id,
                     unit_id = :unit_id,
                     grout_color = :grout_color,
-                    purchase_price = :purchase_price
+                    purchase_price = :purchase_price,
+                    quoted_purchase_price = :purchase_price,
+                    quoted_price_date = CURRENT_TIMESTAMP
                 WHERE estimate_id = :estimate_id
                     AND product_id = :old_product_id
                 """
@@ -500,7 +523,9 @@ def update_estimate_line_product(
                     surface_type_id = :surface_type_id,
                     unit_id = :unit_id,
                     grout_color = :grout_color,
-                    purchase_price = :purchase_price
+                    purchase_price = :purchase_price,
+                    quoted_purchase_price = :purchase_price,
+                    quoted_price_date = CURRENT_TIMESTAMP
                 WHERE id = :id
                 """
             ),
@@ -535,6 +560,8 @@ def update_estimate_line(
 
     db = SessionLocal()
 
+    ensure_estimate_line_price_snapshot_schema(db)
+
     row = db.execute(
         text(
             """
@@ -544,6 +571,8 @@ def update_estimate_line(
                 plan_code = :plan_code,
                 loss_percent = :loss_percent,
                 purchase_price = :purchase_price,
+                quoted_purchase_price = :purchase_price,
+                quoted_price_date = CURRENT_TIMESTAMP,
                 profit_percent = :profit_percent,
                 installation_cost = :installation_cost,
                 installation_link_source_line_id = :installation_link_source_line_id,

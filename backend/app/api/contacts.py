@@ -166,6 +166,46 @@ def ensure_supplier_tax_schema(
         text(
             """
             ALTER TABLE supplier
+            ADD COLUMN IF NOT EXISTS phone TEXT
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE supplier
+            ADD COLUMN IF NOT EXISTS fax TEXT
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE supplier
+            ADD COLUMN IF NOT EXISTS mobile TEXT
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE supplier
+            ADD COLUMN IF NOT EXISTS billing_address TEXT
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE supplier
+            ADD COLUMN IF NOT EXISTS billing_postal_code VARCHAR(20)
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE supplier
             ADD COLUMN IF NOT EXISTS federal_tax_number VARCHAR(80)
             """
         )
@@ -178,6 +218,54 @@ def ensure_supplier_tax_schema(
             """
         )
     )
+    db.execute(
+        text(
+            """
+            ALTER TABLE supplier
+            ADD COLUMN IF NOT EXISTS email TEXT
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE supplier
+            ADD COLUMN IF NOT EXISTS contact_name TEXT
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE supplier
+            ADD COLUMN IF NOT EXISTS account_number VARCHAR(100)
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE supplier
+            ADD COLUMN IF NOT EXISTS website TEXT
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE supplier
+            ADD COLUMN IF NOT EXISTS company_name TEXT
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE supplier
+            ADD COLUMN IF NOT EXISTS tax_identification_number VARCHAR(100)
+            """
+        )
+    )
     db.commit()
 
 
@@ -186,6 +274,17 @@ def supplier_payload(row):
     return {
         "id": row.id,
         "name": row.name or "",
+        "phone": row.phone or "",
+        "fax": row.fax or "",
+        "mobile": row.mobile or "",
+        "billing_address": row.billing_address or "",
+        "billing_postal_code": row.billing_postal_code or "",
+        "email": row.email or "",
+        "contact_name": row.contact_name or "",
+        "account_number": row.account_number or "",
+        "website": row.website or "",
+        "company_name": row.company_name or "",
+        "tax_identification_number": row.tax_identification_number or "",
         "federal_tax_number": row.federal_tax_number or "",
         "provincial_tax_number": row.provincial_tax_number or "",
         "active": row.active
@@ -510,6 +609,17 @@ def get_suppliers():
             SELECT
                 id,
                 name,
+                phone,
+                fax,
+                mobile,
+                billing_address,
+                billing_postal_code,
+                email,
+                contact_name,
+                account_number,
+                website,
+                company_name,
+                tax_identification_number,
                 federal_tax_number,
                 provincial_tax_number,
                 COALESCE(active, TRUE) AS active
@@ -552,6 +662,17 @@ def update_supplier(
             UPDATE supplier
             SET
                 name = :name,
+                phone = :phone,
+                fax = :fax,
+                mobile = :mobile,
+                billing_address = :billing_address,
+                billing_postal_code = :billing_postal_code,
+                email = :email,
+                contact_name = :contact_name,
+                account_number = :account_number,
+                website = :website,
+                company_name = :company_name,
+                tax_identification_number = :tax_identification_number,
                 federal_tax_number = :federal_tax_number,
                 provincial_tax_number = :provincial_tax_number,
                 active = :active
@@ -559,6 +680,17 @@ def update_supplier(
             RETURNING
                 id,
                 name,
+                phone,
+                fax,
+                mobile,
+                billing_address,
+                billing_postal_code,
+                email,
+                contact_name,
+                account_number,
+                website,
+                company_name,
+                tax_identification_number,
                 federal_tax_number,
                 provincial_tax_number,
                 COALESCE(active, TRUE) AS active
@@ -567,6 +699,17 @@ def update_supplier(
         {
             "id": supplier_id,
             "name": supplier_name,
+            "phone": none_if_blank(supplier.phone),
+            "fax": none_if_blank(supplier.fax),
+            "mobile": none_if_blank(supplier.mobile),
+            "billing_address": none_if_blank(supplier.billing_address),
+            "billing_postal_code": none_if_blank(supplier.billing_postal_code),
+            "email": none_if_blank(supplier.email),
+            "contact_name": none_if_blank(supplier.contact_name),
+            "account_number": none_if_blank(supplier.account_number),
+            "website": none_if_blank(supplier.website),
+            "company_name": none_if_blank(supplier.company_name),
+            "tax_identification_number": none_if_blank(supplier.tax_identification_number),
             "federal_tax_number": none_if_blank(supplier.federal_tax_number),
             "provincial_tax_number": none_if_blank(supplier.provincial_tax_number),
             "active": supplier.active

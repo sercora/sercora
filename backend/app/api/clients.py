@@ -87,6 +87,22 @@ def ensure_client_schema(
     db.execute(
         text(
             """
+            ALTER TABLE client
+            ADD COLUMN IF NOT EXISTS federal_tax_number VARCHAR(80)
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            ALTER TABLE client
+            ADD COLUMN IF NOT EXISTS provincial_tax_number VARCHAR(80)
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
             CREATE TABLE IF NOT EXISTS client_estimator (
                 id BIGSERIAL PRIMARY KEY,
                 client_id BIGINT NOT NULL REFERENCES client(id) ON DELETE CASCADE,
@@ -477,6 +493,8 @@ def get_clients():
                 c.billing_address,
                 c.billing_postal_code,
                 c.rbq,
+                c.federal_tax_number,
+                c.provincial_tax_number,
                 COALESCE(c.active, TRUE) AS active,
                 c.created_at,
                 COUNT(pc.id) AS project_count
@@ -496,6 +514,8 @@ def get_clients():
                 c.billing_address,
                 c.billing_postal_code,
                 c.rbq,
+                c.federal_tax_number,
+                c.provincial_tax_number,
                 c.active,
                 c.created_at
             ORDER BY
@@ -563,6 +583,8 @@ def create_client(
                 billing_address,
                 billing_postal_code,
                 rbq,
+                federal_tax_number,
+                provincial_tax_number,
                 active
             )
             VALUES (
@@ -574,6 +596,8 @@ def create_client(
                 :billing_address,
                 :billing_postal_code,
                 :rbq,
+                :federal_tax_number,
+                :provincial_tax_number,
                 :active
             )
             RETURNING id
@@ -588,6 +612,8 @@ def create_client(
             "billing_address": none_if_blank(client.billing_address),
             "billing_postal_code": none_if_blank(client.billing_postal_code),
             "rbq": none_if_blank(client.rbq),
+            "federal_tax_number": none_if_blank(client.federal_tax_number),
+            "provincial_tax_number": none_if_blank(client.provincial_tax_number),
             "active": client.active
         }
     ).fetchone()
@@ -685,7 +711,9 @@ def bulk_update_clients(
         "mobile",
         "billing_address",
         "billing_postal_code",
-        "rbq"
+        "rbq",
+        "federal_tax_number",
+        "provincial_tax_number"
     ):
         if field_name in provided_values:
             updates[field_name] = none_if_blank(
@@ -756,6 +784,8 @@ def update_client(
                 billing_address = :billing_address,
                 billing_postal_code = :billing_postal_code,
                 rbq = :rbq,
+                federal_tax_number = :federal_tax_number,
+                provincial_tax_number = :provincial_tax_number,
                 active = :active
             WHERE id = :id
             RETURNING id
@@ -771,6 +801,8 @@ def update_client(
             "billing_address": none_if_blank(client.billing_address),
             "billing_postal_code": none_if_blank(client.billing_postal_code),
             "rbq": none_if_blank(client.rbq),
+            "federal_tax_number": none_if_blank(client.federal_tax_number),
+            "provincial_tax_number": none_if_blank(client.provincial_tax_number),
             "active": client.active
         }
     ).fetchone()

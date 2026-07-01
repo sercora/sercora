@@ -6,6 +6,10 @@ import {
 } from "react";
 import type { FormEvent } from "react";
 
+import ColumnMenu from "../components/ColumnMenu";
+import {
+    useColumnPreferences
+} from "../hooks/useColumnPreferences";
 import {
     bulkUpdateClients,
     createClient,
@@ -31,8 +35,79 @@ const EMPTY_CLIENT: ClientInput = {
     billing_address: "",
     billing_postal_code: "",
     rbq: "",
+    federal_tax_number: "",
+    provincial_tax_number: "",
     active: true
 };
+
+type ClientDisplayField =
+    "name" |
+    "type" |
+    "phone" |
+    "fax" |
+    "mobile" |
+    "billing_address" |
+    "billing_postal_code" |
+    "rbq" |
+    "federal_tax_number" |
+    "provincial_tax_number" |
+    "project_count" |
+    "active";
+
+
+const CLIENT_DISPLAY_FIELDS: {
+    id: ClientDisplayField;
+    label: string;
+}[] = [
+    {
+        id: "name",
+        label: "Nom"
+    },
+    {
+        id: "type",
+        label: "Type"
+    },
+    {
+        id: "phone",
+        label: "Téléphone"
+    },
+    {
+        id: "fax",
+        label: "Fax"
+    },
+    {
+        id: "mobile",
+        label: "Mobile"
+    },
+    {
+        id: "billing_address",
+        label: "Adresse"
+    },
+    {
+        id: "billing_postal_code",
+        label: "Code postal"
+    },
+    {
+        id: "rbq",
+        label: "RBQ"
+    },
+    {
+        id: "federal_tax_number",
+        label: "Taxes fédérales"
+    },
+    {
+        id: "provincial_tax_number",
+        label: "Taxes provinciales"
+    },
+    {
+        id: "project_count",
+        label: "Projets"
+    },
+    {
+        id: "active",
+        label: "État"
+    }
+];
 
 
 function getUniformValue<T>(
@@ -70,6 +145,11 @@ function ClientsPage() {
     const [status, setStatus] = useState("");
     const [error, setError] = useState("");
     const selectAllRef = useRef<HTMLInputElement | null>(null);
+    const clientColumns = useColumnPreferences(
+        "columns.clients",
+        CLIENT_DISPLAY_FIELDS
+    );
+    const visibleClientColumnCount = clientColumns.visibleColumns.length + 1;
 
     const filteredClients = useMemo(
         () => {
@@ -88,7 +168,9 @@ function ClientsPage() {
                         client.mobile || "",
                         client.billing_address || "",
                         client.billing_postal_code || "",
-                        client.rbq || ""
+                        client.rbq || "",
+                        client.federal_tax_number || "",
+                        client.provincial_tax_number || ""
                     ].some(
                         value =>
                             value.toLowerCase().includes(normalizedSearch)
@@ -211,6 +293,8 @@ function ClientsPage() {
                 billing_address: client.billing_address || "",
                 billing_postal_code: client.billing_postal_code || "",
                 rbq: client.rbq || "",
+                federal_tax_number: client.federal_tax_number || "",
+                provincial_tax_number: client.provincial_tax_number || "",
                 active: client.active
             }
         );
@@ -331,6 +415,16 @@ function ClientsPage() {
                     client =>
                         client.rbq
                 ) || "",
+                federal_tax_number: getUniformValue(
+                    selectedClients,
+                    client =>
+                        client.federal_tax_number
+                ) || "",
+                provincial_tax_number: getUniformValue(
+                    selectedClients,
+                    client =>
+                        client.provincial_tax_number
+                ) || "",
                 active: true
             }
         );
@@ -383,7 +477,9 @@ function ClientsPage() {
             mobile: form.mobile.trim(),
             billing_address: form.billing_address.trim(),
             billing_postal_code: form.billing_postal_code.trim(),
-            rbq: form.rbq.trim()
+            rbq: form.rbq.trim(),
+            federal_tax_number: form.federal_tax_number.trim(),
+            provincial_tax_number: form.provincial_tax_number.trim()
         };
 
         const request =
@@ -419,6 +515,12 @@ function ClientsPage() {
                             } : {}),
                             ...(form.rbq.trim() ? {
                                 rbq: form.rbq.trim()
+                            } : {}),
+                            ...(form.federal_tax_number.trim() ? {
+                                federal_tax_number: form.federal_tax_number.trim()
+                            } : {}),
+                            ...(form.provincial_tax_number.trim() ? {
+                                provincial_tax_number: form.provincial_tax_number.trim()
                             } : {}),
                             ...(bulkActiveChoice === "" ? {} : {
                                 active: bulkActiveChoice === "true"
@@ -463,6 +565,13 @@ function ClientsPage() {
     return (
         <section className="business-page">
             <div className="business-toolbar">
+                <button
+                    type="button"
+                    onClick={openSelectedClients}
+                    disabled={selectedClients.length === 0}
+                >
+                    Modifier
+                </button>
                 <input
                     type="search"
                     value={search}
@@ -477,13 +586,6 @@ function ClientsPage() {
                     onClick={openNewClient}
                 >
                     Ajouter
-                </button>
-                <button
-                    type="button"
-                    onClick={openSelectedClients}
-                    disabled={selectedClients.length === 0}
-                >
-                    Modifier
                 </button>
                 <button
                     type="button"
@@ -512,6 +614,15 @@ function ClientsPage() {
                 <div className="business-error">{error}</div>
             )}
 
+            <div className="business-column-toolbar">
+                <ColumnMenu
+                    columns={CLIENT_DISPLAY_FIELDS}
+                    visibleColumns={clientColumns.visibleColumns}
+                    isColumnVisible={clientColumns.isColumnVisible}
+                    toggleColumn={clientColumns.toggleColumn}
+                />
+            </div>
+
             <div className="business-table-wrap">
                 <table className="business-table clients-table">
                     <thead>
@@ -525,23 +636,52 @@ function ClientsPage() {
                                     aria-label="Sélectionner tous les clients visibles"
                                 />
                             </th>
-                            <th>Nom</th>
-                            <th>Type</th>
-                            <th>Coordonnées</th>
-                            <th>Adresse</th>
-                            <th>RBQ</th>
-                            <th>Projets</th>
-                            <th>État</th>
+                            {clientColumns.isColumnVisible("name") && (
+                                <th>Nom</th>
+                            )}
+                            {clientColumns.isColumnVisible("type") && (
+                                <th>Type</th>
+                            )}
+                            {clientColumns.isColumnVisible("phone") && (
+                                <th>Téléphone</th>
+                            )}
+                            {clientColumns.isColumnVisible("fax") && (
+                                <th>Fax</th>
+                            )}
+                            {clientColumns.isColumnVisible("mobile") && (
+                                <th>Mobile</th>
+                            )}
+                            {clientColumns.isColumnVisible("billing_address") && (
+                                <th>Adresse</th>
+                            )}
+                            {clientColumns.isColumnVisible("billing_postal_code") && (
+                                <th>Code postal</th>
+                            )}
+                            {clientColumns.isColumnVisible("rbq") && (
+                                <th>RBQ</th>
+                            )}
+                            {clientColumns.isColumnVisible("federal_tax_number") && (
+                                <th>Taxes fédérales</th>
+                            )}
+                            {clientColumns.isColumnVisible("provincial_tax_number") && (
+                                <th>Taxes provinciales</th>
+                            )}
+                            {clientColumns.isColumnVisible("project_count") && (
+                                <th>Projets</th>
+                            )}
+                            {clientColumns.isColumnVisible("active") && (
+                                <th>État</th>
+                            )}
                         </tr>
                     </thead>
                     <tbody>
                         {isLoading ? (
                             <tr>
-                                <td colSpan={8}>Chargement...</td>
+                                <td colSpan={visibleClientColumnCount}>Chargement...</td>
                             </tr>
                         ) : filteredClients.length === 0 ? (
                             <tr>
-                                <td colSpan={8}>Aucun client.</td>
+                                <td colSpan={visibleClientColumnCount}>Aucun client.</td>
                             </tr>
                         ) : (
                             filteredClients.map(
@@ -560,40 +700,50 @@ function ClientsPage() {
                                                 aria-label={`Sélectionner ${client.name}`}
                                             />
                                         </td>
-                                        <td>{client.name}</td>
-                                        <td>{client.client_type_name || "-"}</td>
-                                        <td>
-                                            {client.phone || "-"}
-                                            {client.fax && (
-                                                <span className="business-muted-line">
-                                                    Fax: {client.fax}
+                                        {clientColumns.isColumnVisible("name") && (
+                                            <td>{client.name}</td>
+                                        )}
+                                        {clientColumns.isColumnVisible("type") && (
+                                            <td>{client.client_type_name || "-"}</td>
+                                        )}
+                                        {clientColumns.isColumnVisible("phone") && (
+                                            <td>{client.phone || "-"}</td>
+                                        )}
+                                        {clientColumns.isColumnVisible("fax") && (
+                                            <td>{client.fax || "-"}</td>
+                                        )}
+                                        {clientColumns.isColumnVisible("mobile") && (
+                                            <td>{client.mobile || "-"}</td>
+                                        )}
+                                        {clientColumns.isColumnVisible("billing_address") && (
+                                            <td>{client.billing_address || "-"}</td>
+                                        )}
+                                        {clientColumns.isColumnVisible("billing_postal_code") && (
+                                            <td>{client.billing_postal_code || "-"}</td>
+                                        )}
+                                        {clientColumns.isColumnVisible("rbq") && (
+                                            <td>{client.rbq || "-"}</td>
+                                        )}
+                                        {clientColumns.isColumnVisible("federal_tax_number") && (
+                                            <td>{client.federal_tax_number || "-"}</td>
+                                        )}
+                                        {clientColumns.isColumnVisible("provincial_tax_number") && (
+                                            <td>{client.provincial_tax_number || "-"}</td>
+                                        )}
+                                        {clientColumns.isColumnVisible("project_count") && (
+                                            <td>{client.project_count}</td>
+                                        )}
+                                        {clientColumns.isColumnVisible("active") && (
+                                            <td>
+                                                <span className={
+                                                    client.active ?
+                                                        "business-pill active" :
+                                                        "business-pill inactive"
+                                                }>
+                                                    {client.active ? "Actif" : "Inactif"}
                                                 </span>
-                                            )}
-                                            {client.mobile && (
-                                                <span className="business-muted-line">
-                                                    Mobile: {client.mobile}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td>
-                                            {client.billing_address || "-"}
-                                            {client.billing_postal_code && (
-                                                <span className="business-muted-line">
-                                                    {client.billing_postal_code}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td>{client.rbq || "-"}</td>
-                                        <td>{client.project_count}</td>
-                                        <td>
-                                            <span className={
-                                                client.active ?
-                                                    "business-pill active" :
-                                                    "business-pill inactive"
-                                            }>
-                                                {client.active ? "Actif" : "Inactif"}
-                                            </span>
-                                        </td>
+                                            </td>
+                                        )}
                                     </tr>
                                 )
                             )
@@ -805,6 +955,38 @@ function ClientsPage() {
                                                 {
                                                     ...form,
                                                     rbq: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>No taxes fédérales</span>
+                                <input
+                                    value={form.federal_tax_number}
+                                    onChange={
+                                        event =>
+                                            setForm(
+                                                {
+                                                    ...form,
+                                                    federal_tax_number: event.target.value
+                                                }
+                                            )
+                                    }
+                                />
+                            </label>
+
+                            <label className="business-field">
+                                <span>No taxes provinciales</span>
+                                <input
+                                    value={form.provincial_tax_number}
+                                    onChange={
+                                        event =>
+                                            setForm(
+                                                {
+                                                    ...form,
+                                                    provincial_tax_number: event.target.value
                                                 }
                                             )
                                     }
