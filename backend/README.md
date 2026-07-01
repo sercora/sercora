@@ -95,6 +95,7 @@ auth.py                 login, profil, usagers, roles, telephones
 email.py                SMTP, VoIP/SMS, invitations, reset mot de passe
 clients.py             clients et types
 contacts.py            contacts, types et taches
+preferences.py         preferences utilisateur JSON
 projects.py            projets, creation, invitations, addenda, NAS
 products.py            produits, fournisseurs, imports catalogues, escomptes
 prosol.py              integration Prosol
@@ -172,10 +173,28 @@ Il sauvegarde aussi le resume:
 
 `tools.py` gere:
 
-- outils disponibles;
-- outils deployes;
+- outils tous/disponibles/deployes;
 - recherche, tri et pagination;
-- images via proxy.
+- edition d'outils;
+- checkout/deplacement vers un chantier;
+- chantiers/locations;
+- statuts Snipe-IT;
+- images et QR via proxy;
+- configuration Snipe-IT admin.
+
+## Contacts Et Fournisseurs
+
+`contacts.py` gere:
+
+- types de contacts;
+- taches de contacts;
+- contacts clients;
+- contacts fournisseurs;
+- fiches fournisseurs enrichies.
+
+## Preferences Utilisateur
+
+`preferences.py` gere les preferences JSON par usager, notamment les colonnes visibles.
 
 ## Courriel Et VoIP/SMS
 

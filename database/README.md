@@ -40,7 +40,9 @@ app_user
 app_email_settings
 app_sms_settings
 app_snipeit_settings
+app_user_preference
 client
+client_estimator
 client_type
 supplier
 product_type
@@ -90,6 +92,70 @@ Le projet contient aussi:
 - remise;
 - garantie.
 
+## Contacts Et Fournisseurs
+
+Les contacts sont separes des clients et fournisseurs.
+
+Tables:
+
+```text
+contact_type
+contact_task
+contact
+contact_task_link
+```
+
+Un contact appartient soit a un client, soit a un fournisseur.
+
+Taches initiales:
+
+```text
+payables
+commande
+estimation
+direction
+projets
+```
+
+Les fournisseurs ont ete enrichis avec:
+
+```text
+phone
+fax
+mobile
+billing_address
+billing_postal_code
+email
+contact_name
+account_number
+website
+company_name
+tax_identification_number
+federal_tax_number
+provincial_tax_number
+```
+
+## Clients Enrichis
+
+Les clients ont ete enrichis avec:
+
+```text
+phone
+fax
+mobile
+billing_address
+billing_postal_code
+rbq
+federal_tax_number
+provincial_tax_number
+```
+
+Les estimateurs de clients sont stockes dans:
+
+```text
+client_estimator
+```
+
 ## Modele Soumission
 
 ```text
@@ -101,6 +167,13 @@ estimate
 ```
 
 Une nouvelle revision clone cette structure.
+
+Les lignes de soumission conservent aussi un snapshot de prix:
+
+```text
+estimate_line.quoted_purchase_price
+estimate_line.quoted_price_date
+```
 
 ## Produits
 
@@ -132,6 +205,16 @@ Champs importants:
 
 Ces escomptes peuvent etre appliques en lot.
 
+## Preferences Utilisateur
+
+`app_user_preference` stocke les preferences JSON par utilisateur, notamment les colonnes visibles par page.
+
+## Configuration Snipe-IT
+
+`app_snipeit_settings` stocke l'instance Snipe-IT configurable depuis l'interface admin.
+
+Si la configuration DB est absente ou inactive, le backend peut utiliser les variables d'environnement.
+
 ## Migrations
 
 Les migrations sont numerotees:
@@ -139,7 +222,7 @@ Les migrations sont numerotees:
 ```text
 002_clients_suppliers.sql
 ...
-025_app_user_phone_number.sql
+033_estimate_line_price_snapshots.sql
 ```
 
 Regles:
@@ -148,12 +231,20 @@ Regles:
 - preferer `ADD COLUMN IF NOT EXISTS`;
 - eviter les suppressions destructives;
 - garder `schema.sql` coherent avec les migrations;
-- documenter les changements dans `docs/API.md` si l'API est affectee.
+- documenter les changements dans `docs/api/index.md` si l'API est affectee.
 
-Migrations recentes liees aux notifications:
+Migrations recentes:
 
 - `024_sms_settings.sql`: table `app_sms_settings`;
 - `025_app_user_phone_number.sql`: colonne `app_user.phone_number`.
+- `026_contacts.sql`: contacts, types de contacts et taches;
+- `027_client_enrichment.sql`: champs clients enrichis et `client_estimator`;
+- `028_snipeit_settings.sql`: configuration Snipe-IT en DB;
+- `029_supplier_tax_numbers.sql`: coordonnees et taxes fournisseurs;
+- `030_client_tax_numbers.sql`: taxes clients;
+- `031_supplier_profile_fields.sql`: champs profil fournisseur;
+- `032_app_user_preferences.sql`: preferences utilisateur JSON;
+- `033_estimate_line_price_snapshots.sql`: prix quote et date par ligne de soumission.
 
 ## Verifications Utiles
 

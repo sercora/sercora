@@ -42,6 +42,8 @@ tools.py
 prosol.py
 auth.py
 email.py
+contacts.py
+preferences.py
 ```
 
 ## Auth Et Usagers
@@ -125,16 +127,33 @@ message      = message
 - couvertures;
 - prix.
 
+## Contacts Et Fournisseurs
+
+`contacts.py` gere:
+
+- types client/fournisseur;
+- taches payables, commande, estimation, direction et projets;
+- contacts rattaches a un client ou fournisseur;
+- fiches fournisseurs enrichies.
+
 ## Outils
 
 `tools.py` proxy Snipe-IT:
 
 - liste des outils;
 - scopes disponible/deploye;
+- edition d'outils;
+- checkout/deplacement vers un chantier;
+- chantiers/locations;
+- statuts;
 - tri;
 - recherche;
 - pagination;
-- image.
+- images et QR.
+
+## Preferences
+
+`preferences.py` stocke les preferences JSON par utilisateur.
 
 ## Donnees
 
@@ -153,7 +172,7 @@ Les requetes SQL explicites sont preferees pour garder la logique proche du sche
 3. Enregistrer le router dans `main.py`.
 4. Ajouter les migrations DB.
 5. Ajouter le client API frontend.
-6. Documenter dans `docs/API.md`.
+6. Documenter dans `docs/api/index.md`.
 
 ## Regles
 

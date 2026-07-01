@@ -7,7 +7,7 @@ Ce document garde la trace de la validation effectuee avant de considerer le dep
 La documentation canonique de Sercora est maintenant integree directement dans le depot principal:
 
 ```text
-https://github.com/sercora/sercora/tree/codex
+https://github.com/sercora/sercora/tree/staging
 ```
 
 Le depot separe `sercora-wiki` peut etre considere obsolete.
@@ -70,7 +70,7 @@ La documentation actuelle du depot principal remplace donc le depot wiki separe.
 Avant suppression definitive, privilegier cet ordre:
 
 1. Archiver `sercora-wiki` sur GitHub.
-2. Confirmer que les liens publics pointent vers `sercora/sercora/tree/codex/docs`.
+2. Confirmer que les liens publics pointent vers `sercora/sercora/tree/staging/docs`.
 3. Attendre une courte periode de validation.
 4. Supprimer `sercora-wiki` seulement si aucun outil externe ne depend de ce depot.
 

@@ -127,6 +127,38 @@ Sous-menus:
 - **Courriel**: configuration SMTP, adresse d'expediteur, reply-to forgeable, test d'envoi, invitations et rafraichissements de mot de passe.
 - **VoIP/SMS**: configuration du fournisseur SMS, test manuel et base des alertes BSDQ 30 minutes avant la tombee.
 - **Importation**: mises a jour de prix et catalogues fournisseurs.
+- **Snipe-IT**: URL, libelle/usager, token API et test de connexion.
+- **Statut**: healthcheck backend, build frontend et backlog operations.
+- **Quick-book** et **Mobile-Punch**: entrees visibles mais desactivees pour integration future.
+
+## Etat Reel Staging
+
+### Implemente
+
+- clients enrichis, estimateurs et edition en lot;
+- contacts clients/fournisseurs avec taches;
+- fournisseurs enrichis avec coordonnees, taxes et champs de facturation;
+- produits, imports fournisseurs, Prosol et edition en lot;
+- projets en soumission, BSDQ, revisions et navigation NAS;
+- matrice avec prix current/quoted, addenda, exclusions, fournisseurs et echeancier;
+- outils et chantiers Snipe-IT via proxy backend;
+- configuration SMTP, VoIP/SMS et Snipe-IT;
+- preferences utilisateur pour les colonnes visibles;
+- Calibre cote frontend.
+
+### Partiellement Implemente
+
+- edition multiple universelle: complete pour clients et produits, incomplete pour contacts/fournisseurs;
+- alertes BSDQ: configuration et donnees de base presentes, automatisation non finalisee;
+- Calibre: outil frontend avance, integration complete a la matrice encore a finaliser.
+
+### Futur
+
+- QuickBooks;
+- Mobile-Punch;
+- production complete des lettres;
+- envoi complet de soumission;
+- bons de commande et factures.
 
 ## Integrations
 
@@ -226,7 +258,7 @@ Infrastructure:
 - NAS NFS;
 - Snipe-IT;
 - LibreOffice pour certains apercus Office;
-- GitHub branche `codex`.
+- GitHub branche `staging` pour validation et `main` pour release stable.
 
 ## Structure
 
@@ -275,15 +307,20 @@ Le script construit le frontend, copie les fichiers statiques, redemarre l'API e
 
 - Application: `https://sercora.serco.pro`
 - API: `https://api.serco.pro`
-- GitHub branche codex: `https://github.com/sercora/sercora/tree/codex`
-- Documentation GitHub: `https://github.com/sercora/sercora/tree/codex/docs`
+- GitHub branche staging: `https://github.com/sercora/sercora/tree/staging`
+- Documentation GitHub staging: `https://github.com/sercora/sercora/tree/staging/docs`
 
 ## Documentation
 
 - [Documentation technique](docs/README.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Operations](docs/OPERATIONS.md)
-- [API](docs/API.md)
+- [Architecture](docs/architecture.md)
+- [Operations](docs/operations.md)
+- [API](docs/api/index.md)
+- [Glossaire](docs/glossary.md)
+- [Roadmap](docs/roadmap.md)
+- [Guide estimateur](docs/user-guide/estimateur.md)
+- [Guide administration](docs/user-guide/administration.md)
+- [Audit documentation](docs/documentation-audit.md)
 - [Backend](backend/README.md)
 - [Frontend](frontend/README.md)
 - [Database](database/README.md)

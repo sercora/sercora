@@ -105,10 +105,77 @@ La reponse inclut le fournisseur, le code HTTP fournisseur et le detail retourne
 GET  /client-types
 GET  /clients
 POST /clients
+PUT  /clients/bulk
 PUT  /clients/{client_id}
 ```
 
 Les clients sont rattaches aux projets et aux invitations.
+
+Champs enrichis:
+
+```text
+phone
+fax
+mobile
+billing_address
+billing_postal_code
+rbq
+federal_tax_number
+provincial_tax_number
+estimators[]
+```
+
+`PUT /clients/bulk` permet de modifier plusieurs clients selectionnes.
+
+## Contacts Et Fournisseurs
+
+```text
+GET  /contact-types
+GET  /contact-tasks
+GET  /contacts/options
+GET  /contacts
+POST /contacts
+PUT  /contacts/{contact_id}
+GET  /suppliers
+PUT  /suppliers/{supplier_id}
+```
+
+Types de contacts:
+
+```text
+client
+supplier
+```
+
+Taches de contacts:
+
+```text
+payables
+commande
+estimation
+direction
+projets
+```
+
+Les fournisseurs sont exposes avec les champs de fiche suivants:
+
+```text
+name
+phone
+fax
+mobile
+billing_address
+billing_postal_code
+email
+contact_name
+account_number
+website
+company_name
+tax_identification_number
+federal_tax_number
+provincial_tax_number
+active
+```
 
 ## Projets
 
@@ -117,9 +184,11 @@ GET  /projects?scope=all
 GET  /projects?scope=current
 GET  /projects?scope=submission
 GET  /projects/{project_id}
+GET  /projects/bsdq/search
 POST /projects
 POST /projects/with-files
 PUT  /projects/{project_id}/current-edit
+PUT  /projects/{project_id}/submission-state
 ```
 
 Scopes:
@@ -153,6 +222,18 @@ addenda
 - ajouter des `.msg`;
 - ajouter un addenda;
 - creer/assurer la revision 0.
+
+`GET /projects/bsdq/search` interroge le babillard BSDQ public pour pre-remplir un projet.
+
+`PUT /projects/{project_id}/submission-state` modifie l'etat de decision:
+
+```text
+new
+approved
+undecided
+rejected
+sent
+```
 
 ## Soumissions Et Revisions
 
@@ -206,6 +287,19 @@ GET /surface-types
 - echeancier probable;
 - remise;
 - garantie.
+
+Les lignes de matrice retournent aussi les prix de comparaison:
+
+```text
+quoted_purchase_price
+quoted_price_date
+current_purchase_price
+current_price_date
+current_quoted_price_delta
+current_quoted_price_delta_percent
+```
+
+`quoted_*` represente le prix fige dans la soumission. `current_*` represente le prix courant du catalogue.
 
 ## Locaux
 
@@ -292,6 +386,8 @@ GET    /units
 
 La liste supporte fournisseurs, recherche, pagination et produits actifs/inactifs.
 
+`PUT /products/bulk` permet de modifier plusieurs produits selectionnes.
+
 Champs utiles:
 
 ```text
@@ -353,7 +449,12 @@ Le token Prosol reste cote backend.
 
 ```text
 GET /tools
+GET /tools/{tool_id}
+PUT /tools/{tool_id}
+POST /tools/{tool_id}/checkout
 GET /tools/{tool_id}/image
+GET /tools/{tool_id}/qr
+GET /status-labels
 ```
 
 Parametres `/tools`:
@@ -384,7 +485,64 @@ last_checkout
 updated_at
 image_url
 image_proxy_path
+qr_proxy_path
+asset_url
 ```
+
+Le backend agit comme proxy vers Snipe-IT. Les modifications faites depuis Sercora appellent l'API Snipe-IT et modifient donc Snipe-IT.
+
+### Chantiers Snipe-IT
+
+Les chantiers correspondent aux locations Snipe-IT.
+
+```text
+GET  /locations
+POST /locations
+PUT  /locations/{location_id}
+GET  /locations/{location_id}/tools
+```
+
+Parametres `/locations`:
+
+```text
+limit
+offset
+search
+sort
+order
+min_tools
+max_tools
+```
+
+### Configuration Snipe-IT
+
+Endpoints admin:
+
+```text
+GET  /admin/snipeit-settings
+PUT  /admin/snipeit-settings
+POST /admin/snipeit-settings/test
+```
+
+Champs:
+
+```text
+base_url
+username
+api_token
+active
+```
+
+Si aucune configuration DB active n'est presente, le backend peut utiliser les variables `SNIPEIT_URL` et `SNIPEIT_API_TOKEN`.
+
+## Preferences Utilisateur
+
+```text
+GET /user-preferences/{preference_key}
+PUT /user-preferences/{preference_key}
+```
+
+Ces routes conservent les preferences JSON par utilisateur, notamment les colonnes visibles par page.
 
 ## Fichiers De Soumission
 

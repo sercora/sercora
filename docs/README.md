@@ -2,12 +2,17 @@
 
 Le dossier `docs/` contient la documentation technique et operationnelle de Sercora.
 
-## Documents
+## Structure
 
-- `ARCHITECTURE.md`: organisation globale du frontend, backend, base de donnees, NAS et integrations.
-- `API.md`: endpoints FastAPI principaux et payloads utiles.
-- `OPERATIONS.md`: deploiement, verification, services, NAS, SMTP, Snipe-IT et depannage.
-- `WIKI_MIGRATION.md`: validation du remplacement de `sercora-wiki` par la documentation integree.
+- `architecture.md`: organisation globale du frontend, backend, base de donnees, NAS et integrations.
+- `api/index.md`: endpoints FastAPI principaux et payloads utiles.
+- `operations.md`: deploiement, verification, services, NAS, SMTP, Snipe-IT et depannage.
+- `documentation-audit.md`: etat de la documentation et ecarts avec le code reel.
+- `glossary.md`: vocabulaire metier canonique.
+- `roadmap.md`: separation entre implemente, partiel, prevu et idee future.
+- `user-guide/estimateur.md`: guide quotidien pour estimateurs.
+- `user-guide/administration.md`: guide quotidien pour administrateurs.
+- `adr/0000-wiki-migration.md`: validation du remplacement de `sercora-wiki` par la documentation integree.
 
 Les README des sous-dossiers completent cette documentation:
 
@@ -22,9 +27,13 @@ Les README des sous-dossiers completent cette documentation:
 Lire dans cet ordre:
 
 1. `README.md` a la racine pour comprendre le produit.
-2. `docs/ARCHITECTURE.md` pour comprendre les blocs techniques.
-3. `docs/API.md` pour integrer ou deboguer le frontend/backend.
-4. `docs/OPERATIONS.md` pour deployer ou diagnostiquer la production.
+2. `docs/glossary.md` pour uniformiser le vocabulaire metier.
+3. `docs/roadmap.md` pour comprendre ce qui est livre ou futur.
+4. `docs/user-guide/estimateur.md` pour l'utilisation quotidienne en estimation.
+5. `docs/user-guide/administration.md` pour l'administration.
+6. `docs/architecture.md` pour comprendre les blocs techniques.
+7. `docs/api/index.md` pour integrer ou deboguer le frontend/backend.
+8. `docs/operations.md` pour deployer ou diagnostiquer la production.
 
 ## Modules Documentes
 
@@ -40,9 +49,15 @@ La documentation couvre:
 - outils Snipe-IT;
 - usagers, roles et profil;
 - configuration SMTP;
+- configuration VoIP/SMS;
+- configuration Snipe-IT;
 - imports de catalogues;
 - NAS et visualisation de fichiers;
-- creation et revisions de projets.
+- creation et revisions de projets;
+- contacts et fournisseurs;
+- chantiers Snipe-IT;
+- Calibre;
+- preferences utilisateur.
 
 ## Regles
 
@@ -56,5 +71,5 @@ La documentation couvre:
 
 - Application: `https://sercora.serco.pro`
 - API: `https://api.serco.pro`
-- GitHub: `https://github.com/sercora/sercora/tree/codex`
-- Documentation GitHub: `https://github.com/sercora/sercora/tree/codex/docs`
+- GitHub staging: `https://github.com/sercora/sercora/tree/staging`
+- Documentation GitHub staging: `https://github.com/sercora/sercora/tree/staging/docs`

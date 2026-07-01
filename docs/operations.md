@@ -1,19 +1,41 @@
 # Operations Et Deploiement
 
-Ce document decrit les operations courantes de Sercora en production.
+Ce document decrit les operations courantes de Sercora en staging et en production.
 
 ## Services
 
 ```text
-Frontend: https://sercora.serco.pro
-API:      https://api.serco.pro
-Repo:     /home/simon/sercora
-Web:      /var/www/sercora
-Service:  sercora-api
-Proxy:    nginx
+Production frontend: https://sercora.serco.pro
+Production API:      https://api.serco.pro
+Production repo:     /home/simon/sercora
+Production web:      /var/www/sercora
+Production service:  sercora-api
+
+Staging repo:         /home/simon/sercora-staging
+Staging web:          /var/www/sercora-staging
+Staging service:      sercora-staging-api
+
+Proxy:                nginx
 ```
 
-## Deployer
+## Deployer Staging
+
+Depuis la racine du worktree staging:
+
+```bash
+./deploy/deploy-staging.sh
+```
+
+Le script:
+
+1. genere `frontend/public/operations-backlog.json`;
+2. construit le frontend avec `VITE_API_URL=/api`;
+3. copie `frontend/dist/` vers `/var/www/sercora-staging/`;
+4. deploie les ressources PDF.js;
+5. redemarre `sercora-staging-api`;
+6. recharge nginx.
+
+## Deployer Production
 
 Depuis la racine du depot:
 
@@ -25,9 +47,11 @@ Le script:
 
 1. construit le frontend avec `npm run build`;
 2. force `VITE_API_URL=https://api.serco.pro`;
-3. copie `frontend/dist/` vers `/var/www/sercora/`;
-4. redemarre `sercora-api`;
-5. recharge nginx.
+3. genere `frontend/public/operations-backlog.json`;
+4. copie `frontend/dist/` vers `/var/www/sercora/`;
+5. deploie les ressources PDF.js;
+6. redemarre `sercora-api`;
+7. recharge nginx.
 
 ## Verifications Apres Deploiement
 
@@ -38,6 +62,13 @@ curl -i "https://api.serco.pro/projects?scope=submission"
 curl -i "https://api.serco.pro/estimates/1/matrix"
 curl -i "https://api.serco.pro/tools?limit=1"
 systemctl is-active sercora-api nginx
+```
+
+Verification staging locale:
+
+```bash
+curl -i http://10.0.25.14:8081/api/health
+systemctl is-active sercora-staging-api nginx
 ```
 
 Logs API:
@@ -72,6 +103,8 @@ SERCORA_PROJECT_RW_ROOT=/NAS_SERCORA_RW
 ```
 
 Ne pas committer ce fichier.
+
+La configuration Snipe-IT peut aussi etre definie dans l'interface admin. Si une configuration DB active existe, elle remplace les variables d'environnement.
 
 ## Redemarrer L'API
 
@@ -222,6 +255,14 @@ Les images d'outils passent par:
 
 ```text
 GET /tools/{tool_id}/image
+GET /tools/{tool_id}/qr
+```
+
+Les chantiers utilisent les locations Snipe-IT:
+
+```text
+GET /locations
+GET /locations/{location_id}/tools
 ```
 
 ## Prosol
@@ -309,14 +350,15 @@ Verifier:
 
 ## Git
 
-Branche active de travail:
+Branches utilisees:
 
 ```text
-codex
+staging  validation et essais
+main     release stable
 ```
 
-Pousser apres deploy si le changement est valide:
+Pousser staging apres validation:
 
 ```bash
-git push origin codex
+git push origin staging
 ```

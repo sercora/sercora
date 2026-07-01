@@ -1,17 +1,39 @@
 # Deploy
 
-Le dossier `deploy/` contient les fichiers de production de Sercora.
+Le dossier `deploy/` contient les fichiers de deploiement production et staging de Sercora.
 
 ## Fichiers
 
 ```text
 deploy.sh
+deploy-staging.sh
 nginx-sercora.conf
+nginx-sercora-staging.conf
 nginx-api.conf
 sercora-api.service
+sercora-staging-api.service
 ```
 
 ## Script Principal
+
+### Staging
+
+Depuis `/home/simon/sercora-staging`:
+
+```bash
+./deploy/deploy-staging.sh
+```
+
+Le script:
+
+1. genere `frontend/public/operations-backlog.json`;
+2. construit le frontend avec `VITE_API_URL=/api`;
+3. copie `frontend/dist/` vers `/var/www/sercora-staging/`;
+4. deploie les ressources PDF.js;
+5. redemarre `sercora-staging-api`;
+6. recharge nginx.
+
+### Production
 
 Depuis la racine du depot:
 
@@ -22,11 +44,13 @@ Depuis la racine du depot:
 Le script:
 
 1. entre dans `frontend/`;
-2. lance `npm run build`;
-3. force l'API publique avec `VITE_API_URL=https://api.serco.pro`;
-4. copie `frontend/dist/` vers `/var/www/sercora/`;
-5. redemarre `sercora-api`;
-6. recharge nginx.
+2. genere `frontend/public/operations-backlog.json`;
+3. lance `npm run build`;
+4. force l'API publique avec `VITE_API_URL=https://api.serco.pro`;
+5. copie `frontend/dist/` vers `/var/www/sercora/`;
+6. deploie les ressources PDF.js;
+7. redemarre `sercora-api`;
+8. recharge nginx.
 
 ## Frontend nginx
 
@@ -53,6 +77,8 @@ https://api.serco.pro -> http://127.0.0.1:8000
 ## systemd
 
 `sercora-api.service` lance FastAPI avec Uvicorn.
+
+`sercora-staging-api.service` lance l'API staging.
 
 Commande equivalente:
 
@@ -146,5 +172,5 @@ journalctl -u sercora-api -n 100 --no-pager
 
 - Application: `https://sercora.serco.pro`
 - API: `https://api.serco.pro`
-- GitHub codex: `https://github.com/sercora/sercora/tree/codex`
-- Documentation: `https://github.com/sercora/sercora/tree/codex/docs`
+- GitHub staging: `https://github.com/sercora/sercora/tree/staging`
+- Documentation staging: `https://github.com/sercora/sercora/tree/staging/docs`

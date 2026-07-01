@@ -51,9 +51,13 @@ frontend/src/App.tsx
 frontend/src/pages/MatrixView.tsx
 frontend/src/pages/ProductsPage.tsx
 frontend/src/pages/ProjectsPage.tsx
+frontend/src/pages/ContactsPage.tsx
 frontend/src/pages/ToolsPage.tsx
+frontend/src/pages/ChantiersPage.tsx
+frontend/src/pages/CalibreView.tsx
 frontend/src/pages/UsersPage.tsx
 frontend/src/pages/ConfigurationPage.tsx
+frontend/src/hooks/useColumnPreferences.ts
 frontend/src/utils/
 frontend/src/styles/
 ```
@@ -73,9 +77,12 @@ frontend/src/styles/
 Menus principaux:
 
 - Clients;
+- Fournisseurs;
+- Contacts;
 - Projets;
 - Produits;
 - Outils;
+- Calibre;
 - Soumissions LEGACY;
 - Usagers;
 - Configuration;
@@ -131,6 +138,8 @@ tools.py
 prosol.py
 auth.py
 email.py
+contacts.py
+preferences.py
 ```
 
 Le backend utilise surtout des requetes SQL explicites avec SQLAlchemy. Ce choix garde les comportements proches du schema et facilite le debogage.
@@ -151,8 +160,10 @@ Domaines principaux:
 
 - authentification et usagers;
 - clients;
+- contacts;
 - produits;
 - fournisseurs et escomptes;
+- preferences utilisateur;
 - projets;
 - soumissions/revisions;
 - locaux;
@@ -163,6 +174,7 @@ Domaines principaux:
 - invitations;
 - exclusions et addenda;
 - fiches techniques et options de couverture.
+- configuration Snipe-IT.
 
 Schema et migrations:
 
@@ -238,6 +250,10 @@ Les fichiers Office sont convertis en PDF via LibreOffice cote serveur lorsque p
 
 Le frontend ne voit jamais le token. Les images d'outils passent aussi par le backend.
 
+Sercora utilise Snipe-IT comme systeme maitre pour les outils, chantiers/locations, statuts, checkout, images et codes QR.
+
+La configuration peut provenir de `app_snipeit_settings` ou des variables d'environnement.
+
 ### Prosol
 
 `prosol.py` gere:
@@ -267,6 +283,22 @@ Le frontend ne voit jamais le token. Les images d'outils passent aussi par le ba
 - reset de mot de passe;
 - reply-to configurable.
 
+### Preferences Utilisateur
+
+`preferences.py` stocke des preferences JSON par usager, notamment les colonnes visibles par page.
+
+### Calibre
+
+Calibre est un module frontend de releve de plans:
+
+- import PDF/image;
+- calibration;
+- mesures lignes, rectangles et polygones;
+- calques et secteurs;
+- resultats de surfaces et longueurs.
+
+La persistance serveur Calibre est partielle et doit rester documentee comme telle tant que le flux complet n'est pas stabilise.
+
 ## Securite
 
 Principes:
@@ -283,3 +315,4 @@ Principes:
 - Les migrations doivent suivre les champs ajoutes dynamiquement dans certains endpoints.
 - Les apercus Office dependent de LibreOffice cote serveur.
 - Les URLs NAS et montages NFS sont propres a l'environnement actuel.
+- Les integrations QuickBooks et Mobile-Punch sont visibles dans l'UI mais non implementees.

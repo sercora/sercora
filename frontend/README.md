@@ -61,9 +61,12 @@ Gere:
 Menus:
 
 - Clients;
+- Fournisseurs;
+- Contacts;
 - Projets;
 - Produits;
 - Outils;
+- Calibre;
 - Soumissions LEGACY;
 - Usagers;
 - Configuration;
@@ -73,9 +76,12 @@ Menus:
 
 ```text
 ClientsPage.tsx
+ContactsPage.tsx
 ProjectsPage.tsx
 ProductsPage.tsx
 ToolsPage.tsx
+ChantiersPage.tsx
+CalibreView.tsx
 MatrixView.tsx
 UsersPage.tsx
 ProfilePage.tsx
@@ -83,6 +89,7 @@ LoginPage.tsx
 SetPasswordPage.tsx
 ConfigurationPage.tsx
 ImportationPage.tsx
+OperationsStatusPage.tsx
 ```
 
 ## Projets
@@ -141,16 +148,49 @@ ImportationPage.tsx
 - prix liste et coutant;
 - imports et mises a jour via Configuration.
 
+Les produits supportent aussi l'edition en lot et les preferences de colonnes par utilisateur.
+
+## Contacts Et Fournisseurs
+
+`ContactsPage.tsx` gere:
+
+- contacts clients;
+- contacts fournisseurs;
+- taches de contacts;
+- fiches fournisseurs enrichies;
+- preferences de colonnes.
+
 ## Outils
 
 `ToolsPage.tsx` gere:
 
-- scopes Disponible et Deploye;
+- scopes Tous les outils, Disponible et Deploye;
 - recherche;
 - tri;
 - pagination;
 - images;
+- QR;
+- edition d'outils;
+- checkout/deplacement vers chantier;
 - donnees Snipe-IT normalisees.
+
+`ChantiersPage.tsx` gere les locations Snipe-IT:
+
+- liste des chantiers;
+- filtre par nombre d'outils;
+- creation et edition;
+- liste des outils par chantier.
+
+## Calibre
+
+`CalibreView.tsx` gere:
+
+- import PDF/image;
+- calibration;
+- mesures ligne, rectangle et polygone;
+- calques et secteurs;
+- resultats de surfaces et longueurs;
+- sauvegarde locale de session.
 
 ## Configuration
 
@@ -158,6 +198,8 @@ ImportationPage.tsx
 
 - Courriel;
 - VoIP/SMS;
+- Snipe-IT;
+- Statut;
 - Importation.
 
 La sous-page VoIP/SMS gere:
@@ -177,6 +219,8 @@ Configuration VoIP.ms dans l'interface:
 
 `ImportationPage.tsx` gere les mises a jour de prix et catalogues.
 
+Les entrees Quick-book et Mobile-Punch sont visibles mais desactivees tant que les integrations ne sont pas construites.
+
 ## Utils
 
 ```text
@@ -187,6 +231,8 @@ matrixCalculations.ts
 productsApi.ts
 prosolApi.ts
 toolsApi.ts
+contactsApi.ts
+userPreferencesApi.ts
 ```
 
 `matrixCalculations.ts` contient les calculs metier purs de la matrice.
